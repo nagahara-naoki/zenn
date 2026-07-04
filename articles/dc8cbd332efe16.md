@@ -1,5 +1,10 @@
-# JavaScriptで学ぶSingletonパターン！TanStack QueryのQueryClientから見る「1つだけ共有する設計」
-
+---
+title: "JavaScriptで学ぶSingletonパターン！TanStack QueryのQueryClientから見る「1つだけ共有する設計」"
+emoji: "🤖"
+type: "tech"
+topics: ["javascript", "デザインパターン"]
+published: true
+---
 アプリ全体で、同じインスタンスを使い回したいことはありませんか？
 
 例えば、データ取得用のクライアントです。
@@ -453,13 +458,13 @@ TanStack QueryとJotaiの例を見ると、Singletonで大事なのは「1つに
 
 大事なのは、**どのスコープで1つにするか** です。
 
-| 対象 | よくあるスコープ |
-|---|---|
-| QueryClient | アプリのライフサイクル中に1つ |
-| Jotai default store | provider-less modeで共有 |
-| Jotai Provider store | Providerごとに1つ |
-| SSRのユーザー状態 | リクエストごとに1つ |
-| テスト用store | テストケースごとに1つ |
+| 対象                 | よくあるスコープ              |
+| -------------------- | ----------------------------- |
+| QueryClient          | アプリのライフサイクル中に1つ |
+| Jotai default store  | provider-less modeで共有      |
+| Jotai Provider store | Providerごとに1つ             |
+| SSRのユーザー状態    | リクエストごとに1つ           |
+| テスト用store        | テストケースごとに1つ         |
 
 このように、同じ「1つ」でも意味が違います。
 
