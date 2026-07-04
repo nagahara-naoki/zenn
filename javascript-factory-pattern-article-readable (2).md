@@ -1,0 +1,479 @@
+# JavaScriptで学ぶFactoryパターン！Jotaiのatomから見る「生成処理を隠す設計」
+
+オブジェクトを作る処理が、いろいろな場所に散らばっていませんか？
+
+例えば、ユーザー種別ごとに初期値を作ったり、APIエラーの形を毎回組み立てたり、フォームの初期値を画面ごとに作ったりする処理です。
+
+最初は直接書いても問題ありません。
+
+```js
+const user = {
+  role: "admin",
+  canRead: true,
+  canWrite: true,
+  canDelete: true,
+};
+```
+
+でも、同じような生成処理が複数の場所に増えてくると、だんだんつらくなります。
+
+- 初期値のルールが画面ごとにズレる
+- 仕様変更時に修正漏れが起きる
+- オブジェクトの作り方を毎回思い出す必要がある
+- 呼び出し側が内部構造を知りすぎる
+
+こういうときに使えるのが **Factoryパターン** です。
+
+---
+
+## Factoryパターンとは？
+
+Factoryパターンは、**オブジェクトや関数を作る処理を、専用の関数にまとめる考え方**です。
+
+呼び出し側は「何を作りたいか」だけを伝えます。  
+「どう作るか」はFactory側に任せます。
+
+例えば、次のような関数です。
+
+```js
+function createUser(role) {
+  return {
+    role,
+    createdAt: new Date(),
+  };
+}
+
+const user = createUser("admin");
+```
+
+これだけを見ると、ただの関数に見えるかもしれません。
+
+実際、JavaScriptではFactoryパターンは普通の関数として書かれることが多いです。
+
+大事なのは、関数かクラスかではありません。  
+**生成ルールを呼び出し側から切り離しているか** が大事です。
+
+---
+
+## Factoryを使わない場合の問題
+
+ユーザー権限ごとに、ユーザーオブジェクトを作る処理を考えてみます。
+
+```js
+let user;
+
+if (role === "admin") {
+  user = {
+    role: "admin",
+    canRead: true,
+    canWrite: true,
+    canDelete: true,
+  };
+} else {
+  user = {
+    role: "viewer",
+    canRead: true,
+    canWrite: false,
+    canDelete: false,
+  };
+}
+```
+
+このコードは動きます。
+
+ただし、画面側や処理側が「ユーザーオブジェクトの作り方」を直接知っています。
+
+この書き方には、次の問題があります。
+
+1. 生成ルールが呼び出し側に漏れる
+2. 同じ処理が複数箇所に増えやすい
+3. 権限ルールを変えたときに修正漏れが起きやすい
+
+たとえば、`editor` を追加したくなったらどうでしょうか？
+
+同じような `if` 文が複数箇所にあれば、全部探して修正する必要があります。
+
+これは地味に危険です。
+
+---
+
+## Factory関数で改善する
+
+生成処理を `createUser` にまとめます。
+
+```js
+function createUser(role) {
+  if (role === "admin") {
+    return {
+      role: "admin",
+      canRead: true,
+      canWrite: true,
+      canDelete: true,
+    };
+  }
+
+  if (role === "editor") {
+    return {
+      role: "editor",
+      canRead: true,
+      canWrite: true,
+      canDelete: false,
+    };
+  }
+
+  return {
+    role: "viewer",
+    canRead: true,
+    canWrite: false,
+    canDelete: false,
+  };
+}
+
+const user = createUser("admin");
+```
+
+呼び出し側は、細かい権限の組み立て方を知らなくてよくなりました。
+
+```js
+const user = createUser("admin");
+```
+
+この1行だけで、「admin用のユーザーを作る」という意図が伝わります。
+
+権限の中身を変えたい場合は、`createUser` を見ればよくなります。
+
+---
+
+## Factoryで何が良くなるのか？
+
+Factoryを使うと、主に次の3つが良くなります。
+
+### 1. 生成ルールを1か所に集められる
+
+権限ごとの初期値は `createUser` に集約されます。
+
+```js
+function createUser(role) {
+  // ユーザー生成ルールはここに集約
+}
+```
+
+仕様変更時も、まずこの関数を見ればよくなります。
+
+---
+
+### 2. 呼び出し側がシンプルになる
+
+呼び出し側は「何を作るか」だけを書けます。
+
+```js
+const user = createUser("editor");
+```
+
+`canRead` や `canDelete` の組み合わせを毎回書かなくて済みます。
+
+---
+
+### 3. 不正値の扱いを統一できる
+
+不正な `role` が渡されたときの扱いも、Factory内で決められます。
+
+```js
+function createUser(role) {
+  if (role === "admin") {
+    return {
+      role: "admin",
+      canRead: true,
+      canWrite: true,
+      canDelete: true,
+    };
+  }
+
+  if (role === "viewer") {
+    return {
+      role: "viewer",
+      canRead: true,
+      canWrite: false,
+      canDelete: false,
+    };
+  }
+
+  throw new Error(`Unknown role: ${role}`);
+}
+```
+
+画面ごとに不正値の扱いがバラバラになるのを防げます。
+
+---
+
+## 有名OSSではどう使われている？
+
+Factoryパターンに近い考え方は、状態管理ライブラリの **Jotai** にも見ることができます。
+
+Jotaiでは、状態の単位を `atom` で作ります。
+
+```ts
+import { atom } from "jotai";
+
+const countAtom = atom(0);
+```
+
+Jotai公式ドキュメントでは、`atom` はatom configを作るためのAPIとして説明されています。  
+また、primitive atom、read-only atom、writable derived atomなど、渡す引数によって異なる種類のatomを作れます。
+
+つまり、利用者は内部構造を直接組み立てず、`atom(...)` という入口からJotaiが扱える状態の単位を作っています。
+
+---
+
+## JotaiのatomをFactoryとして見る
+
+Jotaiの `atom` は、次のように使えます。
+
+```ts
+const countAtom = atom(0);
+```
+
+この1行で、Jotaiのstoreが扱えるatom configが作られます。
+
+利用者は、次のような内部構造を自分で作りません。
+
+```ts
+const countAtom = {
+  init: 0,
+  read: defaultRead,
+  write: defaultWrite,
+};
+```
+
+実際のJotaiの実装はもっと複雑ですが、Factoryとして理解するなら、イメージはこうです。
+
+```ts
+function atom(initialValue) {
+  const config = {
+    init: initialValue,
+    read: defaultRead,
+    write: defaultWrite,
+  };
+
+  return config;
+}
+```
+
+もちろん、これは本物の実装ではなく、考え方を理解するための簡略版です。
+
+ポイントは、**利用者がatom configの細かい作り方を知らなくてよい** ことです。
+
+```ts
+const countAtom = atom(0);
+```
+
+この短いAPIの裏側で、Jotaiが必要な構造を作っています。
+
+これはFactoryパターンに近い考え方です。
+
+---
+
+## atomは引数によって作るものが変わる
+
+Jotaiの `atom` は、渡す引数によって作られるatomの意味が変わります。
+
+primitive atomです。
+
+```ts
+const countAtom = atom(0);
+```
+
+derived atomです。
+
+```ts
+const doubledAtom = atom((get) => {
+  return get(countAtom) * 2;
+});
+```
+
+write関数を持つatomです。
+
+```ts
+const incrementAtom = atom(null, (get, set) => {
+  set(countAtom, get(countAtom) + 1);
+});
+```
+
+同じ `atom` というFactory的な入口でも、渡すものによって作られるconfigの性質が変わります。
+
+ここが面白いところです。
+
+呼び出し側は、毎回低レベルなconfigを組み立てる必要がありません。  
+`atom(...)` というAPIに任せられます。
+
+---
+
+## Jotaiのatomから学べること
+
+Jotaiの `atom` から学べるのは、良いFactoryは **利用者にとって自然な入口を作る** ということです。
+
+```ts
+const countAtom = atom(0);
+```
+
+このAPIはかなり短いです。
+
+でも、単なる省略記法ではありません。
+
+- Jotaiが扱える形式にする
+- primitive atomとして扱う
+- read/writeの仕組みを持たせる
+- derived atomにも対応する
+
+こうした生成ルールを、`atom` というAPIに閉じ込めています。
+
+良いFactoryは、呼び出し側を楽にします。
+
+---
+
+## 補足：Redux ToolkitのcreateSliceもFactory的
+
+もう1つ、補足としてRedux Toolkitの `createSlice` も見てみます。
+
+Redux Toolkitでは、次のようにsliceを作ります。
+
+```ts
+import { createSlice } from "@reduxjs/toolkit";
+
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: {
+    value: 0,
+  },
+  reducers: {
+    increment(state) {
+      state.value += 1;
+    },
+  },
+});
+
+export const { increment } = counterSlice.actions;
+export default counterSlice.reducer;
+```
+
+Redux Toolkit公式ドキュメントでは、`reducers` に定義した各関数に対応するaction creatorが生成され、結果の `actions` に含まれると説明されています。
+
+つまり、`createSlice` に設定を渡すと、次のようなものがまとめて作られます。
+
+- reducer
+- action creators
+- action types
+- slice object
+
+これはFactory的です。
+
+手作業でaction typeやaction creatorを作る代わりに、`createSlice` が必要な部品を生成してくれます。
+
+```ts
+const counterSlice = createSlice({
+  name: "counter",
+  initialState,
+  reducers,
+});
+```
+
+呼び出し側は、Reduxの細かい定型コードを毎回組み立てなくてよくなります。
+
+---
+
+## 実務でFactoryを使うならどこ？
+
+Factoryパターンは、次のような場面で使いやすいです。
+
+- APIエラーオブジェクトの形式を統一したいとき
+- フォーム初期値を作るとき
+- 権限ごとのユーザーオブジェクトを作るとき
+- 通知オブジェクトを作るとき
+- テストデータを作るとき
+- APIクライアントを作るとき
+- action creatorや設定オブジェクトを作るとき
+
+例えば、APIエラーを作るFactoryです。
+
+```js
+function createApiError(code, message, details = {}) {
+  return {
+    code,
+    message,
+    details,
+    occurredAt: new Date(),
+  };
+}
+
+const error = createApiError(
+  "USER_NOT_FOUND",
+  "ユーザーが見つかりません",
+);
+```
+
+毎回エラーオブジェクトを手で組み立てるより、安全です。
+
+---
+
+## 使いすぎには注意
+
+Factoryは便利ですが、何でもFactoryにすればよいわけではありません。
+
+例えば、次のような単純なオブジェクトなら、直接書いた方が読みやすいです。
+
+```js
+const user = {
+  name: "Taro",
+  age: 20,
+};
+```
+
+これをわざわざFactoryにすると、逆にコードが増えます。
+
+```js
+function createUser() {
+  return {
+    name: "Taro",
+    age: 20,
+  };
+}
+```
+
+Factoryが役立つのは、次のような場合です。
+
+- 生成ルールが複数箇所に出てきた
+- 条件によって作るものが変わる
+- 初期値やバリデーションを統一したい
+- 呼び出し側に内部構造を知られたくない
+- 生成されるものが複数の関連部品を持つ
+
+つまり、Factoryは「何かを作る関数」なら何でもよいわけではありません。
+
+**生成ルールをまとめる意味があるとき** に使うのが良いです。
+
+---
+
+## まとめ
+
+Factoryパターンは、**オブジェクトや関数を作る処理を専用の関数にまとめるパターン**です。
+
+呼び出し側は「何を作るか」だけを伝え、  
+「どう作るか」はFactoryに任せます。
+
+Jotaiの `atom` は、利用者がatom configの内部構造を直接組み立てなくても、`atom(0)` のような短いAPIで状態の単位を作れる点でFactory的です。
+
+Redux Toolkitの `createSlice` も、設定からreducerやaction creatorをまとめて生成するFactory的なAPIとして見ることができます。
+
+生成処理がいろいろな場所に散らばってきたら、こう考えてみるとよいです。
+
+> この作り方、Factoryにまとめた方が安全じゃない？
+
+そう思ったときが、Factoryパターンを使うタイミングです！
+
+---
+
+## 参考リンク
+
+- [Jotai atom docs](https://jotai.org/docs/core/atom)
+- [Jotai GitHub README](https://github.com/pmndrs/jotai)
+- [Redux Toolkit createSlice docs](https://redux-toolkit.js.org/api/createSlice)

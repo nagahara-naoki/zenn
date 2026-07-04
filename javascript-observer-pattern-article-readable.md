@@ -1,0 +1,636 @@
+# JavaScriptで学ぶObserverパターン！RxJSのsubscribeから見る「購読と通知」の設計
+
+JavaScriptでは、「何かが起きたら処理を実行する」というコードをよく書きます。
+
+例えば、ボタンがクリックされたときです。
+
+```js
+const button = document.querySelector("button");
+
+button.addEventListener("click", () => {
+  console.log("クリックされました");
+});
+```
+
+これはとても身近なコードです。
+
+ボタンがクリックされたら、登録しておいた関数が呼ばれます。
+
+このような「変化やイベントを見て、あとから反応する」考え方は、**Observerパターン** と深く関係しています。
+
+フロントエンドでは、Observerパターンに近い仕組みがたくさん出てきます。
+
+- DOMイベント
+- RxJSのObservable
+- 状態管理storeのsubscribe
+- WebSocketのmessageイベント
+- TanStack QueryのQueryObserver
+- Jotaiのstore.sub
+
+今回は、特に **RxJSの `Observable.subscribe`** をメインにして、Observerパターンを理解していきます。
+
+---
+
+## Observerパターンとは？
+
+Observerパターンは、**ある対象の状態やイベントが変化したときに、それを見ている処理へ通知するパターン**です。
+
+簡単に言うと、
+
+> 「変わったよ！」と、登録済みの処理に知らせる仕組み
+
+です。
+
+Observerパターンには、主に2つの役割があります。
+
+| 役割 | 説明 |
+|---|---|
+| Subject | 監視される側。変化が起きたら通知する |
+| Observer | 通知を受け取る側。変化に反応する |
+
+JavaScriptでは、次のように考えるとわかりやすいです。
+
+| Observerパターン | JavaScriptでのイメージ |
+|---|---|
+| Subject | イベントを発火するもの |
+| Observer | 登録されたcallback |
+| subscribe | callbackを登録する |
+| notify | 登録済みcallbackを呼ぶ |
+| unsubscribe | 登録を解除する |
+
+たとえば、DOMイベントならこうです。
+
+```js
+button.addEventListener("click", handleClick);
+```
+
+`button` がSubjectに近く、`handleClick` がObserverに近いです。
+
+---
+
+## Observerを使わない場合の問題
+
+ログインしたときに、複数の処理を実行したいとします。
+
+```js
+function login(user) {
+  console.log(`${user.name} がログインしました`);
+
+  updateHeader(user);
+  showWelcomeMessage(user);
+  saveLoginLog(user);
+}
+```
+
+このコードは動きます。
+
+ただし、`login` 関数が「ログイン後に何をするか」を全部知っています。
+
+この書き方には、次の問題があります。
+
+1. `login` 関数の責務が大きくなる
+2. ログイン後の処理を追加するたびに `login` を修正する
+3. ログイン処理とUI更新やログ保存の依存が強くなる
+
+例えば、あとから分析イベントを追加したくなったら、また `login` を修正する必要があります。
+
+```js
+function login(user) {
+  console.log(`${user.name} がログインしました`);
+
+  updateHeader(user);
+  showWelcomeMessage(user);
+  saveLoginLog(user);
+  sendAnalytics(user);
+}
+```
+
+ログイン処理そのものと、ログイン後に反応する処理が混ざってきます。
+
+---
+
+## Observerパターンで改善する
+
+ログイン後の処理を、イベントとして購読できるようにします。
+
+まずは小さなEventEmitterを作ります。
+
+```js
+function createEventEmitter() {
+  const listeners = new Map();
+
+  function on(eventName, listener) {
+    if (!listeners.has(eventName)) {
+      listeners.set(eventName, new Set());
+    }
+
+    listeners.get(eventName).add(listener);
+
+    return () => {
+      listeners.get(eventName).delete(listener);
+    };
+  }
+
+  function emit(eventName, payload) {
+    const eventListeners = listeners.get(eventName);
+
+    if (!eventListeners) {
+      return;
+    }
+
+    eventListeners.forEach((listener) => {
+      listener(payload);
+    });
+  }
+
+  return {
+    on,
+    emit,
+  };
+}
+```
+
+使う側です。
+
+```js
+const events = createEventEmitter();
+
+events.on("login", (user) => {
+  updateHeader(user);
+});
+
+events.on("login", (user) => {
+  showWelcomeMessage(user);
+});
+
+events.on("login", (user) => {
+  saveLoginLog(user);
+});
+
+function login(user) {
+  console.log(`${user.name} がログインしました`);
+
+  events.emit("login", user);
+}
+```
+
+`login` 関数は、「ログインした」というイベントを通知するだけになりました。
+
+```js
+events.emit("login", user);
+```
+
+ログイン後に何をするかは、`events.on("login", ...)` で登録された処理が担当します。
+
+---
+
+## Observerで何が良くなるのか？
+
+### 1. 通知する側と反応する側を分けられる
+
+`login` は、ログインしたことを通知するだけです。
+
+```js
+events.emit("login", user);
+```
+
+ヘッダー更新、メッセージ表示、ログ保存は、それぞれ別の場所で登録できます。
+
+---
+
+### 2. 後から処理を追加しやすい
+
+分析イベントを追加したい場合も、`login` 関数を直接変更せずに済みます。
+
+```js
+events.on("login", (user) => {
+  sendAnalytics(user);
+});
+```
+
+既存のログイン処理に手を入れず、反応する処理を増やせます。
+
+---
+
+### 3. 購読解除できる
+
+Observerパターンでは、登録だけでなく解除も大切です。
+
+```js
+const unsubscribe = events.on("login", (user) => {
+  console.log(`${user.name} がログインしました`);
+});
+
+unsubscribe();
+```
+
+画面を離れた後も購読が残っていると、不要な処理が動いたり、メモリリークの原因になったりします。
+
+そのため、`subscribe` したら `unsubscribe` できる設計が重要です。
+
+---
+
+## Observerパターンの基本形
+
+Observerパターンの基本は、かなり小さく書けます。
+
+```js
+const listeners = new Set();
+
+function subscribe(listener) {
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notify(value) {
+  listeners.forEach((listener) => {
+    listener(value);
+  });
+}
+```
+
+大事なのは、この3つです。
+
+1. listenerを登録する
+2. 変化が起きたらlistenerに通知する
+3. 不要になったら解除できるようにする
+
+この構造は、いろいろなOSSの中にも出てきます。
+
+---
+
+## 有名OSSではどう使われている？
+
+Observerパターンを理解するなら、**RxJS** はかなり良い題材です。
+
+RxJSでは、値の流れを `Observable` として扱い、それを `subscribe` して値を受け取ります。
+
+```ts
+import { of } from "rxjs";
+
+of(1, 2, 3).subscribe({
+  next(value) {
+    console.log(value);
+  },
+
+  complete() {
+    console.log("complete");
+  },
+});
+```
+
+このコードでは、`of(1, 2, 3)` が値を流す側です。
+
+`subscribe` に渡しているオブジェクトが、通知を受け取る側です。
+
+```ts
+{
+  next(value) {},
+  complete() {},
+}
+```
+
+これはObserverパターンとしてかなりわかりやすい形です。
+
+---
+
+## RxJSのsubscribeをObserverとして見る
+
+RxJS公式ソースのコメントでは、`subscribe` はObservableの実行を開始し、Observableがemitする値、complete、errorをlistenできるようにするメソッドとして説明されています。
+
+また、`subscribe` はSubscriptionを返し、そのSubscriptionの `unsubscribe` でObservableの処理を停止し、リソースを片付けられると説明されています。
+
+つまり、RxJSでは次の流れがあります。
+
+```txt
+Observableを作る
+  ↓
+subscribeでObserverを登録する
+  ↓
+Observableがnext/error/completeを通知する
+  ↓
+不要になったらunsubscribeする
+```
+
+コードで見るとこうです。
+
+```ts
+const subscription = interval(1000).subscribe({
+  next(value) {
+    console.log(value);
+  },
+});
+
+setTimeout(() => {
+  subscription.unsubscribe();
+}, 3000);
+```
+
+`subscribe` で通知を受け取り、`unsubscribe` で解除します。
+
+これはObserverパターンの「購読・通知・解除」の流れそのものです。
+
+---
+
+## RxJSでは何が通知されるのか？
+
+RxJSのObserverは、主に3種類の通知を受け取れます。
+
+```ts
+observable.subscribe({
+  next(value) {
+    console.log("値:", value);
+  },
+
+  error(error) {
+    console.error("エラー:", error);
+  },
+
+  complete() {
+    console.log("完了");
+  },
+});
+```
+
+それぞれの意味はこうです。
+
+| 通知 | 意味 |
+|---|---|
+| `next` | 新しい値が流れてきた |
+| `error` | エラーが発生した |
+| `complete` | Observableが完了した |
+
+DOMイベントのように「クリックされた」だけではなく、RxJSでは時間とともに流れる値、エラー、完了まで扱えます。
+
+ここがRxJSの強力なところです。
+
+---
+
+## Observableは作っただけでは動かない
+
+RxJSで重要なのは、Observableは作っただけでは基本的に動かないという点です。
+
+```ts
+const source$ = new Observable((subscriber) => {
+  console.log("start");
+
+  subscriber.next(1);
+  subscriber.next(2);
+  subscriber.complete();
+});
+```
+
+この時点では、まだ `console.log("start")` は実行されません。
+
+`subscribe` したときに実行が始まります。
+
+```ts
+source$.subscribe({
+  next(value) {
+    console.log(value);
+  },
+});
+```
+
+RxJS公式ソースのコメントでも、`subscribe` を呼ぶことがObservableの処理が始まるタイミングだと説明されています。
+
+つまり、RxJSでは `subscribe` が「Observerを登録する」だけでなく、「Observableの実行を開始する」入口にもなっています。
+
+---
+
+## RxJSから学べること
+
+RxJSから学べるのは、Observerパターンは単なるイベント通知だけではないということです。
+
+RxJSでは、次のようなものをObservableとして扱えます。
+
+- クリックイベント
+- タイマー
+- APIレスポンス
+- WebSocketメッセージ
+- フォーム入力
+- 複数イベントの合成
+
+これらを `subscribe` して、値の変化に反応できます。
+
+Observerパターンは、**時間とともに発生する変化を扱う設計** と相性が良いです。
+
+---
+
+## 補足：ZustandのsubscribeもObserver的
+
+補足として、Zustandの `subscribe` もObserverパターンに近いです。
+
+Zustandは軽量な状態管理ライブラリです。
+
+vanilla storeでは、状態の変更を購読できます。
+
+```ts
+const unsubscribe = store.subscribe((state, prevState) => {
+  console.log("変更前:", prevState);
+  console.log("変更後:", state);
+});
+```
+
+状態が変わると、登録したlistenerが呼ばれます。
+
+不要になったら解除します。
+
+```ts
+unsubscribe();
+```
+
+---
+
+## Zustandの内部構造を簡単に見る
+
+Zustandの `vanilla.ts` では、listenerを `Set` で保持しています。
+
+簡略化すると、次のような構造です。
+
+```ts
+const listeners = new Set();
+
+function setState(nextState) {
+  const previousState = state;
+
+  state = nextState;
+
+  listeners.forEach((listener) => {
+    listener(state, previousState);
+  });
+}
+
+function subscribe(listener) {
+  listeners.add(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
+}
+```
+
+これは、先ほど自作したObserverの基本形にかなり近いです。
+
+```js
+const listeners = new Set();
+
+function subscribe(listener) {
+  listeners.add(listener);
+
+  return () => listeners.delete(listener);
+}
+
+function notify(value) {
+  listeners.forEach((listener) => listener(value));
+}
+```
+
+Zustandでは、stateが変わると登録済みlistenerへ通知されます。
+
+この構造はObserverパターンの実務的な例として、とても理解しやすいです。
+
+---
+
+## RxJSとZustandの違い
+
+RxJSとZustandは、どちらもObserver的な仕組みを持っています。
+
+ただし、見ている対象が違います。
+
+| ライブラリ | 何を購読する？ |
+|---|---|
+| RxJS | Observableが流す値 |
+| Zustand | storeのstate変更 |
+
+RxJSは、時間とともに流れる値を扱うのが得意です。
+
+```ts
+interval(1000).subscribe(...)
+```
+
+Zustandは、storeの状態変更を購読するのが中心です。
+
+```ts
+store.subscribe(...)
+```
+
+どちらも、基本には「登録したlistenerに通知する」というObserver的な構造があります。
+
+---
+
+## 実務でObserverを使うならどこ？
+
+Observerパターンは、次のような場面で使いやすいです。
+
+- DOMイベント
+- WebSocketのmessage受信
+- storeの状態変更
+- ログイン状態の変更
+- フォーム入力の変更
+- タイマーやポーリング
+- 複数の処理が同じイベントに反応する場合
+
+例えば、ログインイベントです。
+
+```js
+const authEvents = createEventEmitter();
+
+authEvents.on("login", (user) => {
+  updateHeader(user);
+});
+
+authEvents.on("login", (user) => {
+  sendAnalytics(user);
+});
+
+authEvents.on("login", (user) => {
+  saveLoginLog(user);
+});
+
+function login(user) {
+  authEvents.emit("login", user);
+}
+```
+
+ログイン処理は、ログインしたことを通知するだけです。
+
+その後に何をするかは、購読側に分けられます。
+
+---
+
+## 使いすぎには注意
+
+Observerパターンは便利ですが、使いすぎると処理の流れが追いづらくなります。
+
+例えば、次のコードだけを見ると、実際に何が動くのか分かりません。
+
+```js
+events.emit("login", user);
+```
+
+どこか別の場所で、いろいろなlistenerが登録されているかもしれません。
+
+```js
+events.on("login", updateHeader);
+events.on("login", sendAnalytics);
+events.on("login", saveLog);
+events.on("login", showToast);
+```
+
+イベントが増えすぎると、「この処理はどこから呼ばれているのか？」が分かりにくくなります。
+
+また、購読解除を忘れると、不要な処理が残る可能性があります。
+
+Reactなら、`useEffect` のcleanupで解除することが多いです。
+
+```tsx
+useEffect(() => {
+  const unsubscribe = store.subscribe(listener);
+
+  return () => {
+    unsubscribe();
+  };
+}, []);
+```
+
+Observerは、**通知する側と反応する側を分けたいとき** に使うと効果的です。
+
+単純に関数を1つ呼べば済む場合は、直接呼んだ方が読みやすいこともあります。
+
+---
+
+## まとめ
+
+Observerパターンは、**状態の変化やイベントを、登録済みの処理へ通知するパターン**です。
+
+JavaScriptでは、DOMイベント、RxJS、状態管理storeなど、かなり多くの場所に登場します。
+
+RxJSの `Observable.subscribe` は、Observerパターンを理解するのにとても良い例です。
+
+`subscribe` で通知を受け取り、`next` / `error` / `complete` に反応し、不要になったら `unsubscribe` で解除します。
+
+Zustandの `subscribe` も、storeのstate変更をlistenerへ通知するObserver的な仕組みです。
+
+Observerパターンで大事なのは、ただイベントを作ることではありません。
+
+大事なのは、**変化を起こす側と、それに反応する側を分けること** です。
+
+複数の処理が同じ変化に反応しているなら、こう考えてみるとよいです。
+
+> この変化、必要な処理に通知する形にした方がスッキリしない？
+
+そう思ったときが、Observerパターンを使うタイミングです！
+
+---
+
+## 参考リンク
+
+- [RxJS Observable source](https://github.com/ReactiveX/rxjs/blob/master/packages/observable/src/observable.ts)
+- [RxJS Observable guide](https://rxjs.dev/guide/observable)
+- [RxJS Subscription guide](https://rxjs.dev/guide/subscription)
+- [Zustand vanilla.ts](https://github.com/pmndrs/zustand/blob/main/src/vanilla.ts)
+- [Zustand subscribeWithSelector docs](https://zustand.docs.pmnd.rs/reference/middlewares/subscribe-with-selector)

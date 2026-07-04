@@ -1,0 +1,544 @@
+# JavaScriptで学ぶAdapterパターン！RTK QueryのtransformResponseから見る「外部形式を内部形式に変換する設計」
+
+APIから返ってきたデータを、そのまま画面で使っていませんか？
+
+例えば、次のようなユーザーデータが返ってくるとします。
+
+```js
+const apiUser = {
+  user_id: 1,
+  user_name: "Taro",
+  mail_address: "taro@example.com",
+  is_active: 1,
+};
+```
+
+画面側でそのまま使うと、こうなります。
+
+```js
+console.log(apiUser.user_name);
+console.log(apiUser.mail_address);
+
+if (apiUser.is_active === 1) {
+  console.log("有効ユーザーです");
+}
+```
+
+これでも動きます。
+
+でも、少し危険です。
+
+画面側がAPIの命名ルールや値の形式を直接知ってしまっています。
+
+- APIでは `snake_case`
+- 画面側では `camelCase` にしたい
+- `is_active` は `1 / 0`
+- 画面側では `true / false` で扱いたい
+
+このような外部形式をそのままアプリ内部に広げると、後で変更に弱くなります。
+
+そこで使えるのが **Adapterパターン** です。
+
+---
+
+## Adapterパターンとは？
+
+Adapterパターンは、**外部の形式やインターフェースを、アプリ内部で扱いやすい形に変換するパターン**です。
+
+簡単に言うと、
+
+> そのままだと使いにくいものを、自分たちのコードに合う形へ変換する
+
+という考え方です。
+
+APIレスポンスであれば、次のような変換です。
+
+```js
+{
+  user_id: 1,
+  user_name: "Taro",
+  is_active: 1,
+}
+```
+
+これを、アプリ内部ではこう扱います。
+
+```js
+{
+  id: 1,
+  name: "Taro",
+  isActive: true,
+}
+```
+
+外部の都合を、アプリ全体に広げない。
+
+これがAdapterパターンの大事な役割です。
+
+---
+
+## Adapterを使わない場合の問題
+
+APIレスポンスをそのまま画面で使う例です。
+
+```js
+function renderUser(user) {
+  console.log(`名前: ${user.user_name}`);
+  console.log(`メール: ${user.mail_address}`);
+
+  if (user.is_active === 1) {
+    console.log("ステータス: 有効");
+  }
+}
+```
+
+このコードには、次の問題があります。
+
+1. 画面がAPI仕様に強く依存する
+2. 命名ルールがコード内に混ざる
+3. 変換処理が複数画面に散らばりやすい
+
+たとえば、APIの項目名が `user_name` から `name` に変わったらどうでしょうか？
+
+```js
+console.log(user.user_name); // undefined
+```
+
+画面側が壊れます。
+
+API仕様の変更が、画面コードに直接影響してしまいます。
+
+---
+
+## Adapter関数で改善する
+
+APIレスポンスを、アプリ内部で扱いやすい形に変換します。
+
+```js
+function adaptUser(apiUser) {
+  return {
+    id: apiUser.user_id,
+    name: apiUser.user_name,
+    email: apiUser.mail_address || "",
+    isActive: apiUser.is_active === 1,
+  };
+}
+```
+
+使う側です。
+
+```js
+const apiUser = {
+  user_id: 1,
+  user_name: "Taro",
+  mail_address: "taro@example.com",
+  is_active: 1,
+};
+
+const user = adaptUser(apiUser);
+
+console.log(user.name);
+console.log(user.email);
+
+if (user.isActive) {
+  console.log("有効ユーザーです");
+}
+```
+
+画面側は、APIの細かい形式を知らなくてよくなりました。
+
+```js
+user.name
+user.email
+user.isActive
+```
+
+このように、アプリ内部で自然に扱える形だけを見ればよくなります。
+
+---
+
+## Adapterで何が良くなるのか？
+
+### 1. API仕様をAdapter内に閉じ込められる
+
+APIの `user_name` や `mail_address` は、Adapterの中だけに閉じ込められます。
+
+```js
+function adaptUser(apiUser) {
+  return {
+    name: apiUser.user_name,
+    email: apiUser.mail_address || "",
+  };
+}
+```
+
+画面側は `user.name` と `user.email` を使うだけです。
+
+---
+
+### 2. 変換ルールを統一できる
+
+`1 / 0` を `true / false` に変換するルールも、Adapterにまとめられます。
+
+```js
+isActive: apiUser.is_active === 1,
+```
+
+この変換を各画面で毎回書かなくて済みます。
+
+---
+
+### 3. 画面側のコードが読みやすくなる
+
+画面側は、APIの都合ではなく、画面に必要な意味でコードを書けます。
+
+```js
+if (user.isActive) {
+  console.log("有効ユーザーです");
+}
+```
+
+`is_active === 1` よりも、かなり読みやすいです。
+
+---
+
+## TypeScriptとAdapterは相性が良い
+
+AdapterパターンはTypeScriptと相性が良いです。
+
+外部の型と、内部の型を分けられるからです。
+
+```ts
+type ApiUser = {
+  user_id: number;
+  user_name: string;
+  mail_address: string | null;
+  is_active: 0 | 1;
+};
+
+type User = {
+  id: number;
+  name: string;
+  email: string;
+  isActive: boolean;
+};
+
+function adaptUser(apiUser: ApiUser): User {
+  return {
+    id: apiUser.user_id,
+    name: apiUser.user_name,
+    email: apiUser.mail_address || "",
+    isActive: apiUser.is_active === 1,
+  };
+}
+```
+
+このようにすると、境界がはっきりします。
+
+- `ApiUser` は外部APIの形式
+- `User` はアプリ内部の形式
+
+APIレスポンスの形が変わったら、まず `adaptUser` を見ればよくなります。
+
+---
+
+## 有名OSSではどう使われている？
+
+Adapterパターンに近い考え方は、**RTK Query** の `transformResponse` に見ることができます。
+
+RTK Queryは、Redux Toolkitに含まれるデータ取得・キャッシュ管理の仕組みです。
+
+RTK Queryでは、endpointごとに `transformResponse` を定義できます。
+
+```ts
+const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: "/api" }),
+
+  endpoints: (build) => ({
+    getUser: build.query<User, number>({
+      query: (id) => `/users/${id}`,
+
+      transformResponse: (response: ApiUserResponse): User => {
+        return {
+          id: response.result.user_id,
+          name: response.result.user_name,
+          email: response.result.mail_address || "",
+        };
+      },
+    }),
+  }),
+});
+```
+
+ここでやっていることは、まさにAdapter的です。
+
+APIから返ってきた外部形式を、キャッシュや画面で扱いやすい内部形式に変換しています。
+
+---
+
+## RTK QueryのtransformResponseをAdapterとして見る
+
+RTK Queryの `transformResponse` は、レスポンスをキャッシュへ入れる前に変換できます。
+
+たとえば、APIレスポンスがこうだとします。
+
+```ts
+type ApiUserResponse = {
+  result: {
+    user_id: number;
+    user_name: string;
+    mail_address: string | null;
+  };
+};
+```
+
+画面ではこう使いたいです。
+
+```ts
+type User = {
+  id: number;
+  name: string;
+  email: string;
+};
+```
+
+そこで `transformResponse` で変換します。
+
+```ts
+transformResponse: (response: ApiUserResponse): User => {
+  return {
+    id: response.result.user_id,
+    name: response.result.user_name,
+    email: response.result.mail_address || "",
+  };
+}
+```
+
+すると、コンポーネント側は最初から `User` として扱えます。
+
+```tsx
+const { data: user } = useGetUserQuery(1);
+
+console.log(user?.name);
+```
+
+コンポーネントは `response.result.user_name` を知る必要がありません。
+
+これは大きいです。
+
+---
+
+## なぜRTK Queryの位置が良いのか？
+
+Adapterは、置く場所がとても重要です。
+
+RTK Queryの `transformResponse` は、APIレスポンスを受け取った直後に変換できます。
+
+つまり、外部形式がアプリ全体に広がる前に止められます。
+
+```txt
+APIレスポンス
+  ↓
+transformResponseで変換
+  ↓
+RTK Queryのキャッシュ
+  ↓
+画面で利用
+```
+
+この流れにすると、画面側は変換済みのデータだけを扱えます。
+
+逆に、画面で毎回変換するとこうなります。
+
+```txt
+APIレスポンス
+  ↓
+そのままキャッシュ
+  ↓
+画面Aで変換
+  ↓
+画面Bで変換
+  ↓
+画面Cで変換
+```
+
+変換処理が散らばりやすくなります。
+
+Adapterは、なるべく外部との境界に置くと効果が高いです。
+
+---
+
+## 補足：JotaiのatomWithStorageもAdapter的
+
+補足として、Jotaiの `atomWithStorage` もAdapter的に見ることができます。
+
+Jotaiでは、次のようにlocalStorageと連動するatomを作れます。
+
+```ts
+import { atomWithStorage } from "jotai/utils";
+
+const darkModeAtom = atomWithStorage("darkMode", false);
+```
+
+コンポーネント側では、普通のatomのように使えます。
+
+```tsx
+const [darkMode, setDarkMode] = useAtom(darkModeAtom);
+```
+
+使う側は、`localStorage.getItem` や `localStorage.setItem` を直接呼びません。
+
+```ts
+localStorage.getItem("darkMode");
+localStorage.setItem("darkMode", "true");
+```
+
+Jotaiの `atomWithStorage` は、Storage APIをJotaiのatomとして扱えるようにしています。
+
+これは、外部のStorage APIを、アプリ内部の状態管理インターフェースに合わせていると見ることができます。
+
+---
+
+## atomWithStorageをAdapterとして見る
+
+Storage APIは、本来こういう形です。
+
+```ts
+localStorage.getItem("darkMode");
+localStorage.setItem("darkMode", "true");
+localStorage.removeItem("darkMode");
+```
+
+Jotaiでは、これをatomとして扱えます。
+
+```ts
+const darkModeAtom = atomWithStorage("darkMode", false);
+```
+
+つまり、次のような変換が起きています。
+
+| 外部の仕組み | アプリ側で使いたい形 |
+| --- | --- |
+| localStorage | atom |
+| getItem / setItem | useAtomで読み書き |
+| 文字列保存 | booleanやobjectとして扱う |
+| storage event | atomの更新として扱う |
+
+もちろん、`atomWithStorage` はFactory的なAPIとしても読めます。
+
+ただ、Storage APIをJotaiのatomとして扱えるようにしている点では、Adapter的な考え方もあります。
+
+---
+
+## 実務でAdapterを使うならどこ？
+
+Adapterパターンは、次のような場面で使いやすいです。
+
+- APIレスポンスを画面用データに変換するとき
+- `snake_case` を `camelCase` に変換するとき
+- `1 / 0` を `true / false` に変換するとき
+- ネストしたレスポンスから必要なデータを取り出すとき
+- 外部ライブラリの戻り値をアプリ用に整えるとき
+- localStorageなどの外部APIを扱いやすく包むとき
+
+例えば、記事一覧APIの変換です。
+
+```ts
+type ApiPost = {
+  post_id: number;
+  post_title: string;
+  published_at: string | null;
+};
+
+type Post = {
+  id: number;
+  title: string;
+  publishedAt: Date | null;
+};
+
+function adaptPost(apiPost: ApiPost): Post {
+  return {
+    id: apiPost.post_id,
+    title: apiPost.post_title,
+    publishedAt: apiPost.published_at
+      ? new Date(apiPost.published_at)
+      : null,
+  };
+}
+```
+
+外部APIの形式を、そのまま画面に広げずに済みます。
+
+---
+
+## 使いすぎには注意
+
+Adapterは便利ですが、何でも入れてよい場所ではありません。
+
+Adapterの基本的な責務は、**形式を変換すること** です。
+
+次のような処理まで入れすぎると、責務が大きくなります。
+
+- API通信
+- 状態更新
+- 権限チェック
+- 通知表示
+- ログ送信
+- 画面遷移
+
+例えば、これは少し危険です。
+
+```js
+function adaptUser(apiUser) {
+  sendAnalytics();
+  updateStore();
+
+  return {
+    id: apiUser.user_id,
+    name: apiUser.user_name,
+  };
+}
+```
+
+Adapterの中で副作用が増えると、何が起きるのか分かりづらくなります。
+
+基本的には、入力を受け取り、変換した値を返す関数として書くと読みやすいです。
+
+```js
+function adaptUser(apiUser) {
+  return {
+    id: apiUser.user_id,
+    name: apiUser.user_name,
+  };
+}
+```
+
+---
+
+## まとめ
+
+Adapterパターンは、**外部の形式やインターフェースを、アプリ内部で扱いやすい形に変換するパターン**です。
+
+APIレスポンスをそのまま画面に広げると、画面がAPI仕様に強く依存します。
+
+そこでAdapterを挟むと、外部形式を内部形式に変換できます。
+
+RTK Queryの `transformResponse` は、APIレスポンスをキャッシュに入れる前に変換できるため、Adapter的な設計としてとてもわかりやすい例です。
+
+Jotaiの `atomWithStorage` も、Storage APIをatomとして扱えるようにする点でAdapter的に見ることができます。
+
+Adapterで大事なのは、**外部の都合をアプリ全体に広げないこと** です。
+
+APIレスポンスや外部ライブラリの形式が画面に入り込んできたら、こう考えてみるとよいです。
+
+> この外部形式、Adapterでアプリ用の形に変換した方がよくない？
+
+そう思ったときが、Adapterパターンを使うタイミングです！
+
+---
+
+## 参考リンク
+
+- [RTK Query Customizing Queries](https://redux-toolkit.js.org/rtk-query/usage/customizing-queries)
+- [RTK Query createApi API Reference](https://redux-toolkit.js.org/rtk-query/api/createApi)
+- [Jotai Storage docs](https://jotai.org/docs/utilities/storage)
