@@ -1,624 +1,196 @@
 ---
-title: "JavaScriptで学ぶSingletonパターン！TanStack QueryのQueryClientから見る「1つだけ共有する設計」"
+title: "JavaScriptで学ぶSingleton：共有範囲と寿命を設計する"
 emoji: "🤖"
 type: "tech"
-topics: ["javascript", "デザインパターン"]
+topics: ["javascript", "デザインパターン", "singleton", "tanstackquery"]
 published: true
 ---
-アプリ全体で、同じインスタンスを使い回したいことはありませんか？
 
-例えば、データ取得用のクライアントです。
+Singletonは、ある範囲でインスタンスを1つに制御し、共有の入口を提供するパターンです。
 
-```js
-const clientA = createApiClient();
-const clientB = createApiClient();
-const clientC = createApiClient();
-```
+重要なのは「世界に必ず1つ」ではなく、**どの範囲で1つなのか、いつ作り、いつ破棄するのか**を決めることです。
 
-これでも動くかもしれません。
+## moduleで共有する
 
-でも、もしこのclientが内部にキャッシュを持っていたらどうでしょうか？
-
-```js
-function createApiClient() {
-  const cache = new Map();
-
-  return {
-    async get(path) {
-      if (cache.has(path)) {
-        return cache.get(path);
-      }
-
-      const response = await fetch(path);
-      const data = await response.json();
-
-      cache.set(path, data);
-
-      return data;
-    },
-  };
-}
-```
-
-このclientを何度も作ると、cacheも別々になります。
-
-```js
-const clientA = createApiClient();
-const clientB = createApiClient();
-```
-
-`clientA` が取得したデータを、`clientB` は知りません。
-
-本当はアプリ全体で同じcacheを使いたいのに、インスタンスを作り直すことで状態が分かれてしまいます。
-
-こういうときに出てくるのが **Singletonパターン** です。
-
----
-
-## Singletonパターンとは？
-
-Singletonパターンは、**あるインスタンスを1つだけ作り、それを共有するパターン**です。
-
-簡単に言うと、
-
-> 何度使っても、同じインスタンスを参照するようにする
-
-という考え方です。
-
-例えば、アプリ全体で1つのAPI clientを共有します。
-
-```js
-const apiClient = createApiClient();
-
-export { apiClient };
-```
-
-他のファイルでは、これをimportして使います。
-
-```js
-import { apiClient } from "./apiClient.js";
-
-apiClient.get("/users");
-```
-
-新しくclientを作り直すのではなく、同じclientを共有します。
-
-これがSingleton的な使い方です。
-
----
-
-## Singletonを使わない場合の問題
-
-次のように、コンポーネントや関数の中で毎回clientを作る例を考えます。
-
-```js
-function getUser(id) {
-  const client = createApiClient();
-
-  return client.get(`/users/${id}`);
-}
-```
-
-このコードには、次の問題があります。
-
-1. 呼ぶたびに新しいclientが作られる
-2. client内部のcacheや設定が共有されない
-3. 重いインスタンスなら生成コストが無駄になる
-
-特に、次のようなものは何度も作ると問題になりやすいです。
-
-- キャッシュを持つclient
-- 状態管理store
-- DB接続client
-- WebSocket接続
-- ロガー
-- 設定オブジェクト
-
-もちろん、毎回新しく作った方がよいものもあります。
-
-Singletonは「何でも1つにする」ためのパターンではありません。
-
-**1つにした方が自然なものを、適切なスコープで共有する** ための考え方です。
-
----
-
-## Singletonで改善する
-
-まずは、シンプルなSingletonを書いてみます。
-
-```js
-let apiClient = null;
-
-function getApiClient() {
-  if (apiClient) {
-    return apiClient;
-  }
-
-  apiClient = createApiClient();
-
-  return apiClient;
-}
-```
-
-使う側です。
-
-```js
-const clientA = getApiClient();
-const clientB = getApiClient();
-
-console.log(clientA === clientB); // true
-```
-
-`getApiClient()` を何度呼んでも、同じインスタンスが返ります。
-
----
-
-## ES Modulesならもっと自然に書ける
-
-JavaScriptでは、クラスでSingletonを頑張って作るより、ES Modulesで共有する方が自然なことが多いです。
-
-```js
-// apiClient.js
-function createApiClient() {
-  const cache = new Map();
-
-  return {
-    async get(path) {
-      if (cache.has(path)) {
-        return cache.get(path);
-      }
-
-      const response = await fetch(path);
-      const data = await response.json();
-
-      cache.set(path, data);
-
-      return data;
-    },
-  };
-}
-
-export const apiClient = createApiClient();
-```
-
-使う側です。
-
-```js
-import { apiClient } from "./apiClient.js";
-
-const user = await apiClient.get("/users/1");
-```
-
-このように、モジュールのトップレベルで1回作ってexportすれば、同じインスタンスを共有できます。
-
-JavaScriptでは、この形がかなり実務的です。
-
----
-
-## Singletonで何が良くなるのか？
-
-### 1. 同じ状態やcacheを共有できる
-
-clientがcacheを持つ場合、同じclientを共有すればcacheも共有できます。
-
-```js
-export const apiClient = createApiClient();
-```
-
-別々の場所から使っても、同じインスタンスを参照できます。
-
----
-
-### 2. 生成コストを減らせる
-
-重いインスタンスを毎回作らずに済みます。
-
-```js
-export const logger = createLogger();
-export const queryClient = new QueryClient();
-```
-
-作成コストが高いものほど、共有する価値があります。
-
----
-
-### 3. 設定を統一できる
-
-API clientやloggerの設定を1か所にまとめられます。
-
-```js
-export const apiClient = createApiClient({
-  baseUrl: "https://api.example.com",
-  timeout: 5000,
-});
-```
-
-あちこちでバラバラに設定するより安全です。
-
----
-
-## 有名OSSではどう使われている？
-
-Singletonパターンに近い考え方は、**TanStack Queryの `QueryClient`** に見ることができます。
-
-TanStack Queryでは、Reactアプリに `QueryClientProvider` を置き、`QueryClient` を渡します。
-
-```tsx
-import {
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
-
-const queryClient = new QueryClient();
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Home />
-    </QueryClientProvider>
-  );
-}
-```
-
-`QueryClient` は、TanStack Queryのcache管理の中心になるインスタンスです。
-
-そのため、レンダーのたびに新しく作ると問題になります。
-
----
-
-## QueryClientをSingleton的に見る
-
-TanStack Queryの公式ESLintルールでは、`QueryClient` は `QueryCache` を含むため、アプリケーションのライフサイクル中は1つの `QueryClient` インスタンスを作るべきで、レンダーごとに新しく作るべきではないと説明されています。
-
-これはSingleton的な考え方です。
-
-悪い例です。
-
-```tsx
-function App() {
-  const queryClient = new QueryClient();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Home />
-    </QueryClientProvider>
-  );
-}
-```
-
-`App` が再レンダーされるたびに、新しい `QueryClient` が作られる可能性があります。
-
-すると、cacheも分かれてしまいます。
-
-良い例です。
-
-```tsx
-const queryClient = new QueryClient();
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Home />
-    </QueryClientProvider>
-  );
-}
-```
-
-または、React stateで初回だけ作る方法もあります。
-
-```tsx
-function App() {
-  const [queryClient] = useState(() => new QueryClient());
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Home />
-    </QueryClientProvider>
-  );
-}
-```
-
-どちらも、アプリのライフサイクル中に安定した `QueryClient` を使うための書き方です。
-
----
-
-## QueryClientが1つである意味
-
-TanStack Queryの `QueryCache` は、queryのdata、meta information、stateを保存するstorage mechanismとして説明されています。
-
-つまり、cacheの中心です。
-
-`QueryClient` は、そのcacheとやり取りするための入口になります。
-
-そのため、`QueryClient` を何個も作ると、cacheも分かれます。
-
-```txt
-QueryClient A
-  └ QueryCache A
-
-QueryClient B
-  └ QueryCache B
-```
-
-同じ `["todos"]` というquery keyを使っていても、別々の `QueryClient` なら別々のcacheになります。
-
-だから、通常のReactアプリでは、1つの安定した `QueryClient` をProviderに渡します。
-
-```tsx
-<QueryClientProvider client={queryClient}>
-  <App />
-</QueryClientProvider>
-```
-
-これは、SingletonパターンをReactのProviderスコープで扱っている例として見ると分かりやすいです。
-
----
-
-## ただし「グローバルに1つ」が常に正解ではない
-
-ここがSingletonパターンで一番大事です。
-
-Singletonは便利ですが、何でもグローバルに1つにすればよいわけではありません。
-
-特に注意したいのは、SSRやテストです。
-
-例えば、サーバー側でユーザーごとの状態をグローバルに持つと危険です。
-
-```js
-const globalState = {
-  currentUser: null,
-};
-
-function handleRequest(user) {
-  globalState.currentUser = user;
-
-  return renderPage();
-}
-```
-
-複数ユーザーのリクエストが同じプロセスで処理されると、状態が混ざる可能性があります。
-
-この場合は、リクエストごとに状態を作るべきです。
-
-```js
-function handleRequest(user) {
-  const requestState = {
-    currentUser: user,
-  };
-
-  return renderPage(requestState);
-}
-```
-
-Singletonで大事なのは、**どの範囲で1つにするのか** です。
-
----
-
-## 補足：JotaiのgetDefaultStoreもSingleton的
-
-補足として、Jotaiの `getDefaultStore` もSingleton的に見ることができます。
-
-Jotaiには、Providerなしでatomを使うprovider-less modeがあります。
-
-```tsx
-const countAtom = atom(0);
-
-function Counter() {
-  const [count, setCount] = useAtom(countAtom);
-
-  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
-}
-```
-
-このとき、Jotaiは暗黙的なdefault storeを使います。
+ES Modulesでは、module scopeの値をexportするだけで共有できます。
 
 ```ts
-import { getDefaultStore } from "jotai";
+// api-client.ts
+class ApiClient {
+  async getUser(id: number): Promise<User> {
+    const response = await fetch(`/api/users/${id}`);
+    return response.json();
+  }
+}
 
+export const apiClient = new ApiClient();
+```
+
+同じmodule instanceをimportするコードは、同じ `apiClient` を参照します。
+
+```ts
+import { apiClient } from "./api-client";
+```
+
+JavaやC#の典型的なprivate constructor + `getInstance` をそのまま再現しなくても、module systemが生成場所を制御できます。
+
+## 「1つ」の範囲
+
+module singletonにも境界があります。
+
+- ブラウザーの1ページ
+- Node.jsの1process
+- workerごとのrealm
+- test runnerのmodule環境
+- bundle内に含まれたmodule copy
+
+SSRサーバーのmodule scopeへ利用者固有状態を置くと、複数requestで共有される危険があります。
+
+```ts
+// 危険：requestごとの情報をmodule globalへ置かない
+let currentUser: User | undefined;
+```
+
+「moduleからexportしたからアプリ全体で絶対1つ」と一般化しないようにします。
+
+## 明示的に生成を制御する
+
+遅延生成が必要な場合は、取得関数を作れます。
+
+```ts
+let client: ApiClient | undefined;
+
+export function getApiClient(): ApiClient {
+  client ??= new ApiClient();
+  return client;
+}
+```
+
+ただし、この実装にはresetや破棄の仕組みがありません。connection、timer、subscriptionなどを持つresourceでは、ライフサイクルまで設計します。
+
+多くの場合、application entry pointで1回生成し、依存として渡す方がテストしやすくなります。
+
+```ts
+const apiClient = new ApiClient();
+const userService = new UserService(apiClient);
+```
+
+## TanStack QueryのQueryClient
+
+Reactアプリでは、通常、コンポーネントのライフサイクル中に安定した `QueryClient` を使います。
+
+```tsx
+function App() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+          },
+        },
+      }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Routes />
+    </QueryClientProvider>
+  );
+}
+```
+
+renderごとに `new QueryClient()` するとcacheが毎回作り直されます。安定したinstanceをproviderへ渡す必要があります。
+
+この点は「アプリのclient側ライフサイクルで1つの共有インスタンスを使う」というSingleton的な考え方です。
+
+ただしQueryClientのAPIがGoF Singletonを強制しているわけではありません。独立したcacheが必要なら複数作れます。
+
+## SSRではrequestごとに考える
+
+サーバー上のmodule scopeで1つのQueryClientを全requestへ共有すると、cache dataが利用者間で混ざる危険があります。
+
+```ts
+function createRequestQueryClient(): QueryClient {
+  return new QueryClient();
+}
+```
+
+SSRでは、requestごとにclientを作り、dehydrate後に適切に破棄する構成を検討します。
+
+つまりscopeは次のように変わります。
+
+| 環境 | 典型的な共有範囲 |
+| --- | --- |
+| ブラウザー | アプリのライフサイクル |
+| SSR | request |
+| テスト | test caseまたはtest suite |
+
+## Jotaiのdefault store
+
+Jotaiのprovider-less modeでは、`getDefaultStore` がdefault storeを返します。
+
+```ts
 const store = getDefaultStore();
 ```
 
-Jotai公式ドキュメントでは、`getDefaultStore` はprovider-less modeで使われるdefault storeを返すAPIとして説明されています。
+同じdefault storeを共有する点はSingleton的です。
 
-これは、共有storeを返すという意味でSingleton的です。
+一方、Providerや `createStore` を使えば、subtree・request・testごとにstoreを分離できます。共有が便利か、分離が必要かで選びます。
 
----
+## Singletonが向くもの
 
-## JotaiのSSR注意点
+- client側アプリで共有するcache client
+- statelessなregistry
+- process単位の設定読取
+- 重いが共有可能なservice
 
-JotaiのNext.jsガイドでは、Providerを使わない場合、暗黙的なglobal storeが使われると説明されています。
+## 向かないもの
 
-そしてSSRでは、このglobal storeがリクエスト間で残ることで、次のような問題が起きる可能性があると説明されています。
+- 利用者・requestごとの状態
+- testで独立させたい変更可能状態
+- 複数設定を同時に使うclient
+- 明示的な破棄が必要なのに寿命を管理できないresource
 
-- memory leak
-- data leak
-- stale data
+## テストへの影響
 
-そのため、SSRでは `Provider` を使い、storeをrequestやrenderのスコープに分けることが推奨されています。
+Singletonの状態はtest間で残りやすく、実行順序依存を生みます。
 
-```tsx
-import { Provider } from "jotai";
-
-function App({ Component, pageProps }) {
-  return (
-    <Provider>
-      <Component {...pageProps} />
-    </Provider>
-  );
-}
-```
-
-ここから学べるのは、Singletonは便利だけれど、スコープを間違えると危険だということです。
-
----
-
-## TanStack QueryとJotaiから学べること
-
-TanStack QueryとJotaiの例を見ると、Singletonで大事なのは「1つにすること」そのものではありません。
-
-大事なのは、**どのスコープで1つにするか** です。
-
-| 対象                 | よくあるスコープ              |
-| -------------------- | ----------------------------- |
-| QueryClient          | アプリのライフサイクル中に1つ |
-| Jotai default store  | provider-less modeで共有      |
-| Jotai Provider store | Providerごとに1つ             |
-| SSRのユーザー状態    | リクエストごとに1つ           |
-| テスト用store        | テストケースごとに1つ         |
-
-このように、同じ「1つ」でも意味が違います。
-
-Singletonを使うときは、必ずスコープを考える必要があります。
-
----
-
-## 実務でSingletonを使うならどこ？
-
-Singletonパターンは、次のような場面で使いやすいです。
-
-- QueryClientのようなcache管理インスタンス
-- APIクライアント
-- ロガー
-- アプリ設定
-- WebSocket接続
-- DBクライアント
-- クライアントサイドの状態管理store
-
-例えば、loggerです。
-
-```js
-function createLogger() {
-  return {
-    info(message) {
-      console.log(`[INFO] ${message}`);
+```ts
+beforeEach(() => {
+  queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
     },
-
-    error(message) {
-      console.error(`[ERROR] ${message}`);
-    },
-  };
-}
-
-export const logger = createLogger();
-```
-
-使う側です。
-
-```js
-import { logger } from "./logger.js";
-
-logger.info("アプリを起動しました");
-```
-
-loggerの設定や出力形式を1か所にまとめられます。
-
----
-
-## 使いすぎには注意
-
-Singletonは便利ですが、かなり注意が必要です。
-
-特に、状態を持つSingletonは危険になりやすいです。
-
-```js
-export const authState = {
-  currentUser: null,
-};
-```
-
-このような状態がどこからでも変更できると、処理の流れが追いづらくなります。
-
-また、テストでも問題が起きやすいです。
-
-```js
-test("A", () => {
-  authState.currentUser = { name: "Taro" };
-});
-
-test("B", () => {
-  // 前のテストの状態が残っているかもしれない
+  });
 });
 ```
 
-テストごとに状態を分けたいなら、SingletonよりFactoryの方が向いていることがあります。
+テストでは新しいinstanceを作れるAPIを残し、productionだけ共有する構成が扱いやすくなります。
 
-```js
-function createAuthState() {
-  let currentUser = null;
+## 判断基準
 
-  return {
-    login(user) {
-      currentUser = user;
-    },
+Singletonにする前に確認します。
 
-    getCurrentUser() {
-      return currentUser;
-    },
-  };
-}
-```
-
-テストでは毎回新しい状態を作れます。
-
-```js
-const authState = createAuthState();
-```
-
-Singletonを使う前に、本当に共有してよい状態かを確認しましょう。
-
----
-
-## Singletonにしてよいかの判断
-
-Singletonにしてよい可能性が高いものです。
-
-- 生成コストが高い
-- cacheや接続を共有したい
-- アプリ全体で設定を統一したい
-- 複数作ると不整合が起きる
-- ライフサイクル中に安定していてほしい
-
-逆に、Singletonにしない方がよいものです。
-
-- ユーザーごとの状態
-- リクエストごとの状態
-- テストごとに分けたい状態
-- tenantごとに異なる設定
-- どこからでも変更できる可変状態
-
-大事なのは、「1つにできるか」ではなく、**1つにして安全か** です。
-
----
+1. 共有すべきscopeはpage、request、processのどれか
+2. 状態は利用者間で共有して安全か
+3. 並列テストを分離できるか
+4. reset・disposeが必要か
+5. 将来、複数設定を同時に使う可能性はないか
 
 ## まとめ
 
-Singletonパターンは、**あるインスタンスを1つだけ作り、それを共有するパターン**です。
+Singletonで最も重要なのは、instance数よりscopeとlifecycleです。
 
-JavaScriptでは、ES Modulesでインスタンスを1回作ってexportする形がよく使われます。
+- ES Modulesで自然に共有できる
+- module singletonにもrealmやbundleの境界がある
+- clientで1つでも、SSRではrequestごとが適切な場合がある
+- 変更可能なglobal stateには慎重になる
+- テスト用に新しいinstanceを作れる設計を残す
 
-TanStack Queryの `QueryClient` は、`QueryCache` を持つため、通常のReactアプリではアプリのライフサイクル中に1つの安定したインスタンスを使うのが基本です。
+## 参考資料
 
-Jotaiの `getDefaultStore` も、provider-less modeで使われるdefault storeを返すAPIとしてSingleton的に見ることができます。
-
-ただし、Singletonはグローバル状態になりやすく、SSRやテストでは危険になることがあります。
-
-Singletonで大事なのは、単に1つだけ作ることではありません。
-
-大事なのは、**どのスコープで1つにすべきかを決めること** です。
-
-インスタンスを共有したくなったら、こう考えてみるとよいです。
-
-> このインスタンスは、アプリ全体で1つにして安全？  
-> それとも、リクエスト・Provider・テストごとに分けるべき？
-
-この問いに答えられるなら、Singletonパターンはかなり実務で役立ちます。
-
----
-
-## 参考リンク
-
-- [TanStack Query Stable Query Client](https://tanstack.com/query/v5/docs/eslint/stable-query-client)
-- [TanStack Query QueryCache](https://tanstack.com/query/latest/docs/reference/QueryCache)
-- [TanStack Query Important Defaults](https://tanstack.com/query/v4/docs/framework/react/guides/important-defaults)
-- [Jotai Store docs](https://jotai.org/docs/core/store)
-- [Jotai Next.js guide](https://www.mintlify.com/pmndrs/jotai/guides/nextjs)
+- [TanStack Query: Stable Query Client](https://tanstack.com/query/v5/docs/eslint/stable-query-client)
+- [TanStack Query: Advanced Server Rendering](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr)
+- [Jotai Docs: Store](https://jotai.org/docs/core/store)
+- [Jotai Docs: Next.js](https://jotai.org/docs/guides/nextjs)
