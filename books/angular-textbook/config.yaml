@@ -1,0 +1,31 @@
+title: "Angularの教科書"
+summary: "基礎からRxJS・NgRx・Signals時代の設計まで。初学者から上級者までを対象に、Angularを網羅的かつ深く解説する。NgModuleからStandalone、Zone.jsからZoneless、`@Input`から`input()`といった新旧比較を軸に、モダンAngular（v22世代）の標準を体系的に学ぶ。"
+topics: ["angular", "typescript", "rxjs", "ngrx", "frontend"]
+published: false
+price: 0
+chapters:
+  - 01-preface
+  - 02-angular-intro
+  - 03-setup-and-structure
+  - 04-component-basics
+  - 05-component-composition
+  - 06-template-and-directive-intro
+  - 07-directive-and-pipe
+  - 08-data-flow-io
+  - 09-two-way-and-lifecycle
+  - 10-service-and-di
+  - 11-inject-and-providers
+  - 12-change-detection
+  - 13-signals-and-zoneless
+  - 14-router-basics
+  - 15-router-advanced
+  - 16-rxjs-basics
+  - 17-subject-and-signals
+  - 18-forms
+  - 19-http
+  - 20-state-management-basics
+  - 21-ngrx-basics
+  - 22-ngrx-practical
+  - 23-architecture-and-testing
+  - 24-security-a11y-performance
+  - 25-ssr-and-migration
