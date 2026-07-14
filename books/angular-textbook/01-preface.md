@@ -1,5 +1,5 @@
 ---
-title: "序章 本書の読み方 — 対象読者と読み進め方"
+title: "本書の読み方 — 対象読者と読み進め方"
 ---
 
 本書は、Angularをこれから学ぶ初学者から、実務でAngularを使いこなす上級者までを対象にした教科書です。Angularの機能を表面的に紹介するのではなく、「なぜそう動くのか」「どう設計すべきか」という仕組みと判断の根拠まで踏み込んで解説します。
@@ -36,11 +36,37 @@ TypeScriptについては、Angularを書くうえで必要な範囲を第5章�
 | 中級 | 第5部〜第9部 | 仕組みを理解し、機能を適切に設計・実装できる |
 | 上級 | 第10部〜第11部 | 状態管理やアーキテクチャの設計判断ができる |
 
-各部の冒頭には「部の扉」を置き、その部で学ぶこと・前提となる知識・対象レベルを示しています。
+各部のねらいと収録する章は、次の「本書の構成」で一覧できます。
+
+## 本書の構成
+
+本書は、序章と11の部から成ります。各部のねらいと、収録する章は次のとおりです。
+
+**第1部 Angularを始める**（基礎）: Angularとは何か／Angularの歴史とモダンAngularへの変化／開発環境とAngular CLI／プロジェクト構成とAngularアプリが起動するまで
+
+**第2部 Componentの基礎**（基礎）: Angularで使うTypeScript／Componentとは何か／NgModuleからStandalone Componentへ／コンテンツ投影とクエリ／スタイリングとView Encapsulation／Componentの分割と責務
+
+**第3部 テンプレート・Directive・Pipe**（基礎）: データバインディングとイベント処理／条件分岐と繰り返し表示の新旧比較／Directiveとは何か／属性Directiveを作成する／構造Directiveとng-templateの仕組み／Pipeとテンプレートの再利用
+
+**第4部 Component間の状態伝播**（基礎）: Angularのデータフロー／`@Input`から`input()`へ／`@Output`から`output()`へ／双方向バインディングと`model()`／ライフサイクルと入力値の変更検知
+
+**第5部 ServiceとDependency Injection**（中級）: ServiceとComponentの責務／Dependency Injectionとは何か／Constructor Injectionから`inject()`へ／ProviderとInjectorの階層
+
+**第6部 変更検知とSignals**（中級）: Angularの変更検知を理解する／Default Change DetectionとOnPush／Zone.jsとNgZone時代のAngular／`signal()`・`computed()`・`effect()`による状態管理／NgZoneからSignals・Zonelessへ
+
+**第7部 Angular Router**（中級）: SPAとAngular Router／`RouterModule`から`provideRouter()`へ／ページ遷移とルートパラメーター／ネストしたRouteとレイアウト設計／Lazy LoadingとFeature分割／Route GuardとResolverの新旧比較
+
+**第8部 RxJS**（中級）: Observableとリアクティブプログラミング／SubscriptionとObservableのライフサイクル／RxJS Operatorsと非同期処理／Subject・BehaviorSubject・ReplaySubject／RxJSとSignalsの共存／RouterとRxJS・Signals・状態管理
+
+**第9部 FormsとHTTP通信**（中級）: Template-driven FormsとReactive Forms／Typed FormsとSignal Forms／HttpClientとAPI通信／HttpClientから`resource()`・`httpResource()`へ／Interceptor・認証・エラー・ローディング設計
+
+**第10部 Angularの状態管理とNgRx**（上級）: 状態を分類する／BehaviorSubjectによるStore Service／SignalsによるStore Service／NgRxとReduxパターン／Action・Reducer・Selectorの設計／EffectsとRxJSによる非同期処理／Entity・Facade・Router Storeによる実務設計／NgRx SignalStoreとNgRx Storeの使い分け
+
+**第11部 実務的なAngular開発**（上級）: アーキテクチャ設計／テストの基礎（TestBed・Harness・Vitest）／RxJS・NgRx・非同期処理のテスト戦略／セキュリティ（XSS対策）／アクセシビリティと国際化（i18n）／パフォーマンス最適化と`@defer`／SSRとHydration／モダンAngularへの移行戦略
 
 ## 本書の読み進め方
 
-本書は、第1部から順に読むことを基本としています。各部の扉でその部の前提知識と対象レベルを確認できるので、いま自分がどの位置を学んでいるのかを把握しながら、必要に応じて読む順番を調整してください。
+本書は、第1部から順に読むことを基本としています。上の「本書の構成」で各部のねらいと収録する章を一覧できるので、いま自分がどの位置を学んでいるのかを把握しながら、必要に応じて読む順番を調整してください。
 
 ## 本書の技術基準
 
