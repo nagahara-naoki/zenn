@@ -1,0 +1,31 @@
+title: "Honoの教科書"
+summary: "基礎からHTTP、Web標準API、D1、認証、テスト、OpenAPI、Hono RPC、マルチランタイムまで。TypeScriptで型安全なWeb APIを作りながら、Honoを体系的に学ぶ。"
+topics: ["hono", "typescript", "cloudflare", "api", "backend"]
+published: false
+price: 0
+chapters:
+  - 01-preface
+  - 02-hono-intro
+  - 03-http-and-web-standard-api
+  - 04-setup-and-structure
+  - 05-routing-and-handler
+  - 06-request-and-response
+  - 07-context-bindings-variables
+  - 08-middleware
+  - 09-error-handling
+  - 10-typescript-and-validation
+  - 11-zod-validation
+  - 12-rest-api-crud
+  - 13-route-splitting-and-type-inference
+  - 14-handler-service-repository
+  - 15-cloudflare-d1
+  - 16-search-sort-pagination
+  - 17-authentication-and-authorization
+  - 18-jwt-and-api-security
+  - 19-hono-rpc-and-client
+  - 20-openapi
+  - 21-app-request-and-test-client
+  - 22-service-d1-workers-testing
+  - 23-multiruntime-and-adapters
+  - 24-streaming-sse-websocket-jsx
+  - 25-complete-task-api
