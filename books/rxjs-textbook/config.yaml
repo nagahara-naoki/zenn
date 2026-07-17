@@ -1,0 +1,29 @@
+title: "RxJSの教科書"
+summary: "非同期処理をストリームとして設計する。Observableの仕組みから、Operatorの選択、合成、Subject、エラー処理、テストまで。TypeScriptでリアクティブプログラミングを体系的に学ぶ。"
+topics: ["rxjs", "typescript", "javascript", "reactive", "observable"]
+published: true
+price: 0
+chapters:
+  - 01-preface
+  - 02-async-and-reactive-programming
+  - 03-streams-and-rxjs-overview
+  - 04-first-rxjs
+  - 05-observable-observer-subscribe
+  - 06-subscription-and-custom-observable
+  - 07-cold-hot-sync-async
+  - 08-creating-observables
+  - 09-special-observables-and-promise-interop
+  - 10-operators-pipe-marble-diagram
+  - 11-transform-filter-accumulate
+  - 12-count-and-time-operators
+  - 13-combining-latest-values
+  - 14-forkjoin-merge-concat-zip-race
+  - 15-higher-order-observable
+  - 16-flattening-operators
+  - 17-subject-and-multicast
+  - 18-share-sharereplay-state
+  - 19-error-retry-cancel
+  - 20-testing-and-debugging
+  - 21-appendix-operator-cheatsheet
+  - 22-appendix-migration
+  - 23-appendix-glossary
