@@ -37,7 +37,7 @@ Reduxパターンは、状態管理に厳格な規律を課す設計です。そ
 - **状態は、直接変更しない**: 状態を書き換えるには、「何が起きたか」を表すAction（アクション）を発行します。直接の代入は行いません。
 - **変更は、純粋な関数で行う**: Actionを受けて新しい状態を計算するのは、Reducer（リデューサー）という純粋な関数です。同じ状態とActionからは、常に同じ結果が得られます。
 
-この仕組みでは、状態を変えたいとき、まず「何が起きたか」をActionとして発行します。すると、Reducerがそれを受け取り、現在の状態から新しい状態を計算します。状態の変更は、必ずこの「Action → Reducer」という一方向の流れを通ります。この一方向性は、第17章で学んだ単方向データフローの考え方を、アプリケーション全体の状態管理へと拡張したものだと捉えられます。Componentの間だけでなく、状態そのものの変更にも、一定の向きと規律を与えるのです。
+この仕組みでは、状態を変えたいとき、まず「何が起きたか」をActionとして発行します。すると、Reducerがそれを受け取り、現在の状態から新しい状態を計算します。状態の変更は、必ずこの「Action → Reducer」という一方向の流れを通ります。この一方向性は、『データフローとinput()・output()』の章で学んだ単方向データフローの考え方を、アプリケーション全体の状態管理へと拡張したものだと捉えられます。Componentの間だけでなく、状態そのものの変更にも、一定の向きと規律を与えるのです。
 
 ```mermaid
 flowchart LR
@@ -59,7 +59,7 @@ flowchart LR
 
 ### 不変性という土台
 
-Reduxパターンを支える、もうひとつの重要な原則が、不変性（イミュータビリティ）です。Reducerは、既存の状態を書き換えず、必ず新しい状態オブジェクトを作って返します。第27章のOnPushや、第29章のSignalでも登場した、あの考え方です。
+Reduxパターンを支える、もうひとつの重要な原則が、不変性（イミュータビリティ）です。Reducerは、既存の状態を書き換えず、必ず新しい状態オブジェクトを作って返します。『変更検知の仕組み』の章のOnPushや、『SignalsとZoneless』の章のSignalでも登場した、あの考え方です。
 
 なぜ不変性が必要なのでしょうか。状態を直接書き換えてしまうと、「変更前」と「変更後」を比較できなくなります。新しいオブジェクトとして状態を作れば、前の状態はそのまま残り、参照の比較で変化を検知でき、履歴として保持することもできます。Reduxパターンの追跡可能性は、この不変性の上に成り立っています。状態を「上書きする」のではなく、「新しい状態に置き換える」。この規律が、時間を巻き戻すようなデバッグを可能にするのです。
 
@@ -69,15 +69,32 @@ Reduxパターンの実利を、もっともよく体感できるのが、開発
 
 各Actionの時点で、状態がどうなっていたかを確認でき、Actionを選んでその時点まで状態を巻き戻す、といった操作もできます。「この画面がおかしくなったのは、どのActionのせいか」を、履歴をたどって突き止められるのです。この強力なデバッグ体験は、すべての状態変更がActionとして記録される、Reduxパターンだからこそ実現します。自前のStore Serviceでは、こうした一元的な可視化は簡単には得られません。大規模なアプリでバグを追うとき、この可視化は大きな助けになります。
 
+DevToolsを使うには、2つの準備をします。ひとつは、ブラウザにReduxの開発拡張機能（Redux DevTools）を入れること。もうひとつは、アプリ側で`@ngrx/store-devtools`パッケージを導入し、`provideStoreDevtools`を登録することです。
+
+```ts:src/app/app.config.ts
+import { provideStore } from '@ngrx/store';
+import { provideStoreDevtools } from '@ngrx/store-devtools';
+import { counterReducer } from './counter.reducer';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideStore({ counter: counterReducer }),
+    provideStoreDevtools({ maxAge: 25 }),
+  ],
+};
+```
+
+`provideStoreDevtools`は、後述の`provideStore`と並べて登録します。`maxAge`は保持するAction履歴の件数で、ここでは直近25件に絞っています。履歴を無制限に保持するとメモリを圧迫するため、上限を設けておきます。DevToolsは開発時のデバッグを目的とした仕組みのため、本番ビルドでは無効化する構成にするのが一般的です。登録すると、拡張機能のパネルにActionの一覧と各時点の状態が表示され、前述の巻き戻し（タイムトラベルデバッグ）が行えます。
+
 ### 自前のStoreとの違い
 
-第49章・第50章で学んだ自前のStore Serviceと、NgRx（Reduxパターン）の違いを、あらためて整理します。自前のStoreは、状態を変更するメソッドを自由に定義でき、手軽でした。その代わり、変更経路が増えると追跡が難しくなります。NgRxは、変更を必ずAction経由に強制することで、この追跡可能性を確保します。
+前章『状態管理の基礎』で学んだ自前のStore Serviceと、NgRx（Reduxパターン）の違いを、あらためて整理します。自前のStoreは、状態を変更するメソッドを自由に定義でき、手軽でした。その代わり、変更経路が増えると追跡が難しくなります。NgRxは、変更を必ずAction経由に強制することで、この追跡可能性を確保します。
 
 言い換えれば、両者は「自由と規律」のトレードオフの関係にあります。自前のStoreは自由で手軽、NgRxは規律が強く追跡しやすい。小規模なら自由の恩恵が勝り、大規模になるほど規律の価値が高まります。どちらが優れているという話ではなく、アプリの規模と複雑さに応じて、必要な規律の強さを選ぶ、と考えるのが正確です。
 
 ### NgRxを構成する要素
 
-NgRxは、このReduxパターンをAngular向けに実装したものです。次章以降で詳しく扱う、いくつかの要素からなります。
+NgRxは、このReduxパターンをAngular向けに実装したものです。この章で扱う、次のいくつかの要素からなります。
 
 - **Store**: 状態を保持する、単一の場所です。
 - **Action**: 「何が起きたか」を表すオブジェクトです。
@@ -85,7 +102,7 @@ NgRxは、このReduxパターンをAngular向けに実装したものです。�
 - **Selector**: Storeから、必要な状態を取り出す関数です。
 - **Effects**: 通信などの副作用を扱う仕組みです。RxJSを活用します。
 
-これらが連携して、Reduxパターンを実現します。ComponentはActionを発行（dispatch）し、Selectorで状態を読み取ります。状態の変更ロジックはReducerに、副作用はEffectsに、それぞれ分離されます。NgRxはRxJSの上に構築されており、第8部で学んだ知識が、ここで大いに役立ちます。
+これらが連携して、Reduxパターンを実現します。ComponentはActionを発行（dispatch）し、Selectorで状態を読み取ります。状態の変更ロジックはReducerに、副作用はEffectsに、それぞれ分離されます。NgRxはRxJSの上に構築されており、『RxJSの基礎』の章で学んだ知識が、ここで大いに役立ちます。
 
 ### 単一の情報源という考え方
 
@@ -93,15 +110,15 @@ Reduxパターンの根底には、「単一の情報源（Single Source of Trut
 
 なぜ、これが重要なのでしょうか。状態が複数の場所に散らばっていると、「同じ情報の、別々のコピー」が生まれ、それらの間で食い違いが起きます。たとえば、ログインユーザーの情報を、複数のComponentがそれぞれ保持していたら、片方だけが更新されて、表示が食い違う、といった不具合が起こります。状態をひとつのStoreに集約すれば、どこから見ても同じ状態を参照するため、こうした食い違いが原理的に起きません。
 
-この「単一の情報源」は、大規模なアプリケーションで、状態の一貫性を保つための強力な原則です。ただし、すべての状態を単一のStoreに集める必要はありません。第48章で分類したように、ローカルな状態まで集約するのは過剰です。共有され、一貫性が重要な状態を、集約の対象と考えます。「共有すべきものは一か所に集める」という原則として捉えてください。
+この「単一の情報源」は、大規模なアプリケーションで、状態の一貫性を保つための強力な原則です。ただし、すべての状態を単一のStoreに集める必要はありません。前章『状態管理の基礎』で分類したように、ローカルな状態まで集約するのは過剰です。共有され、一貫性が重要な状態を、集約の対象と考えます。「共有すべきものは一か所に集める」という原則として捉えてください。
 
 ### NgRxを使うべき場面
 
 重要なのは、「NgRxは、いつでも使うべき道具ではない」ということです。NgRxは強力ですが、Action・Reducer・Selectorといった要素を定義するため、記述量が増え、学習コストもかかります。小規模なアプリに導入すると、その手間が利点を上回ってしまいます。
 
-本書が推奨する判断の目安は、次のとおりです。NgRxが向くのは、状態が多く複雑で、多数のComponentから参照・変更され、副作用が絡み、変更の追跡が重要になる大規模なアプリケーションです。逆に、状態が少なく、共有範囲も限られるなら、前章までのSignalベースのStore Serviceで十分です。第48章で述べた「小さく始め、必要に応じて育てる」という原則を、ここでも思い出してください。NgRxは、その「育てた先」にある選択肢のひとつです。
+本書が推奨する判断の目安は、次のとおりです。NgRxが向くのは、状態が多く複雑で、多数のComponentから参照・変更され、副作用が絡み、変更の追跡が重要になる大規模なアプリケーションです。逆に、状態が少なく、共有範囲も限られるなら、前章までのSignalベースのStore Serviceで十分です。前章で述べた「小さく始め、必要に応じて育てる」という原則を、ここでも思い出してください。NgRxは、その「育てた先」にある選択肢のひとつです。
 
-また、NgRxには学習コストとチームの習熟という側面もあります。Reduxパターンは、慣れるまでは回りくどく感じられ、チーム全員がその流儀を理解している必要があります。個人開発や小さなチームでは、この習熟コストが負担になることもあります。技術選定は、アプリの規模だけでなく、チームの状況も含めて判断するものです。「大規模だから機械的にNgRx」ではなく、「この規模と体制で、Reduxパターンの規律が本当に見合うか」を問うのが、健全な判断です。なお、次章以降で学ぶNgRxのSignalStoreは、この学習コストを下げた選択肢でもあり、Reduxほどの厳格さを求めない場合の中間的な選択肢になります。
+また、NgRxには学習コストとチームの習熟という側面もあります。Reduxパターンは、慣れるまでは回りくどく感じられ、チーム全員がその流儀を理解している必要があります。個人開発や小さなチームでは、この習熟コストが負担になることもあります。技術選定は、アプリの規模だけでなく、チームの状況も含めて判断するものです。「大規模だから機械的にNgRx」ではなく、「この規模と体制で、Reduxパターンの規律が本当に見合うか」を問うのが、健全な判断です。なお、次章『NgRxの実務』で学ぶNgRxのSignalStoreは、この学習コストを下げた選択肢でもあり、Reduxほどの厳格さを求めない場合の中間的な選択肢になります。
 
 ## Action・Reducer・Selectorの設計
 
@@ -122,6 +139,23 @@ export const add = createAction('[Counter] Add', props<{ amount: number }>());
 ```
 
 `'[Counter] Increment'`のように、`[機能名] 出来事`という形式で名付けるのが慣習です。どの機能で何が起きたかが、一目でわかります。`add`のように、追加の情報（ここでは`amount`）を伴うActionは、`props`で、その情報の型を指定します。Actionは、あくまで「起きたこと」を表すだけで、状態をどう変えるかは決めません。
+
+関連するActionが増えてきたら、`createActionGroup`でまとめて定義する書き方もあります。機能名（`source`）と各イベント（`events`）をまとめて宣言すると、`counterActions.increment()`のようにグループ経由で呼び出せます。
+
+```ts:src/app/counter.actions.ts
+import { createActionGroup, emptyProps, props } from '@ngrx/store';
+
+export const counterActions = createActionGroup({
+  source: 'Counter',
+  events: {
+    Increment: emptyProps(),
+    Decrement: emptyProps(),
+    Add: props<{ amount: number }>(),
+  },
+});
+```
+
+`'[Counter] Increment'`のようなtypeは、`source`とイベント名から自動で組み立てられます。追加情報を持たないActionは`emptyProps()`を使います。個別に`createAction`を並べるより、関連するActionのまとまりが見通しやすくなります。
 
 ### Reducerを実装する
 
@@ -145,11 +179,11 @@ export const counterReducer = createReducer(
 );
 ```
 
-`createReducer`の第1引数が初期状態、続く`on`が、各Actionに対する状態の変化です。`on(increment, (state) => ...)`は、「`increment`が来たら、状態をこう変える」という定義です。ここで重要なのは、既存の状態を書き換えず、新しい状態オブジェクトを返していることです。第27章で学んだ不変性の原則が、Reducerでは必須です。Reducerは純粋な関数であり、同じ入力からは常に同じ出力を返し、副作用（通信など）を持ちません。
+`createReducer`の第1引数が初期状態、続く`on`が、各Actionに対する状態の変化です。`on(increment, (state) => ...)`は、「`increment`が来たら、状態をこう変える」という定義です。ここで重要なのは、既存の状態を書き換えず、新しい状態オブジェクトを返していることです。『変更検知の仕組み』の章で学んだ不変性の原則が、Reducerでは必須です。Reducerは純粋な関数であり、同じ入力からは常に同じ出力を返し、副作用（通信など）を持ちません。
 
 ### Storeに登録する
 
-定義したReducerは、アプリケーションに登録します。第7章以来の`provide`関数の流儀で、`app.config.ts`に`provideStore`を加えます。
+定義したReducerは、アプリケーションに登録します。Standalone構成で標準となった`provide`関数の流儀で、`app.config.ts`に`provideStore`を加えます。
 
 ```ts:src/app/app.config.ts
 import { provideStore } from '@ngrx/store';
@@ -182,7 +216,7 @@ export const selectCount = createSelector(selectCounter, (state) => state.count)
 export const selectDoubled = createSelector(selectCount, (count) => count * 2);
 ```
 
-`createFeatureSelector`で状態全体を選び、`createSelector`でそこから必要な部分を取り出します。Selectorには、`createSelector`によるメモ化が働き、もとの状態が変わらなければ再計算されません。第29章の`computed()`と同じ発想です。状態の読み取りをSelectorに集約すると、状態の内部構造が変わっても、Selectorだけを直せば済みます。
+`createFeatureSelector`で状態全体を選び、`createSelector`でそこから必要な部分を取り出します。Selectorには、`createSelector`によるメモ化が働き、もとの状態が変わらなければ再計算されません。『SignalsとZoneless』の章の`computed()`と同じ発想です。状態の読み取りをSelectorに集約すると、状態の内部構造が変わっても、Selectorだけを直せば済みます。
 
 ### Componentから使う
 
@@ -208,7 +242,29 @@ export class Counter {
 }
 ```
 
-`store.selectSignal(selectCount)`で、状態をSignalとして読み取ります。かつては`store.select()`でObservableとして受け取り、`async`パイプで表示していましたが、モダンNgRxでは`selectSignal`により、Signalとして直接扱えます。第6部・第9部で見たSignalへの統一が、NgRxにも及んでいます。状態を変えるときは、`store.dispatch(increment())`のように、Actionを発行します。Component自身は状態を書き換えず、「増やす、という出来事が起きた」と伝えるだけです。
+`store.selectSignal(selectCount)`で、状態をSignalとして読み取ります。状態を変えるときは、`store.dispatch(increment())`のように、Actionを発行します。Component自身は状態を書き換えず、「増やす、という出来事が起きた」と伝えるだけです。
+
+かつては、状態をObservableとして受け取り、テンプレートで`async`パイプ（AsyncPipe）を使って表示していました。新旧を並べると、次のようになります。
+
+```ts:旧来の書き方（store.select() と async パイプ）
+import { Component, inject } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { Store } from '@ngrx/store';
+import { selectCount } from './counter.selectors';
+
+@Component({
+  selector: 'app-counter',
+  imports: [AsyncPipe],
+  // count$ を async パイプで購読する
+  template: `<p>{{ count$ | async }}</p>`,
+})
+export class Counter {
+  private readonly store = inject(Store);
+  protected readonly count$ = this.store.select(selectCount); // Observable<number>
+}
+```
+
+`store.select()`が返すのはObservableで、テンプレートでは`async`パイプを通して購読と自動解除を行っていました。モダンNgRxでは`selectSignal`により、`async`パイプを介さず、Signalとして直接扱えます。これまでの章で見てきた、状態の読み取りをSignalへ統一する流れが、NgRxにも及んでいます。
 
 ### 役割分担のまとめ
 
@@ -228,12 +284,19 @@ export class Counter {
 
 ```ts:src/app/counter.feature.ts
 import { createFeature, createReducer, on } from '@ngrx/store';
+import { increment, decrement, add } from './counter.actions';
+
+interface CounterState {
+  count: number;
+}
+const initialState: CounterState = { count: 0 };
 
 export const counterFeature = createFeature({
   name: 'counter',
   reducer: createReducer(
     initialState,
     on(increment, (state) => ({ count: state.count + 1 })),
+    // decrement・add に対する on は省略
   ),
 });
 
@@ -246,7 +309,7 @@ export const { selectCount } = counterFeature;
 ### よくあるつまずき
 
 - **Reducerで状態を直接書き換える**: `state.count++`のように既存の状態を変更すると、変更検知や追跡が壊れます。必ず新しいオブジェクトを返します。
-- **Reducerに副作用を書く**: Reducerの中で通信やログ出力をしてはいけません。純粋な関数に保ち、副作用は次章のEffectsに任せます。
+- **Reducerに副作用を書く**: Reducerの中で通信やログ出力をしてはいけません。純粋な関数に保ち、副作用は次の節で扱うEffectsに任せます。
 - **ComponentでSelectorを使わず状態を直接読む**: 状態の読み取りは、Selectorに集約します。Componentが状態の内部構造に直接依存すると、構造変更に弱くなります。
 - **Actionを状態の「命令」として書く**: Actionは「何が起きたか」という事実を表します。「countをセットせよ」ではなく「増やされた」のように、出来事として名付けます。
 
@@ -254,7 +317,7 @@ export const { selectCount } = counterFeature;
 
 前節で学んだReducerは、純粋な関数でした。同じ入力からは同じ出力を返し、通信のような副作用は持ちません。しかし、実際のアプリケーションでは、「保存ボタンが押されたらサーバーへ送信する」「一覧を開いたらデータを取得する」といった副作用が欠かせません。この副作用を、Reduxパターンの規律の中でどう扱うか。その答えが、NgRxのEffects（エフェクト）です。
 
-Effectsは、Actionをきっかけに副作用を実行し、その結果をまた別のActionとして発行する仕組みです。ここで、第8部で学んだRxJSが本領を発揮します。Effectsは、Actionの流れをObservableとして受け取り、`switchMap`や`catchError`といったOperatorで、非同期処理を組み立てます。この節では、Effectsの考え方と書き方を、通信の例を通して学びます。
+Effectsは、Actionをきっかけに副作用を実行し、その結果をまた別のActionとして発行する仕組みです。ここで、『RxJSの基礎』の章で学んだRxJSが本領を発揮します。Effectsは、Actionの流れをObservableとして受け取り、`switchMap`や`catchError`といったOperatorで、非同期処理を組み立てます。この節では、Effectsの考え方と書き方を、通信の例を通して学びます。
 
 ### なぜEffectsが必要か
 
@@ -294,9 +357,9 @@ export const loadProductsEffect = createEffect(
 );
 ```
 
-`inject(Actions)`で、アプリ全体のActionの流れを受け取ります。`ofType(loadProducts)`で、その中から`loadProducts`というActionだけを拾います。そのActionが来たら、`switchMap`で通信を実行します。第39章で学んだとおり、`switchMap`は、新しい要求が来たら前の通信を打ち切ります。通信が成功すれば`map`で成功Actionに、失敗すれば`catchError`で失敗Actionに変換します。第39章の`catchError`の使い方が、そのまま活きています。
+`inject(Actions)`で、アプリ全体のActionの流れを受け取ります。`ofType(loadProducts)`で、その中から`loadProducts`というActionだけを拾います。そのActionが来たら、`switchMap`で通信を実行します。『RxJSの基礎』の章で学んだとおり、`switchMap`は、新しい要求が来たら前の通信を打ち切ります。通信が成功すれば`map`で成功Actionに、失敗すれば`catchError`で失敗Actionに変換します。同章で学んだ`catchError`の使い方が、そのまま活きています。
 
-このEffectは、`{ functional: true }`を付けた関数型で書いています。第24章・第36章で見た関数型の流れが、Effectsにも及んでいます。
+このEffectは、`{ functional: true }`を付けた関数型で書いています。関数型の`inject()`や関数型Guardで見たのと同じ、関数型APIの流れが、Effectsにも及んでいます。
 
 ### 成功と失敗をActionで表す
 
@@ -314,7 +377,85 @@ export const loadProductsFailure = createAction(
 );
 ```
 
-「要求」「成功」「失敗」の3つのActionを1組にするのが、NgRxの定番のパターンです。Reducer側では、これらを受けて状態を更新します。「成功」ならデータを保存し、読み込み中フラグを下げる。「失敗」ならエラーを記録する、といった具合です。通信の各段階が、すべてActionとして記録されるため、第51章で述べた追跡可能性が保たれます。「いつデータ取得を要求し、いつ成功・失敗したか」が、Actionの履歴として残るのです。
+「要求」「成功」「失敗」の3つのActionを1組にするのが、NgRxの定番のパターンです。Reducer側では、これらを受けて状態を更新します。状態には、データ本体に加えて、読み込み中かどうかを表す`loading`と、失敗時の`error`を持たせておくのが定番です。
+
+```ts:src/app/product.reducer.ts
+import { createReducer, on } from '@ngrx/store';
+import { loadProducts, loadProductsSuccess, loadProductsFailure } from './product.actions';
+import { Product } from './product';
+
+export interface ProductState {
+  items: Product[];
+  loading: boolean;
+  error: unknown | null;
+}
+
+const initialState: ProductState = { items: [], loading: false, error: null };
+
+export const productReducer = createReducer(
+  initialState,
+  // 要求: 読み込み中フラグを立て、前のエラーを消す
+  on(loadProducts, (state) => ({ ...state, loading: true, error: null })),
+  // 成功: データを保存し、読み込み中フラグを下げる
+  on(loadProductsSuccess, (state, { products }) => ({ ...state, items: products, loading: false })),
+  // 失敗: エラーを記録し、読み込み中フラグを下げる
+  on(loadProductsFailure, (state, { error }) => ({ ...state, error, loading: false })),
+);
+```
+
+`loadProducts`（要求）で`loading`を立て、`loadProductsSuccess`（成功）でデータを保存して`loading`を下ろし、`loadProductsFailure`（失敗）で`error`を記録します。こうしておくと、Componentは`loading`を見てローディング表示を、`error`を見てエラー表示を出せます。通信の各段階が、すべてActionとして記録されるため、本章の最初の節で述べた追跡可能性が保たれます。「いつデータ取得を要求し、いつ成功・失敗したか」が、Actionの履歴として残るのです。
+
+### Effectから状態を参照する
+
+Effectの中で、現在の状態を参照したいことがあります。たとえば「保存するとき、Storeが持っている入力内容を読みたい」といった場合です。このとき、`@ngrx/operators`の`concatLatestFrom`を使うと、Actionと一緒に、Selectorで選んだ状態を受け取れます。
+
+```ts:src/app/product.effects.ts
+import { concatLatestFrom } from '@ngrx/operators';
+import { Store } from '@ngrx/store';
+// import は省略
+
+export const saveProductsEffect = createEffect(
+  () => {
+    const actions$ = inject(Actions);
+    const store = inject(Store);
+    const service = inject(ProductService);
+
+    return actions$.pipe(
+      ofType(saveProducts),
+      concatLatestFrom(() => store.select(selectProducts)), // Actionに状態を添える
+      switchMap(([action, products]) => service.save(products).pipe(/* 省略 */)),
+    );
+  },
+  { functional: true },
+);
+```
+
+`concatLatestFrom`は、対象のActionが来たときにだけ状態を読み取ります（引数を関数で渡すため、遅延評価されます）。Selectorの購読を常時抱え込まずに済むのが利点です。
+
+### Actionを発行しないEffect
+
+Effectは、必ずしも新しいActionを発行するとはかぎりません。画面遷移や通知の表示のように、副作用を起こすだけで状態を変えないEffectもあります。この場合は、`createEffect`の第2引数で`dispatch: false`を指定します。
+
+```ts:src/app/product.effects.ts
+import { tap } from 'rxjs';
+import { Router } from '@angular/router';
+// import は省略
+
+export const redirectAfterSaveEffect = createEffect(
+  () => {
+    const actions$ = inject(Actions);
+    const router = inject(Router);
+
+    return actions$.pipe(
+      ofType(saveProductsSuccess),
+      tap(() => router.navigate(['/products'])), // 遷移するだけ
+    );
+  },
+  { functional: true, dispatch: false },
+);
+```
+
+`dispatch: false`を付け忘れると、NgRxはEffectの戻り値を新しいActionとして扱おうとし、警告やエラーの原因になります。「結果のActionを返さないEffectには`dispatch: false`」と覚えておきます。
 
 ### Effectsを登録する
 
@@ -323,26 +464,28 @@ export const loadProductsFailure = createAction(
 ```ts:src/app/app.config.ts
 import { provideStore } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
+import { productReducer } from './product.reducer';
+import * as productEffects from './product.effects';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideStore({ product: productReducer }),
-    provideEffects([loadProductsEffect]),
+    provideEffects(productEffects),
   ],
 };
 ```
 
-`provideEffects`に、有効にしたいEffectを渡します。これで、対象のActionが発行されたときに、Effectが働くようになります。StoreとEffectsを両方登録することで、状態管理と副作用の仕組みがそろいます。
+関数型で定義したEffectは、Effectをまとめたファイルを`import * as productEffects`のように名前空間オブジェクトとして取り込み、それを`provideEffects`に渡して登録します。`createEffect`で公開した各Effectが、このオブジェクトのプロパティとして拾われます。クラスとして定義したEffectの場合は`provideEffects(ProductEffects)`のようにクラスを渡しますが、関数型Effectを`provideEffects([loadProductsEffect])`と配列に入れて渡す形では登録されないので注意してください。これで、対象のActionが発行されたときに、Effectが働くようになります。StoreとEffectsを両方登録することで、状態管理と副作用の仕組みがそろいます。
 
 ### Effectsを使ううえでの注意
 
-Effectsは強力ですが、いくつか注意点があります。まず、高階Operatorの選択です。第39章で学んだとおり、`switchMap`（最新優先）・`concatMap`（順番）・`mergeMap`（並行）・`exhaustMap`（先着優先）を、処理の性質に応じて選びます。一覧取得なら`switchMap`、保存の連続なら`concatMap`、二重送信を防ぐ保存ボタンなら`exhaustMap`、といった判断が必要です。
+Effectsは強力ですが、いくつか注意点があります。まず、高階Operatorの選択です。『RxJSの基礎』の章で学んだとおり、`switchMap`（最新優先）・`concatMap`（順番）・`mergeMap`（並行）・`exhaustMap`（先着優先）を、処理の性質に応じて選びます。一覧取得なら`switchMap`、保存の連続なら`concatMap`、二重送信を防ぐ保存ボタンなら`exhaustMap`、といった判断が必要です。
 
 もうひとつは、Effect内でのエラー処理です。`catchError`は、`switchMap`に渡す内側のObservableの中に置きます。もし外側の`actions$`のパイプラインでエラーを捉えてしまうと、そのEffect全体が停止し、以降のActionに反応しなくなります。エラーは内側で捉え、失敗Actionに変換して、外側の流れは止めない。これがEffectsの鉄則です。この点は、実務でつまずきやすいので、意識しておいてください。
 
 ### SignalとEffectsの関係
 
-第29章で学んだSignalの`effect()`と、NgRxのEffectsは、名前が似ていますが、別のものです。混同しないよう整理しておきます。Signalの`effect()`は、Signalの変化に反応して副作用を実行する、Angular本体の機能でした。NgRxのEffectsは、Actionの流れに反応して副作用を実行する、NgRx固有の仕組みです。
+『SignalsとZoneless』の章で学んだSignalの`effect()`と、NgRxのEffectsは、名前が似ていますが、別のものです。混同しないよう整理しておきます。Signalの`effect()`は、Signalの変化に反応して副作用を実行する、Angular本体の機能でした。NgRxのEffectsは、Actionの流れに反応して副作用を実行する、NgRx固有の仕組みです。
 
 両者は目的が異なります。Signalの`effect()`は、主にComponent内の、状態変化に応じた局所的な副作用に使います。NgRxのEffectsは、アプリ全体の状態変更（Action）に紐づく、大きな副作用（通信など）を扱います。NgRxを使う場面では、副作用はEffectsに集約するのが基本です。名前の類似に惑わされず、「Signalの変化に反応するのが`effect()`、Actionに反応するのがEffects」と区別してください。
 

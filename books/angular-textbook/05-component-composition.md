@@ -114,6 +114,19 @@ export class Card {}
 
 これで`<h2>`は、`card-title`属性を持つものとして扱われ、見出しのスロットへ差し込まれます。
 
+複数の要素をまとめて1つのスロットへ送りたいときは、`ng-container`と`ngProjectAs`を組み合わせます。`ng-container`は、それ自体はDOMに何も出力しない入れ物です。これに`ngProjectAs`を付けると、中の複数要素を、余計なラッパー要素なしで名前付きスロットへ届けられます。
+
+```html
+<app-card>
+  <ng-container ngProjectAs="[card-title]">
+    <h2>見出し</h2>
+    <span class="badge">新着</span>
+  </ng-container>
+</app-card>
+```
+
+見出しとバッジを`<div>`で囲むと、その`<div>`が不要な階層としてDOMに残ります。`ng-container`ならラッパーが出力されないので、2つの要素がそのままヘッダーのスロットに並びます。グループ化のためだけの要素をDOMに増やさずに済むのが、この組み合わせの定番の使いどころです。
+
 コンテンツ投影で注意したいのは、`ng-content`はビルド時に処理され、投影はComponentの生成時に一度だけ行われるという点です。`ng-content`自体を`@if`で囲んで出し分けるような使い方は想定されていません。表示を条件で切り替えたい場合は、投影された内容ではなく、枠側の構造で工夫します。
 
 ### 子要素を参照する — クエリ
@@ -141,8 +154,8 @@ import { CardHeader } from './card-header';
   template: `<app-card-header />`,
 })
 export class CardList {
-  header = viewChild(CardHeader);
-  headerText = computed(() => this.header()?.text);
+  protected readonly header = viewChild(CardHeader);
+  protected readonly headerText = computed(() => this.header()?.text);
 }
 ```
 
@@ -151,6 +164,37 @@ export class CardList {
 ```ts
 header = viewChild.required(CardHeader);
 ```
+
+**ネイティブDOM要素を参照する — テンプレート参照変数とread**
+
+`viewChild()`は、子Componentだけでなく、素のDOM要素も参照できます。要素にテンプレート参照変数（`#名前`）を付け、その名前を文字列で渡します。入力欄に自動でフォーカスを当てる、といった実務でよくある操作は、この方法で書きます。
+
+```ts:src/app/search-box.ts
+import { Component, ElementRef, afterNextRender, viewChild } from '@angular/core';
+
+@Component({
+  selector: 'app-search-box',
+  template: `<input #box type="search" placeholder="検索" />`,
+})
+export class SearchBox {
+  private readonly box = viewChild<ElementRef<HTMLInputElement>>('box');
+
+  constructor() {
+    afterNextRender(() => this.box()?.nativeElement.focus());
+  }
+}
+```
+
+`#box`を付けた`<input>`を`viewChild('box')`で参照すると、結果は`ElementRef`として返ります。`nativeElement`が実際のDOM要素（`HTMLInputElement`）で、そこから`focus()`を呼べます。要素の型は`viewChild<ElementRef<HTMLInputElement>>('box')`のように型引数で指定します。描画が済む前にDOMへ触るとまだ要素が存在しないため、最初の描画後に走る`afterNextRender()`の中で操作します。このコールバックはブラウザでのみ実行されるので、サーバーサイドレンダリング環境でも安全です。ボタン押下など利用者の操作に応じてフォーカスするなら、そのイベントハンドラーから同じ`this.box()?.nativeElement.focus()`を呼びます。
+
+参照する対象を切り替えたいときは、`read`オプションを使います。テンプレート参照変数が子Componentを指している場合、既定ではそのComponentのインスタンスが返りますが、`read: ElementRef`を渡すと、代わりにホスト要素の`ElementRef`を受け取れます。
+
+```ts
+// 子Componentのインスタンスではなく、そのホスト要素を参照する
+private readonly host = viewChild('picker', { read: ElementRef });
+```
+
+`read`には`ElementRef`のほか、`TemplateRef`やその要素に付いたDirectiveなど、注入可能なトークンを指定できます。1つの要素にComponent・Directive・DOM要素という複数の情報が同居しているとき、そのどれを取り出すかを選ぶのが`read`の役割です。
 
 **contentChild() — 投影された内容を参照する**
 
@@ -165,11 +209,73 @@ import { CardTitle } from './card-title';
   template: `<div class="card"><ng-content /></div>`,
 })
 export class Card {
-  title = contentChild(CardTitle);
+  protected readonly title = contentChild(CardTitle);
 }
 ```
 
-複数の要素をまとめて参照したいときは、`viewChildren()`・`contentChildren()`を使います。これらは配列のSignalを返します。参照範囲を孫要素まで広げたい場合は、`contentChildren(CardTitle, { descendants: true })`のようにオプションを指定します。
+**投影されたかどうかで表示を切り替える — contentChildと@if**
+
+`contentChild()`の結果はSignalなので、外から要素が投影されたかどうかを、そのままテンプレートの`@if`で判定できます。「ヘッダーが渡されたときだけ枠を描く」という、実務でよくある出し分けがこれで書けます。
+
+まず、ヘッダーとして投影する要素に付けるDirectiveを用意します。
+
+```ts:src/app/card-title.ts
+import { Directive } from '@angular/core';
+
+@Directive({
+  selector: '[card-title]',
+})
+export class CardTitle {}
+```
+
+`Card`側では、`CardTitle`が投影されているかを`contentChild()`で調べ、あるときだけヘッダーの枠を描きます。
+
+```ts:src/app/card.ts
+import { Component, contentChild } from '@angular/core';
+import { CardTitle } from './card-title';
+
+@Component({
+  selector: 'app-card',
+  template: `
+    @if (title()) {
+      <header class="card-header">
+        <ng-content select="[card-title]" />
+      </header>
+    }
+    <div class="card-body">
+      <ng-content />
+    </div>
+  `,
+})
+export class Card {
+  protected readonly title = contentChild(CardTitle);
+}
+```
+
+利用側が`<h2 card-title>`を渡せば`title()`が値を持ち、ヘッダーの枠ごと描画されます。渡さなければ`title()`は`undefined`のままで、枠自体が現れません。中身のない`<header>`が余白だけ残る、という状態を避けられます。デコレーター時代の`@ContentChild`はライフサイクルの完了を待って値が確定したため、この種の出し分けは初期表示のタイミングで値が変わったと警告されがちでした。Signalベースのクエリはこの用途を前提に設計されているので、`@if`と素直に組み合わせられます。
+
+**複数の要素をまとめて参照する — viewChildren()・contentChildren()**
+
+1つだけでなく複数の要素を参照したいときは、`viewChildren()`・`contentChildren()`を使います。これらは配列のSignalを返すので、件数を数えたり、まとめて処理したりできます。次の`TabGroup`は、投影されたタブをすべて集め、その数を表示します。
+
+```ts:src/app/tab-group.ts
+import { Component, computed, contentChildren } from '@angular/core';
+import { Tab } from './tab';
+
+@Component({
+  selector: 'app-tab-group',
+  template: `
+    <div class="tabs"><ng-content /></div>
+    <p>タブ数: {{ count() }}</p>
+  `,
+})
+export class TabGroup {
+  private readonly tabs = contentChildren(Tab);
+  protected readonly count = computed(() => this.tabs().length);
+}
+```
+
+`contentChildren(Tab)`が投影された`Tab`の配列を返し、その件数を`computed()`で算出しています。`contentChildren()`は既定では直接の子だけを対象にするため、孫要素まで含めたいときは`contentChildren(Tab, { descendants: true })`とオプションを指定します。自身のテンプレートを対象にする`viewChildren()`も、配列のSignalを返す点は同じです。
 
 **旧来の@ViewChild・@ContentChildとの違い**
 
@@ -295,7 +401,7 @@ Componentのスタイルは、テンプレートの中身には効きますが�
 
 これは、アプリ全体のテーマ（明るい／暗い）に応じてComponentの見た目を切り替える、といった場面で役立ちます。
 
-なお、`:host`は括弧を使って`:host(.active)`のように書くこともできます。これは「ホスト要素が`active`クラスを持つときだけ適用する」という条件付きの指定です。Component自身の状態に応じて、枠の色や背景を切り替えたいときに便利です。状態を表すクラスの付け外しは、第3部で学ぶクラスバインディングで行います。
+なお、`:host`は括弧を使って`:host(.active)`のように書くこともできます。これは「ホスト要素が`active`クラスを持つときだけ適用する」という条件付きの指定です。Component自身の状態に応じて、枠の色や背景を切り替えたいときに便利です。状態を表すクラスの付け外しは、『テンプレートの記法とDirective概論』の章で扱うクラスバインディングで行います。
 
 ### グローバルスタイルとの使い分け
 
@@ -353,7 +459,7 @@ app-badge {
 
 ## Componentの分割と責務
 
-ここまでで、Componentの作り方と、それを支える仕組みを学んできました。第2部の最後となるこの節では、視点を少し上げて、「Componentをどう分割し、それぞれに何を担わせるか」という設計の話をします。
+ここまでで、Componentの作り方と、それを支える仕組みを学んできました。この章の最後の節では、視点を少し上げて、「Componentをどう分割し、それぞれに何を担わせるか」という設計の話をします。
 
 Componentは、1つにまとめることも、細かく分けることもできます。どちらが正解というわけではありませんが、分け方を誤ると、見通しが悪く、再利用しづらく、テストしにくいコードになります。この節では、分割の目的と指針を整理し、実際に画面を分割する例を通して、設計の勘所をつかみます。
 
@@ -403,13 +509,18 @@ flowchart TD
   B --> C["ProductCard（プレゼンテーション）<br/>1件を表示"]
 ```
 
-コンテナから子へデータを渡し、子から親へ操作を伝える具体的な仕組み、すなわち入力（input）と出力（output）は、第4部で詳しく扱います。ここでは「データを持つ側と、見た目を担う側を分ける」という設計の発想をつかんでください。
+コンテナから子へデータを渡し、子から親へ操作を伝える具体的な仕組み、すなわち入力（input）と出力（output）は、『データフローとinput()・output()』の章で詳しく扱います。ここでは「データを持つ側と、見た目を担う側を分ける」という設計の発想をつかんでください。
 
 ### コードで見る分割
 
 先ほどの商品一覧を、コードの形でも見てみましょう。コンテナは、データを取得し、それをプレゼンテーションComponentに渡します。
 
 ```ts:src/app/product-list-page.ts
+import { Component, inject, Signal } from '@angular/core';
+import { ProductList } from './product-list';
+import { ProductService } from './product-service';
+import { Product } from './product';
+
 @Component({
   selector: 'app-product-list-page',
   imports: [ProductList],
@@ -417,13 +528,18 @@ flowchart TD
 })
 export class ProductListPage {
   private readonly service = inject(ProductService);
-  protected readonly products = this.service.getProducts();
+  // getProducts() は Signal<Product[]> を返す前提
+  protected readonly products: Signal<Product[]> = this.service.getProducts();
 }
 ```
 
 プレゼンテーション側は、渡された商品を受け取って並べるだけです。自分ではデータを取りにいきません。
 
 ```ts:src/app/product-list.ts
+import { Component, input } from '@angular/core';
+import { ProductCard } from './product-card';
+import { Product } from './product';
+
 @Component({
   selector: 'app-product-list',
   imports: [ProductCard],
@@ -434,13 +550,16 @@ export class ProductListPage {
   `,
 })
 export class ProductList {
-  products = input<Product[]>([]);
+  readonly products = input<Product[]>([]);
 }
 ```
 
 逆に、プレゼンテーション側での操作を、コンテナへ伝えることもできます。たとえば、商品カードがクリックされたことを親に知らせるには、出力（output）を使います。
 
 ```ts:src/app/product-card.ts
+import { Component, input, output } from '@angular/core';
+import { Product } from './product';
+
 @Component({
   selector: 'app-product-card',
   template: `
@@ -448,12 +567,12 @@ export class ProductList {
   `,
 })
 export class ProductCard {
-  product = input.required<Product>();
-  selected = output<Product>();
+  readonly product = input.required<Product>();
+  readonly selected = output<Product>();
 }
 ```
 
-プレゼンテーションは「クリックされた」という事実だけを外へ伝え、それをどう扱うか（画面を遷移するのか、選択状態にするのか）はコンテナが決めます。このように、上から下へはデータを、下から上へは出来事を流すのが、見通しのよい設計の基本です。データを渡す`[products]`や、受け取る`input()`、繰り返しの`@for`といった記法は、第3部と第4部で詳しく扱います。ここでは、責務がきれいに分かれている形をつかんでください。
+プレゼンテーションは「クリックされた」という事実だけを外へ伝え、それをどう扱うか（画面を遷移するのか、選択状態にするのか）はコンテナが決めます。このように、上から下へはデータを、下から上へは出来事を流すのが、見通しのよい設計の基本です。データを渡す`[products]`や繰り返しの`@for`は『テンプレートの記法とDirective概論』の章で、受け取る`input()`は『データフローとinput()・output()』の章で詳しく扱います。ここでは、責務がきれいに分かれている形をつかんでください。
 
 ### 分割したComponentの置き場所
 
@@ -468,7 +587,7 @@ src/app/
 └── ...
 ```
 
-どこに何があるかがフォルダ構成から読み取れると、規模が大きくなっても迷いにくくなります。アプリケーション全体のフォルダ設計は、第11部でも改めて扱います。
+どこに何があるかがフォルダ構成から読み取れると、規模が大きくなっても迷いにくくなります。アプリケーション全体のフォルダ設計は、『アーキテクチャとテスト』の章でも改めて扱います。
 
 ### 分割の指針
 
@@ -497,7 +616,7 @@ src/app/
 
 - **神Component**: 1つのComponentに、データ取得・表示・操作をすべて詰め込んだ状態です。テンプレートが長大になり、修正の影響範囲が読めなくなります。関心事ごとに切り出すのが対処です。
 - **過度な分割**: 意味のまとまりがないのに、細かく分けすぎた状態です。Component間の受け渡しばかりが増え、かえって全体を追いにくくなります。
-- **深いバケツリレー**: 親から子、孫へとデータを渡し続ける状態です。階層が深いと、途中のComponentが中身に関心がないのにデータを素通しすることになります。これは、状態管理（第10部）で扱う仕組みによって緩和できます。
+- **深いバケツリレー**: 親から子、孫へとデータを渡し続ける状態です。階層が深いと、途中のComponentが中身に関心がないのにデータを素通しすることになります。これは、『状態管理の基礎（分類とStore Service）』の章で扱う仕組みによって緩和できます。
 
 いずれの極端も避け、「名前を付けられるまとまり」を単位に分ける、というバランスを意識してください。
 

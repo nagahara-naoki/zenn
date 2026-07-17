@@ -17,9 +17,9 @@ title: "Routerの基礎"
 
 ## SPAとAngular Router
 
-Angularで作るアプリケーションは、その多くがSPA（Single Page Application、シングルページアプリケーション）と呼ばれる形式をとります。この節では、SPAとは何か、従来のWebサイトとどうしくみがちがうのかをつかみ、そのうえでAngular Routerがどんな役割を果たすのかを理解します。
+Angularで作るアプリケーションは、その多くがSPA（Single Page Application、シングルページアプリケーション）と呼ばれる形式をとります。この節では、SPAとは何か、従来のWebサイトとどのように仕組みが異なるのかをつかみ、そのうえでAngular Routerがどんな役割を果たすのかを理解します。
 
-Routerは、URLと画面を結びつける仕組みです。しかし、なぜそんな仕組みがわざわざ必要なのでしょうか。その答えは、SPAというアプリケーションの成り立ちにあります。まずSPAの考え方を押さえることで、Routerが解決している課題が見えてきます。この節は、この先のRouter各章の土台となる、概念の整理回です。
+Routerは、URLと画面を結びつける仕組みです。しかし、なぜそんな仕組みがわざわざ必要なのでしょうか。その答えは、SPAというアプリケーションの成り立ちにあります。まずSPAの考え方を押さえることで、Routerが解決している課題が見えてきます。この節は、この先のルーティングの解説の土台となる、概念を整理する内容です。
 
 ### 従来のWebサイトの仕組み
 
@@ -31,7 +31,7 @@ Routerは、URLと画面を結びつける仕組みです。しかし、なぜ�
 
 SPAは、この課題への答えとして生まれました。SPAでは、最初に一度だけ、アプリケーションの本体（HTMLとJavaScript）を読み込みます。以降のページ遷移では、サーバーへHTMLを取りにいくのではなく、JavaScriptが画面の一部だけを書き換えます。
 
-たとえば商品一覧から商品詳細へ移るとき、SPAは画面全体を捨てて作り直すのではなく、変わる部分（一覧の領域を詳細の領域に）だけを差し替えます。ヘッダーやサイドバーはそのまま残ります。結果として、遷移がなめらかで速く、まるでデスクトップアプリケーションのような操作感が得られます。第1章で「Angularは動的なWebアプリケーションを作るためのフレームワーク」と述べましたが、そのアプリケーションの多くが、このSPAの形をとります。
+たとえば商品一覧から商品詳細へ移るとき、SPAは画面全体を捨てて作り直すのではなく、変わる部分（一覧の領域を詳細の領域に）だけを差し替えます。ヘッダーやサイドバーはそのまま残ります。結果として、遷移がなめらかで速く、まるでデスクトップアプリケーションのような操作感が得られます。『Angularとは何か』の章で「Angularは動的なWebアプリケーションを作るためのフレームワーク」と述べましたが、そのアプリケーションの多くが、このSPAの形をとります。
 
 一方で、SPAには独自の課題も生まれます。それが、次に述べる「画面遷移とURL」の問題です。
 
@@ -63,18 +63,18 @@ Angular Routerは、内部でこのHistory APIを使っています。`routerLin
 
 ### SPAの弱点と、その先の話題
 
-SPAには多くの利点がありますが、弱点もあります。代表的なのが、最初の読み込みです。SPAは、最初にアプリ本体（JavaScript）を読み込んでから画面を組み立てるため、この初回の読み込みが大きいと、最初の表示までに時間がかかります。第35章で学ぶLazy Loadingは、この弱点をやわらげる手段のひとつです。
+SPAには多くの利点がありますが、弱点もあります。代表的なのが、最初の読み込みです。SPAは、最初にアプリ本体（JavaScript）を読み込んでから画面を組み立てるため、この初回の読み込みが大きいと、最初の表示までに時間がかかります。次章『ルーティング応用』で学ぶLazy Loadingは、この弱点をやわらげる手段のひとつです。
 
-もうひとつの弱点が、検索エンジンやSNSへの対応です。SPAは、JavaScriptが実行されて初めて画面が組み上がります。JavaScriptを実行しない相手（一部の検索エンジンのクローラーや、SNSのリンク展開など）には、中身のない空のページに見えることがあります。この課題への対処が、第62章で扱うSSR（サーバーサイドレンダリング）です。サーバー側であらかじめHTMLを組み立てて返すことで、SPAの利点を保ちつつ、初回表示や検索対応を改善します。
+もうひとつの弱点が、検索エンジンやSNSへの対応です。SPAは、JavaScriptが実行されて初めて画面が組み上がります。JavaScriptを実行しない相手（一部の検索エンジンのクローラーや、SNSのリンク展開など）には、中身のない空のページに見えることがあります。この課題への対処が、『SSRとモダンAngularへの移行』の章で扱うSSR（サーバーサイドレンダリング）です。サーバー側であらかじめHTMLを組み立てて返すことで、SPAの利点を保ちつつ、初回表示や検索対応を改善します。
 
 ここでは、SPAが万能ではなく、初回表示と検索対応という弱点を持つこと、そしてそれぞれに対処法が用意されていることを、頭の片隅に置いておいてください。
 
 ### ルーティングを構成する基本要素
 
-Angularでルーティングを行うとき、登場する基本的な要素を先に紹介しておきます。詳しくは次章以降で扱いますが、全体像として押さえておくと理解がスムーズになります。
+Angularでルーティングを行うとき、登場する基本的な要素を先に紹介しておきます。詳しくは本章の次の節で扱いますが、全体像として押さえておくと理解がスムーズになります。
 
 - **Routes（ルート定義）**: 「どのURLで、どのComponentを表示するか」の対応表です。ルーティングの設計図にあたります。
-- **`provideRouter()`**: そのRoutesをアプリケーションに登録する関数です。第4章で見た`app.config.ts`に書きます。
+- **`provideRouter()`**: そのRoutesをアプリケーションに登録する関数です。『開発環境・CLIとプロジェクト構成』の章で見た`app.config.ts`に書きます。
 - **`RouterOutlet`**: 表示するComponentが差し込まれる場所です。テンプレートに`<router-outlet />`と置きます。
 - **`routerLink`**: ページ遷移のためのリンクを作るDirectiveです。`<a>`タグに付けて使います。
 
@@ -93,11 +93,10 @@ SPAが常に最適とは限りません。従来型の、ページごとにサ�
 
 SPAは、ダッシュボードや業務アプリのように、利用者が長く操作し、画面遷移が頻繁に起きるアプリケーションに向きます。一度読み込めば、その後の操作がなめらかだからです。一方、記事を読むだけのブログや、商品を眺める程度のサイトなど、ページ間の移動が少なく、内容の表示が主目的なら、MPAでも十分なことがあります。
 
-もっとも、Angularは第62章で扱うSSRによって、SPAとMPAの利点を組み合わせることもできます。サーバーで初期HTMLを生成しつつ、その後はSPAとして動く、という構成です。「SPAかMPAか」は白黒はっきり分かれるものではなく、要件に応じて選び、組み合わせるものだと理解しておくとよいでしょう。本書が扱うのは主にSPAとしてのAngularですが、その位置づけを知っておくと、技術選定の視野が広がります。
+もっとも、Angularは『SSRとモダンAngularへの移行』の章で扱うSSRによって、SPAとMPAの利点を組み合わせることもできます。サーバーで初期HTMLを生成しつつ、その後はSPAとして動く、という構成です。「SPAかMPAか」は白黒はっきり分かれるものではなく、要件に応じて選び、組み合わせるものだと理解しておくとよいでしょう。本書が扱うのは主にSPAとしてのAngularですが、その位置づけを知っておくと、技術選定の視野が広がります。
 
 ### よくあるつまずき
 
-- **内部リンクに`href`を使う**: アプリ内のページ遷移に`<a href>`を使うと、ページ全体が再読み込みされ、SPAの利点が失われます。内部遷移は`routerLink`を使います。
 - **URLの変化を軽視する**: SPAでも、画面の状態はできるだけURLに表すのがよい設計です。URLに状態が表れていれば、ブックマークや共有、戻る操作が自然に機能します。
 - **Routerなしで画面を切り替えようとする**: `@if`だけで画面全体を出し分けることもできますが、URLと連動しないため、ブックマークや戻る操作が効きません。ページ単位の切り替えは、Routerに任せるのが基本です。一方、同じページ内での小さな表示の出し分けは、`@if`で十分です。ページ遷移はRouter、画面内の分岐は`@if`、と使い分けを意識してください。
 
@@ -105,7 +104,7 @@ SPAは、ダッシュボードや業務アプリのように、利用者が長�
 
 前節で、ルーティングがRoutes・`provideRouter()`・`RouterOutlet`・`routerLink`で構成されることを見ました。この節では、その設定を実際に書いていきます。中心となるのが、Routesの定義と、それをアプリケーションに登録する`provideRouter()`です。
 
-ルーティングの設定方法は、Angularの歴史の中で変わってきました。かつては`RouterModule`というNgModuleを使っていましたが、現在は`provideRouter()`という関数を使います。これは、第7章で学んだ「モジュールから関数へ」という流れの、ルーティング版です。この節では、現在の`provideRouter()`を主に、旧来の`RouterModule`と比較しながら、ルーティングの基本設定を身につけます。
+ルーティングの設定方法は、Angularの歴史の中で変わってきました。かつては`RouterModule`というNgModuleを使っていましたが、現在は`provideRouter()`という関数を使います。これは、『TypeScriptとComponentの基本』の章で学んだ「モジュールから関数へ」という流れの、ルーティング版です。この節では、現在の`provideRouter()`を主に、旧来の`RouterModule`と比較しながら、ルーティングの基本設定を身につけます。
 
 ### Routesを定義する
 
@@ -131,11 +130,11 @@ export const routes: Routes = [
 - **`redirectTo`**: 別のパスへ転送します。`{ path: '', redirectTo: 'home', pathMatch: 'full' }`のように使います。
 - **`pathMatch`**: パスの一致のしかたを指定します。`'full'`はURL全体の一致、`'prefix'`（既定）は前方一致です。
 - **`title`**: そのページのタイトル（ブラウザのタブに表示される文字列）を指定します。
-- **`children`**: 子のルートを定義します。第34章で扱います。
+- **`children`**: 子のルートを定義します。次章『ルーティング応用』で扱います。
 
 ### provideRouterで登録する
 
-定義したRoutesを、アプリケーションに登録します。第4章で見た`app.config.ts`の`providers`に、`provideRouter(routes)`を加えます。
+定義したRoutesを、アプリケーションに登録します。`app.config.ts`の`providers`に、`provideRouter(routes)`を加えます。
 
 ```ts:src/app/app.config.ts
 import { ApplicationConfig } from '@angular/core';
@@ -149,14 +148,41 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-`provideRouter(routes)`だけでも動きますが、ここでは`withComponentInputBinding()`という機能を一緒に渡しています。これは、URLのパラメーターを、Componentの`input()`へ自動で結びつける機能です。第33章で活用するので、いまは「あとで役立つ設定を加えた」と捉えてください。`provideRouter()`は、こうした機能を`with〜`という関数で、必要な分だけ追加できる作りになっています。
+`provideRouter(routes)`だけでも動きますが、ここでは`withComponentInputBinding()`という機能を一緒に渡しています。これは、URLのパラメーターを、Componentの`input()`へ自動で結びつける機能です。この章の後半で活用するので、いまは「あとで役立つ設定を加えた」と捉えてください。`provideRouter()`は、こうした機能を`with〜`という関数で、必要な分だけ追加できる作りになっています。
 
 主な`with〜`機能には、次のようなものがあります。
 
 - **`withComponentInputBinding()`**: ルートパラメーターをComponentの入力に結びつけます。
 - **`withHashLocation()`**: URLを`/#/about`のようなハッシュ形式にします。
 - **`withInMemoryScrolling()`**: 画面遷移時のスクロール位置を制御します。
-- **`withPreloading()`**: 遅延読み込みするコードを、先読みします（第35章で扱います）。
+- **`withPreloading()`**: 遅延読み込みするコードを、先読みします（次章『ルーティング応用』で扱います）。
+
+### スクロール位置を復元する
+
+SPAには、見落とされがちな課題があります。長いページをスクロールして別のページへ移り、ブラウザの戻るボタンで戻ってきたとき、スクロール位置が先頭に戻ってしまうのです。従来のWebサイトなら、戻ると元の位置が保たれます。しかしSPAでは、Routerが画面を差し替えるだけなので、何も設定しなければスクロール位置は管理されません。
+
+この課題は、`withInMemoryScrolling()`で解決できます。
+
+```ts:src/app/app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(
+      routes,
+      withComponentInputBinding(),
+      withInMemoryScrolling({
+        scrollPositionRestoration: 'enabled',
+        anchorScrolling: 'enabled',
+      }),
+    ),
+  ],
+};
+```
+
+`scrollPositionRestoration: 'enabled'`は、戻る・進むの操作でスクロール位置を復元し、新しいページへ移るときは先頭へスクロールします。`anchorScrolling: 'enabled'`は、`/about#profile`のように末尾にアンカーの付いたURLへ遷移したとき、その`id`を持つ要素まで自動でスクロールさせます。どちらも既定では無効なので、必要に応じて明示的に有効にします。縦に長いページを持つアプリケーションでは、有効にしておくと利用者の体感が大きく改善します。
 
 ### RouterOutletで表示する
 
@@ -182,7 +208,7 @@ export class App {}
 
 `<router-outlet />`の位置に、現在のURLに対応するComponentが表示されます。URLが`/about`なら`About`が、`/`なら`Home`が、この位置に描かれます。ヘッダーの`<nav>`は`RouterOutlet`の外にあるので、ページを移っても残り続けます。これが、SPAで「共通部分は保ちつつ、一部だけ差し替える」という動きの正体です。
 
-なお、`RouterOutlet`や`routerLink`も、Standaloneの部品なので、使うComponentの`imports`に宣言します。第6章で学んだ`imports`の考え方が、ここでも通じます。
+なお、`RouterOutlet`や`routerLink`も、Standaloneの部品なので、使うComponentの`imports`に宣言します。『TypeScriptとComponentの基本』の章で学んだ`imports`の考え方が、ここでも通じます。
 
 ### 旧来のRouterModuleとの比較
 
@@ -206,10 +232,10 @@ export class AppRoutingModule {}
 
 ルートのアプリでは`RouterModule.forRoot(routes)`を、機能ごとのモジュールでは`RouterModule.forChild(routes)`を使い分ける必要がありました。専用のモジュール（`AppRoutingModule`）を作り、それをアプリのモジュールにimportする、という手順も要りました。
 
-現在の`provideRouter()`は、これをぐっと簡潔にします。専用のモジュールは不要で、`app.config.ts`に一行加えるだけです。`forRoot`と`forChild`の区別もありません。第7章で述べた「モジュールをimportする書き方から、`provide〜`関数を並べる書き方へ」という流れが、ルーティングにもはっきり表れています。機能ごとのルートも、後の章で見るように、ただの`Routes`配列として定義し、`loadChildren`で読み込むだけです。モジュールという中間層が消えたぶん、ルート定義とその読み込みの関係が、まっすぐ見通せるようになりました。
+現在の`provideRouter()`は、こうした手順を大幅に簡略化します。専用のモジュールは不要で、`app.config.ts`に一行加えるだけです。`forRoot`と`forChild`の区別もありません。Standalone Componentへの移行で確認した「モジュールをimportする書き方から、`provide〜`関数を並べる書き方へ」という流れが、ルーティングにもはっきり表れています。機能ごとのルートも、後の章で見るように、ただの`Routes`配列として定義し、`loadChildren`で読み込むだけです。モジュールという中間層が消えたぶん、ルート定義とその読み込みの関係が、まっすぐ見通せるようになりました。
 
 :::message
-既存プロジェクトの`RouterModule`ベースの設定も、そのまま動作します。Standaloneへの移行スキマティクス（第7章）を使うと、`provideRouter()`ベースへの変換も進められます。
+既存プロジェクトの`RouterModule`ベースの設定も、そのまま動作します。Standaloneへの移行スキマティクス（『TypeScriptとComponentの基本』の章）を使うと、`provideRouter()`ベースへの変換も進められます。
 :::
 
 ### よくあるつまずき
@@ -218,7 +244,6 @@ export class AppRoutingModule {}
 - **`imports`への宣言忘れ**: `RouterOutlet`・`routerLink`をテンプレートで使うには、Componentの`imports`への宣言が必要です。
 - **ワイルドカードの位置**: `path: '**'`は、必ず配列の最後に置きます。前方一致で先に評価されるため、途中に置くと、以降のルートが無視されます。
 - **ルートの順序**: Routesは上から順に照合され、最初に一致したものが使われます。より具体的なパスを先に、汎用的なパスを後に並べるのが原則です。順序を誤ると、意図しないルートに一致してしまいます。
-- **`routerLink`と`href`の混同**: 内部の遷移に`href`を使うと、ページ全体が再読み込みされ、SPAの利点が失われます。アプリ内の遷移は必ず`routerLink`を使います。
 
 ## ページ遷移とルートパラメーター
 
@@ -254,6 +279,17 @@ export class AppRoutingModule {}
 
 `/about`を表示しているあいだ、このリンクには`active`クラスが付きます。あとはCSSで`.active`のスタイルを定義すれば、現在地のリンクだけを強調できます。ナビゲーションメニューの「選択中」の表現に、そのまま使えます。
 
+ここでひとつ、`routerLink="/"`のようなトップページへのリンクには注意が必要です。`routerLinkActive`は既定で前方一致で判定するため、`/`はすべてのURLの先頭に一致します。その結果、どのページを開いていても、トップページへのリンクがactive扱いになってしまいます。
+
+これを防ぐには、`[routerLinkActiveOptions]`で完全一致を指定します。
+
+```html
+<a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">ホーム</a>
+<a routerLink="/about" routerLinkActive="active">概要</a>
+```
+
+`{ exact: true }`を付けると、URLがちょうど`/`のときだけactiveになります。ナビゲーションの先頭に置くトップページへのリンクでは、この指定をほぼ必ず使うことになります。
+
 ### プログラムから遷移する
 
 リンクだけでなく、処理の中からページを遷移させたいこともあります。「保存ボタンを押したら、保存してから一覧へ戻る」といった場面です。このときは、`Router`を注入し、その`navigate`メソッドを使います。
@@ -274,6 +310,33 @@ export class ProductEdit {
 ```
 
 `this.router.navigate(['/products'])`で、一覧ページへ遷移します。引数は`routerLink`と同じ配列形式です。値を含めるなら`['/products', id]`のように書きます。URL文字列をそのまま渡したい場合は、`navigateByUrl('/products')`も使えます。処理の流れの中で遷移を制御したいときは、この`Router`による方法を用います。
+
+`navigate()`は、第2引数に`NavigationExtras`というオプションを取り、遷移の細かな挙動を指定できます。
+
+```ts
+// NavigationExtras で遷移の挙動を指定する
+await this.router.navigate(['edit'], {
+  relativeTo: this.route,          // 現在のルートを基準にした相対遷移
+  queryParams: { tab: 'detail' },  // ?tab=detail を付ける
+  fragment: 'top',                 // 末尾に #top を付ける
+  replaceUrl: true,                // 履歴に積まず、現在のエントリーを置き換える
+  state: { from: 'list' },         // 履歴の state に任意のデータを載せる
+});
+```
+
+- **`relativeTo`**: `inject(ActivatedRoute)`で得たルートを渡すと、それを基準にした相対パスで遷移先を解決します。指定しなければ、ルートからの絶対パスとして扱われます。
+- **`queryParams`・`fragment`**: URLのクエリパラメーター（`?`以降）とフラグメント（`#`以降）を付けます。
+- **`replaceUrl`**: `true`にすると、履歴に新しいエントリーを積まず、現在のエントリーを置き換えます。ログイン後のリダイレクトなど、戻るボタンで戻ってほしくない遷移に向きます。
+- **`state`**: 履歴の`state`に任意のデータを載せます。遷移先では`history.state`から読み取れます。
+
+`navigate()`の戻り値は`Promise<boolean>`です。この真偽値は遷移の結果を表し、`true`は遷移が完了したこと、`false`はGuardなどによって遷移が中断されたことを意味します。遷移できたかどうかで後続の処理を分けたいときは、この戻り値を確認します。
+
+```ts
+const success = await this.router.navigate(['/products']);
+if (!success) {
+  // Guard などで遷移が拒否されたときの処理
+}
+```
 
 ### ルートパラメーターを定義する
 
@@ -309,7 +372,7 @@ export class ProductDetail {
 }
 ```
 
-`id = input.required<string>()`と宣言するだけで、URLの`:id`の値が`id`に入ります。パラメーター名（`id`）と入力名（`id`）を合わせるのがポイントです。しかも入力はSignalなので、`computed()`と組み合わせれば、URLが変わるたびに商品が自動で切り替わります。第18章で学んだ入力の仕組みが、ルートパラメーターにもそのまま活きるのです。購読のコードは一切要りません。これが、現在もっとも簡潔な受け取り方です。
+`id = input.required<string>()`と宣言するだけで、URLの`:id`の値が`id`に入ります。パラメーター名（`id`）と入力名（`id`）を合わせるのがポイントです。しかも入力はSignalなので、`computed()`と組み合わせれば、URLが変わるたびに商品が自動で切り替わります。『データフローとinput()・output()』の章で学んだ入力の仕組みが、ルートパラメーターにもそのまま活きるのです。購読のコードは一切要りません。これが、現在もっとも簡潔な受け取り方です。
 
 ### パラメーターをActivatedRouteで受け取る
 
@@ -343,6 +406,37 @@ URLには、`:id`のようなパスパラメーターのほかに、`?keyword=an
 ```html
 <!-- クエリパラメーター付きのリンク -->
 <a [routerLink]="['/search']" [queryParams]="{ keyword: 'angular' }">検索</a>
+```
+
+受け取り側は、`ActivatedRoute`の`queryParamMap`を購読して読み取ります。
+
+```ts:src/app/search-page.ts
+import { Component, inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+
+@Component({ selector: 'app-search-page', template: `...` })
+export class SearchPage {
+  private readonly route = inject(ActivatedRoute);
+
+  constructor() {
+    this.route.queryParamMap.subscribe((params) => {
+      const keyword = params.get('keyword') ?? '';
+      const page = Number(params.get('page') ?? '1');
+      // keyword・page を使って検索する
+    });
+  }
+}
+```
+
+パスパラメーターと同じく、`withComponentInputBinding()`を設定していれば、クエリパラメーターもComponentの`input()`へ結びつきます。`keyword = input<string>('')`と宣言すれば、`?keyword=angular`の値がそのまま`keyword()`で読めます。購読を書かずに済むぶん、こちらのほうが簡潔です。
+
+遷移時にクエリパラメーターをどう扱うかは、`queryParamsHandling`で制御します。既定では、別のページへ遷移すると、それまでのクエリパラメーターは破棄されます。検索結果の一覧から詳細へ移り、また一覧へ戻るときに検索条件を残したい、といった場面では、この挙動を変えます。
+
+- **`merge`**: 遷移先で指定したクエリパラメーターを、現在のものにマージします。一部だけ上書きしたいときに使います。
+- **`preserve`**: 現在のクエリパラメーターをそのまま引き継ぎます（遷移先での指定は無視されます）。
+
+```html
+<a [routerLink]="['/products', product.id]" queryParamsHandling="preserve">詳細</a>
 ```
 
 パスパラメーターが「どのリソースか」を表すのに対し、クエリパラメーターは「どう絞り込むか・並べるか」といった、表示の調整に向きます。用途に応じて使い分けます。たとえば、商品`42`の詳細はパスパラメーター（`/products/42`）で、その一覧の検索条件やページ番号はクエリパラメーター（`/products?keyword=本&page=2`）で表す、という具合です。パスパラメーターは「そのページが何を指すか」の一部であり、クエリパラメーターは「同じページの見せ方の違い」だと捉えると、迷いにくくなります。

@@ -58,7 +58,7 @@ TypeScriptについては、Angularを書くうえで必要な範囲を「TypeSc
 - ServiceとDependency Injection
 - `inject()`とProvider・Injectorの階層
 - 変更検知の仕組み（Default・OnPush・Zone.js）
-- Signalsとzoneless
+- SignalsとZoneless
 - Routerの基礎
 - ルーティング応用（ネスト・Lazy Loading・Guard）
 - RxJSの基礎（Observable・購読・Operator）

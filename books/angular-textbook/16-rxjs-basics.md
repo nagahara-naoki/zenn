@@ -101,7 +101,7 @@ fromEvent(button, 'click');     // ボタンのクリックを流し続ける
 
 `Promise`は、値を1回だけ返して終わります。一度解決したら、それきりです。一方、Observableは、値を何度でも流せます。1回で終わる通信にも使えますが、クリックの連続や、時間ごとの更新のように、複数回の値にも対応できます。この「複数回」を扱える点が、Observableの大きな強みです。
 
-もうひとつの違いが、キャンセルです。`Promise`は、いったん始まると途中で止められません。Observableは、`unsubscribe`で途中でキャンセルできます。検索のような場面で古い通信を打ち切れるのは、この性質のおかげです（第39章で扱います）。さらに、`map`や`filter`といった豊富なOperatorで加工できる点も、`Promise`にはない利点です。1回きりの単純な非同期なら`Promise`でも十分ですが、Angularが扱う多様な非同期には、Observableのほうが適しているのです。
+もうひとつの違いが、キャンセルです。`Promise`は、いったん始まると途中で止められません。Observableは、`unsubscribe`で途中でキャンセルできます。検索のような場面で古い通信を打ち切れるのは、この性質のおかげです（この章の後半で扱います）。さらに、`map`や`filter`といった豊富なOperatorで加工できる点も、`Promise`にはない利点です。1回きりの単純な非同期なら`Promise`でも十分ですが、Angularが扱う多様な非同期には、Observableのほうが適しているのです。
 
 | 観点 | Promise | Observable |
 |---|---|---|
@@ -116,18 +116,18 @@ RxJSが体現しているのは、リアクティブプログラミングとい�
 
 従来の書き方では、「クリックされたら、この変数を更新して、この関数を呼んで……」と、起きたことに対する手続きを、ひとつずつ書いていました。リアクティブなスタイルでは、「クリックの流れを、こう加工して、こう表示する」と、流れの変換として宣言的に書きます。命令を並べるのではなく、データの流れとその変換を記述するのです。
 
-この考え方は、第6部で学んだSignalとも通じます。Signalも、「値が変わったら、それに依存する計算が自動で反応する」という点で、リアクティブでした。RxJSとSignalは、どちらもリアクティブの仲間です。違いは、Signalが「現在の値」に主眼を置くのに対し、RxJSは「時間をかけて流れる値の連なり」と、その細かな時間的制御に強い点です。この2つの関係は、第41章で詳しく扱います。
+この考え方は、『SignalsとZoneless』の章で学んだSignalsとも通じます。Signalsも、「値が変わったら、それに依存する計算が自動で反応する」という点で、リアクティブでした。RxJSとSignalsは、どちらもリアクティブの仲間です。違いは、Signalsが「現在の値」に主眼を置くのに対し、RxJSは「時間をかけて流れる値の連なり」と、その細かな時間的制御に強い点です。この2つの関係は、次章で詳しく扱います。
 
 ### AngularのどこでRxJSに出会うか
 
 RxJSは、Angularの随所で使われています。すでに本書でも、いくつか登場していました。
 
-- **HttpClient**（第9部）: サーバーへの要求の結果は、Observableで返ってきます
-- **Router**（第7部）: `ActivatedRoute`の`paramMap`は、Observableでした
-- **Forms**（第9部）: フォームの値の変化は、`valueChanges`というObservableで受け取れます
-- **`async`パイプ**（第16章）: Observableをテンプレートで購読する仕組みでした
+- **HttpClient**（『HTTP通信』の章）: サーバーへの要求の結果は、Observableで返ってきます
+- **Router**（『Routerの基礎』の章）: `ActivatedRoute`の`paramMap`は、Observableでした
+- **Forms**（『Forms』の章）: フォームの値の変化は、`valueChanges`というObservableで受け取れます
+- **`async`パイプ**（『Directiveの実装とPipe』の章）: Observableをテンプレートで購読する仕組みでした
 
-つまり、Angularを使ううえで、RxJSは避けて通れません。これらの機能を深く使うには、Observableの理解が土台になります。次章以降で、その扱い方を具体的に学んでいきましょう。
+つまり、Angularを使ううえで、RxJSは避けて通れません。これらの機能を深く使うには、Observableの理解が土台になります。次の節から、その扱い方を具体的に学んでいきましょう。
 
 ### よくあるつまずき
 
@@ -137,7 +137,7 @@ RxJSは、Angularの随所で使われています。すでに本書でも、い
 
 ## SubscriptionとObservableのライフサイクル
 
-前節で、Observableは`subscribe`されて初めて動き出すことを学びました。この節では、その`subscribe`が返すSubscription（購読）と、購読を適切に終わらせるライフサイクル管理を扱います。地味なテーマに見えますが、ここを疎かにすると、メモリリークという厄介な問題を引き起こします。RxJSを安全に使うための、重要な回です。
+前節で、Observableは`subscribe`されて初めて動き出すことを学びました。この節では、その`subscribe`が返すSubscription（購読）と、購読を適切に終わらせるライフサイクル管理を扱います。地味なテーマに見えますが、ここを疎かにすると、メモリリークという厄介な問題を引き起こします。RxJSを安全に使ううえで欠かせない知識です。
 
 購読には、始まりと終わりがあります。`subscribe`で始まり、`unsubscribe`で終わります。問題は、終わらせるのを忘れると、Observableが値を流し続け、それを受け取る処理も動き続けてしまうことです。とくに、破棄されたはずのComponentに紐づく購読が生き残ると、無駄な処理やメモリの浪費につながります。この節では、その仕組みと、モダンAngularでの安全な後始末の方法を学びます。
 
@@ -164,7 +164,7 @@ subscription.unsubscribe();
 
 具体的に考えてみましょう。あるComponentが、`interval`を購読して、1秒ごとに何かを処理するとします。このComponentが画面から消え、破棄されたとします。しかし、購読を解除していないと、`interval`は値を流し続け、破棄されたComponentの処理が、なおも実行され続けます。Componentは見えなくなったのに、その一部が裏で動き続けているのです。
 
-このようなComponentが、画面遷移のたびに増えていくと、動き続ける購読がどんどん積み重なります。やがて、アプリは重くなり、不可解な動作を示すようになります。第21章で`ngOnDestroy`による後始末の重要性に触れましたが、購読の解除は、その代表例です。
+このようなComponentが、画面遷移のたびに増えていくと、動き続ける購読がどんどん積み重なります。やがて、アプリは重くなり、不可解な動作を示すようになります。『双方向バインディングとライフサイクル』の章で`ngOnDestroy`による後始末の重要性に触れましたが、購読の解除は、その代表例です。
 
 ### Cold ObservableとHot Observable
 
@@ -174,7 +174,22 @@ Cold Observableは、購読されるたびに、新しく値の生成を始め�
 
 Hot Observableは、購読者の有無にかかわらず値が流れており、複数の購読者がその同じ流れを共有します。たとえば、ボタンのクリックイベントはHotで、誰が購読していようといまいと、クリックは起きています。購読者は、途中から同じ流れに加わる形です。共有された1本の管を、複数人がのぞき込むイメージです。
 
-この違いは、「購読するたびに処理が繰り返されるのか、共有されるのか」に影響します。意図せず通信が何度も走る、といった問題は、Cold Observableの性質を理解していないことが原因のことがあります。まずは「HTTPはCold（購読ごとに走る）」という代表例を押さえておけば十分です。
+この違いは、「購読するたびに処理が繰り返されるのか、共有されるのか」に影響します。意図せず通信が何度も走る、といった問題は、Cold Observableの性質を理解していないことが原因のことがあります。まずは「HTTPはCold（購読ごとに走る）」という代表例を押さえておきましょう。
+
+このCold Observableの「購読ごとに走る」性質は、ときに困った結果を招きます。ひとつのHTTP要求の結果を、テンプレートの複数箇所で`async`パイプに通すと、その数だけ通信が発生してしまいます。同じデータが欲しいだけなのに、通信が2回も3回も走るのは無駄です。
+
+この重複を防ぐのが、`shareReplay`です。`shareReplay`は、Cold Observableを共有された流れに変え、1回の実行結果を複数の購読者に配ります。あとから購読した相手にも、直近の値を再生（replay）して渡します。
+
+```ts
+import { shareReplay } from 'rxjs';
+
+// このuser$は何回購読されても、通信は1回だけ
+readonly user$ = this.api.getUser(id).pipe(
+  shareReplay({ bufferSize: 1, refCount: true }),
+);
+```
+
+`bufferSize: 1`は「直近の1件を覚えておき、遅れて購読した相手にも渡す」指定です。`refCount: true`は「購読者が全員いなくなったら共有をリセットする」指定で、これがないと購読者がゼロになっても内部の購読が残り続けます。HTTPの結果のように「1回取得して使い回したい」値には、`shareReplay({ bufferSize: 1, refCount: true })`が定番の組み合わせです。値を共有するだけで再生が不要なら、`share`を使います。
 
 ### 手動での購読解除は面倒
 
@@ -194,6 +209,35 @@ export class Dashboard implements OnDestroy {
 
 購読が増えるほど、この後始末は長くなり、書き忘れのリスクも高まります。そこで、モダンAngularには、これを自動化する、より良い方法が用意されています。
 
+### takeUntilと破棄通知Subject（旧定番パターン）
+
+`takeUntilDestroyed()`が登場するAngular 16より前に広く使われていたのが、`takeUntil`と破棄を知らせる`Subject`を組み合わせるパターンです。既存のコードで頻繁に見かけるので、読めるようにしておきましょう。
+
+```ts:旧APIの書き方（takeUntilDestroyed導入前）
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
+import { DataService } from './data-service';
+
+@Component({ selector: 'app-dashboard', template: `...` })
+export class Dashboard implements OnInit, OnDestroy {
+  private readonly service = inject(DataService);
+  private readonly destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    this.service.data$
+      .pipe(takeUntil(this.destroy$)) // destroy$が値を流すまで購読を続ける
+      .subscribe((data) => { /* dataを使った処理 */ });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();     // 破棄を通知し、購読をまとめて解除する
+    this.destroy$.complete();
+  }
+}
+```
+
+`takeUntil`は、渡したObservable（ここでは`destroy$`）が値を流した時点で購読を打ち切るOperatorです。`ngOnDestroy`で`destroy$.next()`を呼べば、Componentが持つ購読をまとめて解除できます。購読が何本あっても`.pipe(takeUntil(this.destroy$))`を挟むだけで済むため、`unsubscribe`を一つずつ書くより安全でした。とはいえ、`destroy$`の宣言と`ngOnDestroy`の記述は依然として必要で、書き忘れの余地は残ります。`takeUntilDestroyed()`は、この定番パターンをAngular側に取り込み、さらに簡潔にしたものです。
+
 ### takeUntilDestroyedによる自動解除
 
 もっとも手軽なのが、`takeUntilDestroyed()`です。これはAngularがrxjs-interopとして提供する演算子で、Componentなどが破棄されるタイミングで、購読を自動的に解除します。Angular 16で導入されました。
@@ -201,6 +245,7 @@ export class Dashboard implements OnDestroy {
 ```ts:src/app/dashboard.ts
 import { Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DataService } from './data-service';
 
 @Component({ selector: 'app-dashboard', template: `...` })
 export class Dashboard {
@@ -220,7 +265,7 @@ export class Dashboard {
 
 ### asyncパイプがもっとも簡単
 
-そもそも、可能な場面では、`subscribe`を自分で書かないのが、もっとも安全です。第16章で学んだ`async`パイプを使えば、購読も解除もAngularが引き受けてくれます。
+そもそも、可能な場面では、`subscribe`を自分で書かないのが、もっとも安全です。『Directiveの実装とPipe』の章で学んだ`async`パイプを使えば、購読も解除もAngularが引き受けてくれます。
 
 ```html
 <!-- asyncパイプ：購読も解除も自動 -->
@@ -251,14 +296,14 @@ this.api.getData()
 
 ### 状態をSignalで持てば購読管理は減る
 
-購読管理の話をしてきましたが、そもそも手動の購読を減らすことが、根本的な対策になります。第6部で学んだSignalや、それと連携する`toSignal()`（第41章で詳しく扱います）を使えば、購読と解除をAngularに任せられます。
+購読管理の話をしてきましたが、そもそも手動の購読を減らすことが、根本的な対策になります。『SignalsとZoneless』の章で学んだSignalsや、それと連携する`toSignal()`（次章で詳しく扱います）を使えば、購読と解除をAngularに任せられます。
 
 つまり、購読管理の悩みの多くは、「手動の`subscribe`をできるだけ書かない」ことで避けられます。表示は`async`パイプかSignalに任せ、どうしても手動購読が必要なときだけ`takeUntilDestroyed()`を添える。この方針を徹底すれば、メモリリークの心配は、ほとんどしなくて済むようになります。RxJSの購読管理は、かつてAngular開発の悩みの種でしたが、モダンな道具立てによって、大きく軽減されているのです。
 
 ### よくあるつまずき
 
 - **購読解除の書き忘れ**: 手動`subscribe`で解除を忘れると、メモリリークの原因になります。`takeUntilDestroyed()`や`async`パイプで自動化するのが安全です。
-- **`subscribe`の中で`subscribe`する**: 購読の中でさらに購読すると（ネスト）、管理が難しくなります。次章のOperator（`switchMap`など）を使えば、平らに書けます。
+- **`subscribe`の中で`subscribe`する**: 購読の中でさらに購読すると（ネスト）、管理が難しくなります。次の節のOperator（`switchMap`など）を使えば、平らに書けます。
 - **何でも手動`subscribe`にする**: 表示目的なら`async`パイプで足ります。手動購読は、副作用が必要な場面に絞ります。
 - **`takeUntilDestroyed()`を注入コンテキスト外で使う**: 引数なしで使う場合は、コンストラクターなどの注入コンテキストで呼ぶ必要があります。それ以外の場所で使うには、`DestroyRef`を渡します。
 
@@ -283,7 +328,16 @@ source$
   .subscribe((value) => console.log(value));
 ```
 
-`pipe`の中にOperatorを並べると、値は上から順に、各Operatorを通っていきます。この例では、まず`filter`で偶数だけを残し、次に`map`で10倍しています。第16章のPipe（縦棒`|`）と考え方が似ていますが、こちらはObservableに対する変換です。加工の段階を、上から順に読めるのが特徴です。
+`pipe`の中にOperatorを並べると、値は上から順に、各Operatorを通っていきます。この例では、まず`filter`で偶数だけを残し、次に`map`で10倍しています。『Directiveの実装とPipe』の章のPipe（縦棒`|`）と考え方が似ていますが、こちらはObservableに対する変換です。加工の段階を、上から順に読めるのが特徴です。
+
+次の図は、上のコード例で値が発生源から購読者へ流れ、途中の各Operatorで絞り込みや変換を受ける様子を表します。矢印のラベルは、その地点を流れる値の例です。
+
+```mermaid
+flowchart LR
+  src["発生源のObservable"] -->|"1 2 3 4"| f["filter で偶数だけ通す"]
+  f -->|"2 4"| m["map で10倍する"]
+  m -->|"20 40"| sub["購読者へ"]
+```
 
 ### 値を変換・絞り込む基本Operator
 
@@ -348,7 +402,45 @@ const results$ = searchInput$.pipe(
 );
 ```
 
+次の図は、`switchMap`が新しい検索語を受け取るたびに、進行中の通信を打ち切って新しい通信へ乗り換える様子を、時間の流れに沿って表します。
+
+```mermaid
+sequenceDiagram
+  participant u as "検索入力"
+  participant s as "switchMap"
+  participant api as "検索API"
+  u->>s: 検索語 cat
+  s->>api: cat で通信を開始
+  u->>s: 検索語 cats
+  s-->>api: cat の通信を打ち切る
+  s->>api: cats で通信を開始
+  api-->>s: cats の結果を返す
+  s-->>u: 最新の結果だけを流す
+```
+
 使い分けの目安は、こうです。検索や最新の状態取得のように「最新だけが欲しい」なら`switchMap`。すべての要求を確実に処理したいなら`concatMap`（順番に）か`mergeMap`（並行に）。二重送信を防ぎたい保存ボタンのような場面は`exhaustMap`。まずは`switchMap`を軸に覚え、必要に応じて使い分けます。
+
+`exhaustMap`は、実行中の処理が終わるまで、新しい要求を捨てます。保存ボタンの二重送信を防ぐのに向いています。連打されても、処理中のクリックは無視されるため、同じ保存が二重に走りません。
+
+```ts
+import { exhaustMap } from 'rxjs';
+
+// 保存ボタンの連打：処理中のクリックは無視する
+saveClicks$.pipe(
+  exhaustMap(() => this.api.save(this.form.value)),
+);
+```
+
+`concatMap`は、前の処理の完了を待ってから次を始めるため、処理の順序が保証されます。並び替えの反映のように、送った順にサーバーへ届けたい更新に向いています。
+
+```ts
+import { concatMap } from 'rxjs';
+
+// 並び替え操作を、発生した順にサーバーへ反映する
+reorderActions$.pipe(
+  concatMap((action) => this.api.updateOrder(action)),
+);
+```
 
 ### エラーを扱うOperator
 
@@ -365,7 +457,20 @@ this.api.getUser(id).pipe(
 );
 ```
 
-エラーが起きると、そのObservableは通常そこで終わってしまいます。`catchError`で捉え、`of(null)`のような代わりの値を返せば、流れを止めずに、エラー時の振る舞いを定義できます。通信の失敗に備えて、この`catchError`をよく使います。エラー処理の詳しい設計は、第9部のHTTP通信でも扱います。
+エラーが起きると、そのObservableは通常そこで終わってしまいます。`catchError`で捉え、`of(null)`のような代わりの値を返せば、流れを止めずに、エラー時の振る舞いを定義できます。通信の失敗に備えて、この`catchError`をよく使います。
+
+一時的な失敗には、`retry`で再試行するという手もあります。`retry({ count: 3, delay: 1000 })`と書けば、失敗しても1秒あけて最大3回まで再試行します。ネットワークの一時的な不調などは、これで乗り切れることがあります。
+
+```ts
+import { retry, catchError, of } from 'rxjs';
+
+this.api.getUser(id).pipe(
+  retry({ count: 3, delay: 1000 }), // 失敗したら1秒あけて最大3回まで再試行
+  catchError(() => of(null)),       // それでも駄目なら代わりの値へ
+);
+```
+
+再試行してよいのは、同じ要求を繰り返しても副作用がない処理に限ります。取得（GET）は安全ですが、登録や更新のように状態を変える要求を無条件に再試行すると、二重登録などの問題を招きます。エラー処理の詳しい設計は、『HTTP通信』の章でも扱います。
 
 ### 複数のObservableを組み合わせる
 
@@ -389,15 +494,30 @@ forkJoin({ user: this.api.getUser(id), orders: this.api.getOrders(id) });
 
 `combineLatest`は「最新の組み合わせ」、`forkJoin`は「全部そろうのを待つ」と覚えると使い分けやすくなります。複数の非同期を扱うとき、これらが役立ちます。
 
+ただし、この2つには注意したい落とし穴があります。
+
+`combineLatest`は、すべてのソースが最低1回値を流すまで、何も発行しません。1つでも初期値を流さないObservableが混じっていると、いつまでも結果が出ないように見えます。初期値が必要なときは、`startWith`で最初の値を補います。
+
+```ts
+import { combineLatest, startWith } from 'rxjs';
+
+combineLatest([
+  this.filter$.pipe(startWith('all')),  // 初期値を与えて即座に発行させる
+  this.sort$.pipe(startWith('name')),
+]);
+```
+
+`forkJoin`にも2つの癖があります。1つは、どれか1つでもエラーになると、全体がエラーになる点です。もう1つは、すべてのソースが完了（complete）しないと発行しない点です。`interval`やクリックの流れのように完了しないObservableを渡すと、いつまでも発火しません。`forkJoin`は「完了する複数の通信をまとめて待つ」用途に限って使うのが安全です。
+
 ### 検索機能を組み立てる
 
 学んだOperatorを組み合わせて、実用的な検索機能を作ってみます。入力を制御するOperatorと、高階Operator、エラー処理を、ひとつの流れにまとめます。
 
-```ts:src/app/product-search.ts
+```ts
 import { debounceTime, distinctUntilChanged, switchMap, catchError, of } from 'rxjs';
 
-// searchInput$：検索語が流れてくるObservable
-const results$ = searchInput$.pipe(
+// searchInput$：検索語が流れてくるObservable。this.apiはHttpClientを包んだService
+const results$ = this.searchInput$.pipe(
   debounceTime(300),           // 入力が落ち着くまで待つ
   distinctUntilChanged(),      // 同じ語の再検索を防ぐ
   switchMap((keyword) =>       // 語ごとに通信、前のは打ち切る

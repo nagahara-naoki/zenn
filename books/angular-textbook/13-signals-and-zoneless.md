@@ -1,14 +1,16 @@
 ---
-title: "Signalsとzoneless"
+title: "SignalsとZoneless"
 ---
 
-この章では、モダンAngularの状態管理の中心であるSignalsを体系的に学び、それを土台にZone.jsを取り除くzonelessへの転換を扱います。
+この章では、モダンAngularの状態管理の中心であるSignalsを体系的に学び、それを土台にZone.jsを取り除くZonelessへの転換を扱います。
 
 :::message
 **この章で学ぶこと**
 
 - `signal()`による書き換え可能な状態
 - `computed()`による派生状態
+- `effect()`による副作用と`untracked()`での依存制御
+- `linkedSignal()`による書き込み可能な派生状態
 - ZonelessとZone.js方式の違い
 - Zonelessで変更検知が走る条件
 :::
@@ -17,11 +19,22 @@ title: "Signalsとzoneless"
 
 ここまで、変更検知の仕組みと、それを支えてきたZone.jsを見てきました。この節では、モダンAngularの状態管理の中心にあるSignalsを、体系的に学びます。これまで`signal()`を部分的に使ってきましたが、ここで`signal()`・`computed()`・`effect()`という3つの柱を、その関係とともに整理します。
 
-Signalsは、Angular 20（2025年）で安定版になった、リアクティブな状態管理の仕組みです。「リアクティブ」とは、値の変化に、それに依存する処理が自動で反応することを指します。Signalの最大の特長は、値の変化と、その変化がどこに影響するかを、Angularが正確に追跡できる点です。この追跡こそが、前章までで見た変更検知の効率化と、次章のZonelessを可能にします。3本柱を理解すれば、モダンAngularの状態管理の全体像がつかめます。
+Signalsは、Angular 20（2025年）で安定版になった、リアクティブな状態管理の仕組みです。「リアクティブ」とは、値の変化に、それに依存する処理が自動で反応することを指します。Signalの最大の特長は、値の変化と、その変化がどこに影響するかを、Angularが正確に追跡できる点です。この追跡こそが、前章までで見た変更検知の効率化と、本章の後半で扱うZonelessを可能にします。3本柱を理解すれば、モダンAngularの状態管理の全体像がつかめます。
+
+次の図は、3本柱の関係と、それらが最終的にテンプレートの表示につながる依存の流れを表します。ソースとなる`signal()`が変わると、それに依存する`computed()`が再計算され、`effect()`が実行され、テンプレートの表示が更新されます。
+
+```mermaid
+flowchart LR
+  src(["ソースのsignal"]) -->|"変更を通知"| comp(["computed 派生値"])
+  comp -->|"再計算"| view["テンプレート view"]
+  comp -->|"再計算"| eff["effect 副作用"]
+  src -.->|"直接読む"| view
+  src -.->|"直接読む"| eff
+```
 
 ### signal() — 状態の基本単位
 
-`signal()`は、値を保持する、もっとも基本的なSignalです。第6章から使ってきたとおり、値を関数呼び出しの形で読み取り、`set()`や`update()`で書き換えます。
+`signal()`は、値を保持する、もっとも基本的なSignalです。『TypeScriptとComponentの基本』の章以降で使ってきたとおり、値を関数呼び出しの形で読み取り、`set()`や`update()`で書き換えます。
 
 ```ts:src/app/counter.ts
 import { Component, signal } from '@angular/core';
@@ -44,9 +57,20 @@ export class Counter {
 
 Signalが特別なのは、「読まれた場所」をAngularが記録することです。テンプレートで`count()`と読めば、Angularは「このテンプレートは`count`に依存している」と知ります。だからこそ、`count`が変わったときに、そのテンプレートだけを的確に更新できるのです。ただの変数ではなく、変化を通知できる値、それがSignalです。
 
+Signalには、値が本当に変わったときだけ通知する仕組みもあります。`set()`で渡した値が現在値と等しければ、依存する処理に通知は飛ばず、再描画も再計算も起きません。等値かどうかの判定には、既定で`Object.is`が使われます。数値や文字列などのプリミティブなら、同じ値を`set()`しても何も起こりません。
+
+一方、オブジェクトや配列は、既定の`Object.is`が参照の同一性で比べるため、中身が同じでも別のインスタンスなら「変わった」とみなされます。中身で比べたいときは、`equal`オプションに判定関数を渡します。
+
+```ts:src/app/user-store.ts
+import { signal } from '@angular/core';
+
+// id が同じなら同値とみなし、余計な通知を抑える
+const user = signal({ id: 1, name: 'Alice' }, { equal: (a, b) => a.id === b.id });
+```
+
 ### computed() — 派生する状態
 
-`computed()`は、ほかのSignalから計算して求まる、派生的なSignalを作ります。第18章で入力から派生値を作るのに使ったものです。
+`computed()`は、ほかのSignalから計算して求まる、派生的なSignalを作ります。『データフローとinput()・output()』の章で入力から派生値を作るのに使ったものです。
 
 ```ts:src/app/cart.ts
 import { Component, computed, signal } from '@angular/core';
@@ -104,6 +128,56 @@ effect((onCleanup) => {
 
 たとえば、「`price`から`total`を求めたい」なら`computed()`です。これを`effect()`の中で`this.total.set(...)`と書くのは、遠回りで、間違いのもとになります。`effect()`が向くのは、`computed()`では表せない、ログ出力や外部APIの呼び出し、DOMの直接操作といった副作用に限られます。「値の派生は`computed()`、外界への作用は`effect()`」という切り分けを、原則にしてください。
 
+### linkedSignal() — 書き込み可能な派生状態
+
+`computed()`は読み取り専用でした。ところが実務では、「ソースから導いた初期値を持ちつつ、ユーザーの操作でも書き換えたい」状態がしばしば必要になります。たとえば、選択肢の一覧を入力で受け取り、既定では先頭を選んでおくものの、ユーザーは選び直せる、というセレクトボックスです。
+
+これを`signal()`だけで作ると、選択肢が入れ替わっても選択が古いまま残ります。かといって`computed()`にすると、導いた値をユーザーが上書きできません。この隙間を埋めるのが、Angular 19で導入された`linkedSignal()`です。ソースが変わればリセットされ、それでいて`set()`や`update()`で書き換えもできる、書き込み可能な派生状態を作ります。
+
+```ts:src/app/shipping-selector.ts
+import { Component, input, linkedSignal } from '@angular/core';
+
+@Component({ selector: 'app-shipping-selector', template: `...` })
+export class ShippingSelector {
+  readonly options = input<string[]>([]);
+
+  // options が変わると先頭にリセット。set() でユーザーの選択も反映できる
+  protected readonly selected = linkedSignal(() => this.options()[0]);
+
+  choose(option: string): void {
+    this.selected.set(option);
+  }
+}
+```
+
+単純形は、`computed()`と同じように計算関数を渡します。違いは、結果を`set()`で上書きできる点です。ソース（ここでは`options()`）が変わるたびに計算関数が再実行され、値がリセットされます。
+
+上書きした値を、ソースが変わっても可能なかぎり保ちたい場合は、`source`と`computation`を分けて渡す発展形を使います。`computation`は、新しいソース値と直前の状態`previous`を受け取ります。`previous`は、直前のソース値`previous.source`と直前の値`previous.value`を持ちます。
+
+```ts:src/app/shipping-selector.ts
+protected readonly selected = linkedSignal({
+  source: this.options,
+  computation: (options, previous) =>
+    // 直前の選択が新しい選択肢にも残っていれば維持し、なければ先頭に戻す
+    previous && options.includes(previous.value) ? previous.value : options[0],
+});
+```
+
+初回は`previous`が`undefined`なので、先頭が選ばれます。以降は、ユーザーが選んだ値が新しい選択肢にも含まれていればそれを保ち、消えていれば先頭に戻します。「入力に連動してリセットされるが、ユーザー操作でも書き換えたい」状態を、素直に表現できます。
+
+### 状態を扱う4つのAPIの使い分け
+
+状態を扱うAPIがそろったので、選び方を整理します。迷ったときは、扱う状態の性質から次のように決められます。
+
+| 状態の性質 | 使うAPI |
+|---|---|
+| 大もとの状態。自分で読み書きする | `signal()` |
+| ほかのSignalから導く、読み取り専用の値 | `computed()` |
+| ソースに連動してリセットしつつ、書き換えもしたい値 | `linkedSignal()` |
+| Angularの外の世界への作用（ログ・DOM操作・保存など） | `effect()` |
+
+読み取り専用の派生は`computed()`、書き込み可能な派生は`linkedSignal()`、外界への副作用だけを`effect()`に任せる、という切り分けが基本です。値から値を導く処理を`effect()`で書かずに済ませることが、見通しのよい状態設計につながります。
+
 ### untracked() — 依存から外す
 
 `effect()`や`computed()`の中で、あるSignalの値は読みたいが、その変化には反応させたくない、という場面があります。そのときに使うのが`untracked()`です。
@@ -121,9 +195,9 @@ effect(() => {
 
 3本柱を押さえたうえで、前章までとのつながりを確認します。SignalがただのリアクティブAPIにとどまらないのは、変更検知と直結しているからです。
 
-テンプレートでSignalを読むと、Angularは「このビューはこのSignalに依存している」と記録します。そのSignalが`set()`や`update()`で変わると、Angularは依存しているビューに「更新が必要だ」と印を付けます。これは、第27章で見たOnPushの`markForCheck()`が、Signalによって自動で行われるようなものです。開発者が明示的に更新を要求しなくても、Signalの変化が、そのまま画面更新の合図になるのです。
+テンプレートでSignalを読むと、Angularは「このビューはこのSignalに依存している」と記録します。そのSignalが`set()`や`update()`で変わると、Angularは依存しているビューに「更新が必要だ」と印を付けます。これは、前章で見たOnPushの`markForCheck()`が、Signalによって自動で行われるようなものです。開発者が明示的に更新を要求しなくても、Signalの変化が、そのまま画面更新の合図になるのです。
 
-この「Signalの変化が変更検知の起点になる」性質は、決定的な意味を持ちます。これまで変更検知の起点はZone.jsでしたが、Signalがあれば、Zone.jsに頼らずとも「いつ・どこを更新すべきか」がわかります。前章で見たZone.jsの課題を、Signalが根本から解消する道筋が、ここに見えてきます。それが、次章のZonelessです。
+この「Signalの変化が変更検知の起点になる」性質は、決定的な意味を持ちます。これまで変更検知の起点はZone.jsでしたが、Signalがあれば、Zone.jsに頼らずとも「いつ・どこを更新すべきか」がわかります。前章で見たZone.jsの課題を、Signalが根本から解消する道筋が、ここに見えてきます。それが、本章の次の節で扱うZonelessです。
 
 ### よくあるつまずき
 
@@ -134,19 +208,29 @@ effect(() => {
 
 ### Signalとテンプレートの相性
 
-最後に、Signalがテンプレートといかに自然になじむかを確認します。テンプレートでは、Signalを`count()`と読むだけで、その値の変化が自動的に表示へ反映されます。第16章で触れたPipeやAsyncPipeと違い、Signalの読み取りには特別な記法も購読の管理も要りません。`computed()`で導いた値も、同じように`total()`と読むだけです。状態をSignalで組み立てておけば、テンプレートは「必要な値を読む」だけで済み、更新の仕組みを意識せずに書けます。この素直さが、Signalファーストで設計する大きな動機になります。
+最後に、Signalがテンプレートといかに自然になじむかを確認します。テンプレートでは、Signalを`count()`と読むだけで、その値の変化が自動的に表示へ反映されます。『Directiveの実装とPipe』の章で触れたPipeやAsyncPipeと違い、Signalの読み取りには特別な記法も購読の管理も要りません。`computed()`で導いた値も、同じように`total()`と読むだけです。状態をSignalで組み立てておけば、テンプレートは「必要な値を読む」だけで済み、更新の仕組みを意識せずに書けます。この素直さが、Signalファーストで設計する大きな動機になります。
 
 ## NgZoneからSignals・Zonelessへ
 
-第6部の締めくくりとして、変更検知の大きな転換点であるZonelessを学びます。第28章で、Zone.jsが変更検知を起動していたこと、そしてその課題を見ました。第29章では、Signalが変更検知の起点になれることを見ました。この2つを結ぶと、ひとつの結論が導かれます。「Signalがあれば、Zone.jsは要らないのではないか」。この発想を実現したのが、Zonelessです。
+この章の締めくくりとして、変更検知の大きな転換点であるZonelessを学びます。前章『変更検知の仕組み（Default・OnPush・Zone.js）』で、Zone.jsが変更検知を起動していたこと、そしてその課題を見ました。本章の前の節では、Signalが変更検知の起点になれることを見ました。この2つを結ぶと、ひとつの結論が導かれます。「Signalがあれば、Zone.jsは要らないのではないか」。この発想を実現したのが、Zonelessです。
 
 Zonelessは、Zone.jsを取り除いてアプリケーションを動かす方式です。実験的な導入を経て、Angular 20.2で安定版となり、Angular 21（2025年）では新規プロジェクトの既定になりました。本書が基準とするv22世代では、Zonelessが標準的な選択肢であり、これから学ぶ書き方も、すべてZonelessを前提として問題なく動きます。この節では、Zone.js方式とZoneless方式を比較し、何が変わり、開発者は何を意識すればよいのかを整理します。
 
 ### Zonelessとは何か
 
-Zonelessとは、その名のとおり「ゾーン（Zone.js）がない」状態でAngularを動かすことです。第28章で見たように、従来はZone.jsが非同期の出来事を監視し、それを合図に変更検知を起動していました。Zonelessでは、この監視役がいません。代わりに、「状態が変わった」という明示的な通知を受けて、変更検知が走ります。
+Zonelessとは、その名のとおり「ゾーン（Zone.js）がない」状態でAngularを動かすことです。前章で見たように、従来はZone.jsが非同期の出来事を監視し、それを合図に変更検知を起動していました。Zonelessでは、この監視役がいません。代わりに、「状態が変わった」という明示的な通知を受けて、変更検知が走ります。
 
 考え方の違いを、ひとことで表せます。Zone.js方式は「何か非同期が起きた。念のため確認しよう」という方式でした。Zoneless方式は「ここが変わった、と知らされた。そこを更新しよう」という方式です。前者は起こりうる変化を広く拾い、後者は実際の変化を正確に受け取ります。この違いが、効率の差を生みます。
+
+次の図は、変更検知の起点が、Zone.js方式とZoneless方式でどのように異なるかを表します。
+
+```mermaid
+flowchart LR
+  zjs["Zone.js方式"] --> a["非同期の出来事を監視"]
+  a --> cd1["念のため広く変更検知"]
+  zl["Zoneless方式"] --> s(["Signalの変化を受け取る"])
+  s --> cd2["変わった所だけ変更検知"]
+```
 
 ### Zonelessで変更検知が走る条件
 
@@ -158,13 +242,13 @@ Zone.jsがいないと、Angularはどうやって「状態が変わった」こ
 - **`markForCheck()`の呼び出し**: `ChangeDetectorRef`で明示的に更新を要求した場合
 - **`setInput()`**: 動的に生成したComponentへ入力を設定した場合
 
-見比べてわかるとおり、これらは第27章で挙げたOnPushの更新条件と、ほぼ重なります。実は、Zonelessは「アプリ全体がOnPushで動く」ようなものだと考えられます。だからこそ、前節までで学んだOnPushとSignalの組み合わせが、そのままZonelessの土台になるのです。
+見比べてわかるとおり、これらは前章で挙げたOnPushの更新条件と、ほぼ重なります。実は、Zonelessは「アプリ全体がOnPushで動く」ようなものだと考えられます。だからこそ、前節までで学んだOnPushとSignalの組み合わせが、そのままZonelessの土台になるのです。
 
 とりわけ重要なのがSignalです。Signalで状態を持っていれば、その変化は自動でAngularに通知されます。開発者が`markForCheck()`を呼ぶ必要はありません。Zonelessで快適に開発する鍵は、状態をSignalで管理することにあります。
 
 ### Zonelessを有効にする
 
-Zonelessは、アプリケーションの起動設定で有効にします。第4章で見た`app.config.ts`に、`provideZonelessChangeDetection()`を加えます。
+Zonelessは、アプリケーションの起動設定で有効にします。『開発環境・CLIとプロジェクト構成』の章で見た`app.config.ts`に、`provideZonelessChangeDetection()`を加えます。
 
 ```ts:src/app/app.config.ts
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
@@ -202,9 +286,9 @@ Zonelessは、Zone.jsの4つの課題――過剰な変更検知、バンドル�
 
 これから新しくアプリを作るなら、Zonelessが既定であり、特別な準備は要りません。状態をSignalで持ち、非同期の表示には`async`パイプを使う、という本書で学んできた書き方が、そのままZonelessに適合します。
 
-一方、Zone.jsに依存した既存プロジェクトを移行する場合は、いくつか確認すべき点があります。たとえば、`setTimeout`のコールバックの中でプロパティを書き換え、Zone.jsによる自動検知に頼って画面を更新していた箇所は、Zonelessでは更新されないことがあります。こうした箇所は、状態をSignalに置き換えるのが、もっとも素直な対処です。第28章で触れた`runOutsideAngular`のような、Zone.jsを前提とした最適化も、Zonelessでは不要になり、書き換えの対象になります。
+一方、Zone.jsに依存した既存プロジェクトを移行する場合は、いくつか確認すべき点があります。たとえば、`setTimeout`のコールバックの中でプロパティを書き換え、Zone.jsによる自動検知に頼って画面を更新していた箇所は、Zonelessでは更新されないことがあります。こうした箇所は、状態をSignalに置き換えるのが、もっとも素直な対処です。前章で触れた`runOutsideAngular`のような、Zone.jsを前提とした最適化も、Zonelessでは不要になり、書き換えの対象になります。
 
-移行は一度に済ませる必要はありません。まずOnPushとSignalへ寄せてアプリを整え、Zone.jsへの依存を減らしてから、Zonelessに切り替える、という段階的な進め方が現実的です。本書がSignalファーストで書いてきたのは、この移行のしやすさも見据えてのことでした。
+既存プロジェクトの移行は、一度にすべてを済ませる必要はありません。準備が整った部分から段階的に進められます。本書がSignalファーストで書いてきたのは、この移行のしやすさも見据えてのことでした。
 
 ### 新旧のコードを比べる
 
@@ -225,22 +309,27 @@ export class Countdown {
 このコードは、Zone.jsがあれば動きますが、Zonelessでは`remaining`の変化が通知されず、画面が更新されません。Zonelessに適合させるには、状態をSignalにします。
 
 ```ts:src/app/countdown.ts（現在の書き方）
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+
+@Component({ selector: 'app-countdown', template: `<p>残り{{ remaining() }}秒</p>` })
 export class Countdown {
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly remaining = signal(60);
 
   start(): void {
-    setInterval(() => {
+    const id = setInterval(() => {
       this.remaining.update((n) => n - 1); // Signalの変化が通知される
     }, 1000);
+    this.destroyRef.onDestroy(() => clearInterval(id)); // 破棄時にタイマーを止める
   }
 }
 ```
 
-変えたのは、プロパティをSignalにし、`this.remaining--`を`this.remaining.update(...)`にしただけです。これで、Zone.jsの有無にかかわらず、確実に画面が更新されます。Signalが変化を明示的に通知するため、暗黙の監視に頼る必要がなくなったのです。この書き換えの容易さが、Signalファーストで書いておくことの利点です。
+本質的に変えたのは、プロパティをSignalにし、`this.remaining--`を`this.remaining.update(...)`にした点です。あわせて、`DestroyRef`でComponentの破棄時に`clearInterval`を呼び、タイマーを止めています。`setInterval`のような処理は、停止まで含めて書かないと、破棄後も動き続けてしまいます。これで、Zone.jsの有無にかかわらず、確実に画面が更新されます。Signalが変化を明示的に通知するため、暗黙の監視に頼る必要がなくなったのです。この書き換えの容易さが、Signalファーストで書いておくことの利点です。
 
 ### ハイブリッドな移行
 
-大規模な既存アプリを、一度に完全なZonelessへ移すのは容易ではありません。そのため、段階的な移行の道も用意されています。Zone.jsを残したまま、Signalによる効率的な変更検知の恩恵を先に受け、準備が整った部分からZone.jsへの依存を外していく、という進め方です。
+段階的な移行では、Zone.jsを残したまま、Signalによる効率的な変更検知の恩恵を先に受けられます。準備が整った部分から、Zone.jsへの依存を少しずつ外していく進め方です。
 
 現実的な手順としては、次のようになります。まず、状態をSignalへ、非同期の表示を`async`パイプへ置き換えます。次に、`setTimeout`のコールバック内での直接的なプロパティ書き換えなど、Zone.jsの自動検知に暗黙的に頼った箇所を洗い出し、Signalベースに直します。最後に、Zone.jsを取り除いてZonelessに切り替え、動作を確認します。焦らず、一部分ずつ検証しながら進めるのが安全です。
 

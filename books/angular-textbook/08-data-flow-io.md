@@ -17,13 +17,13 @@ title: "データフローとinput()・output()"
 
 ## Angularのデータフロー
 
-第4部の最初に、個々のAPIを学ぶ前の土台として、Angularにおけるデータの流れ方を整理します。複数のComponentが組み合わさったとき、データはどの向きに、どうやって流れるのか。この原則を先に押さえておくと、続く`input()`・`output()`・`model()`が、なぜその形をしているのかが腑に落ちます。
+個々のAPIを学ぶ前の土台として、Angularにおけるデータの流れ方を整理します。複数のComponentが組み合わさったとき、データはどの向きに、どうやって流れるのか。この原則を先に押さえておくと、続く`input()`・`output()`・`model()`が、なぜその形をしているのかが腑に落ちます。
 
 Angularのデータフローには、明確な方向性があります。この方向性を守ることが、予測しやすく、追いやすいアプリケーションを作る鍵になります。この節では、その原則と、原則を外れたときに何が起きるのかを見ていきます。
 
 ### Componentは階層をなす
 
-Angularのアプリケーションは、Componentの入れ子によって、木のような階層構造をとります。第6章で学んだように、あるComponentのテンプレートの中に、別のComponentを置けるためです。頂点には`App`があり、その下にページ、さらにその下に部品が連なります。
+Angularのアプリケーションは、Componentの入れ子によって、木のような階層構造をとります。『TypeScriptとComponentの基本』の章で学んだように、あるComponentのテンプレートの中に、別のComponentを置けるためです。頂点には`App`があり、その下にページ、さらにその下に部品が連なります。
 
 ```mermaid
 flowchart TD
@@ -43,22 +43,29 @@ Angularが採用しているのは、単方向データフローという考え�
 
 この原則のもとで、親子間のやり取りは、次の2種類に整理されます。
 
-- **入力（下向き）**: 親が持つデータを、子に渡す。プロパティバインディング`[prop]`で行う。
-- **出力（上向き）**: 子で起きた出来事を、親に伝える。イベントバインディング`(event)`で行う。
+- **入力（下向き）**: 親が持つデータを子に渡します。プロパティバインディング`[prop]`で行います。
+- **出力（上向き）**: 子で起きた出来事を親に伝えます。イベントバインディング`(event)`で行います。
 
 注意したいのは、上向きの「出力」も、データを直接書き換えるものではない点です。子は「こういうことが起きた」と親に通知するだけで、それを受けて実際にデータを変えるのは親です。データの変更権は、常にデータを所有する側にあります。
 
 ### 入力 — 親から子へ渡す
 
-親が持つデータを子に見せるには、子側に「受け取り口」を用意し、親のテンプレートからバインディングで渡します。受け取り口が、次章で学ぶ`input()`です。
+親が持つデータを子に見せるには、子側に「受け取り口」を用意し、親のテンプレートからバインディングで渡します。受け取り口が、この章の次の節で学ぶ`input()`です。
 
 ```ts:src/app/product-card.ts
+import { Component, input } from '@angular/core';
+
+export interface Product {
+  id: number;
+  name: string;
+}
+
 @Component({
   selector: 'app-product-card',
   template: `<p>{{ product().name }}</p>`,
 })
 export class ProductCard {
-  product = input.required<Product>();
+  readonly product = input.required<Product>();
 }
 ```
 
@@ -71,16 +78,18 @@ export class ProductCard {
 
 ### 出力 — 子から親へ伝える
 
-一方、子で起きた操作を親に伝えるには、子側に「通知口」を用意します。それが第19章で学ぶ`output()`です。子は、ボタンが押されたなどの出来事を、この通知口から送り出します。
+一方、子で起きた操作を親に伝えるには、子側に「通知口」を用意します。それが、この章の後半で学ぶ`output()`です。子は、ボタンが押されたなどの出来事を、この通知口から送り出します。
 
 ```ts:src/app/product-card.ts
+import { Component, input, output } from '@angular/core';
+
 @Component({
   selector: 'app-product-card',
   template: `<button (click)="selected.emit(product())">選ぶ</button>`,
 })
 export class ProductCard {
-  product = input.required<Product>();
-  selected = output<Product>();
+  readonly product = input.required<Product>();
+  readonly selected = output<Product>();
 }
 ```
 
@@ -96,16 +105,19 @@ export class ProductCard {
 入力は下へ、出力は上へ。この流れを徹底すると、いくつもの利点が生まれます。
 
 - **追いやすさ**: ある値がどこで生まれ、どこで変わるのかが、階層をたどれば分かります。
-- **再利用性**: 子は「渡されたら表示する」「操作を通知する」だけなので、どの親の下でも同じように使えます。第10章のプレゼンテーションComponentが、まさにこの形です。
+- **再利用性**: 子は「渡されたら表示する」「操作を通知する」だけなので、どの親の下でも同じように使えます。『Componentの構成技法と分割設計』の章で扱ったプレゼンテーションComponentが、まさにこの形です。
 - **テストのしやすさ**: 入力を与え、出力を確認する、という明快な形でテストできます。
 
-第10章で「上から下へはデータを、下から上へは出来事を流す」と述べたのは、この単方向データフローのことでした。設計の指針として語ったものが、`input()`・`output()`という具体的なAPIとして実現されているのです。
+同じ章で「上から下へはデータを、下から上へは出来事を流す」と述べたのは、この単方向データフローのことでした。設計の指針として語ったものが、`input()`・`output()`という具体的なAPIとして実現されているのです。
 
 ### 一連の流れを1つの例で見る
 
 入力と出力を組み合わせた、往復の流れを1つの例で追ってみましょう。親が「選ばれた商品」を管理し、子のカードがクリックされたらそれを親に伝え、親が選択を更新する、という場面です。
 
 ```ts:src/app/product-list-page.ts
+import { Component, computed, signal } from '@angular/core';
+import { ProductCard, Product } from './product-card';
+
 @Component({
   selector: 'app-product-list-page',
   imports: [ProductCard],
@@ -133,7 +145,7 @@ export class ProductListPage {
 
 ### データフローと変更検知
 
-単方向データフローは、Angularが画面をいつ更新するか、という「変更検知」の仕組みとも深く関わります。データが上から下へ整然と流れることを前提にできるため、Angularは効率よく変更を検知し、必要な箇所だけを描画し直せます。もし双方向に値が飛び交うと、この見通しが崩れ、更新の順序が予測しづらくなります。変更検知そのものは第6部で詳しく扱いますが、単方向データフローが、その効率と予測可能性を支える土台になっている、と押さえておいてください。
+単方向データフローは、Angularが画面をいつ更新するか、という「変更検知」の仕組みとも深く関わります。データが上から下へ整然と流れることを前提にできるため、Angularは効率よく変更を検知し、必要な箇所だけを描画し直せます。もし双方向に値が飛び交うと、この見通しが崩れ、更新の順序が予測しづらくなります。変更検知そのものは『変更検知の仕組み』の章で詳しく扱いますが、単方向データフローが、その効率と予測可能性を支える土台になっている、と押さえておいてください。
 
 ### よくあるつまずき
 
@@ -141,13 +153,13 @@ export class ProductListPage {
 
 - **子から親のデータを直接書き換えようとする**: 子に渡ってきたオブジェクトの中身を、子が書き換えてしまうと、流れの向きが崩れます。変更は出力で親へ通知し、親に更新してもらいます。
 - **出力で値を送らずに済ませようとする**: 「子が持つ最新の値を親が知りたい」ときは、出力で明示的に伝えます。親が子の内部をのぞきにいく設計は、単方向の原則から外れます。
-- **深い階層で入力・出力を延々と中継する**: 3階層、4階層とバケツリレーが続くなら、それは単方向データフローの限界のサインです。第5部のServiceや第10部の状態管理を検討する合図と捉えます。
+- **深い階層で入力・出力を延々と中継する**: 3階層、4階層とバケツリレーが続くなら、それは単方向データフローの限界のサインです。『ServiceとDependency Injection』の章で学ぶServiceや、状態管理の章で扱う仕組みを検討する合図と捉えます。
 
 ### 親子以外のやり取りはどうするか
 
 単方向データフローは、親子という直接の関係を前提としています。では、親子でないComponent、たとえば遠く離れたComponentどうしや、兄弟Componentの間で状態を共有したいときは、どうすればよいのでしょうか。
 
-`input()`・`output()`だけで無理につなごうとすると、間にあるComponentが、自分には関係のないデータをただ受け渡す「バケツリレー」に陥ります。第10章で触れた、深いバケツリレーの問題です。こうした、階層を越えた状態の共有には、別の仕組みが必要になります。それが、第5部で学ぶServiceと、第10部で学ぶ状態管理です。
+`input()`・`output()`だけで無理につなごうとすると、間にあるComponentが、自分には関係のないデータをただ受け渡す「バケツリレー」に陥ります。『Componentの構成技法と分割設計』の章で触れた、深いバケツリレーの問題です。こうした、階層を越えた状態の共有には、別の仕組みが必要になります。それが、『ServiceとDependency Injection』の章で学ぶServiceと、状態管理の章で扱う仕組みです。
 
 この節では、まず親子間の基本的なデータフローを、しっかり押さえておいてください。多くのやり取りは、この単方向の流れで素直に表現できます。階層を越える共有は、その基本を理解したうえで、必要になったときに学べば十分です。どの手段を選ぶ場合でも、「データの変更権は所有者にあり、それ以外は通知で伝える」という単方向の考え方は共通の土台になります。ここで身につけた原則は、Serviceや状態管理を学ぶときにも、そのまま生きてきます。
 
@@ -169,7 +181,7 @@ import { Component, input } from '@angular/core';
   template: `<span>{{ name() }}</span>`,
 })
 export class UserBadge {
-  name = input('ゲスト');
+  readonly name = input('ゲスト');
 }
 ```
 
@@ -179,7 +191,7 @@ export class UserBadge {
 <app-user-badge [name]="userName()" />
 ```
 
-入力がSignalであることが、`input()`の核心です。値が変わると、それを使っている`computed()`やテンプレートが自動で反応します。第3部で学んだSignalの仕組みが、そのまま入力にも通じるのです。
+入力がSignalであることが、`input()`の核心です。値が変わると、それを使っている`computed()`やテンプレートが自動で反応します。Signalそのものの仕組みは、のちのSignalsを扱う章で詳しく学びます。その考え方は、そのまま入力にも通じます。
 
 ### 必須の入力
 
@@ -187,7 +199,7 @@ export class UserBadge {
 
 ```ts:src/app/user-badge.ts
 export class UserBadge {
-  userId = input.required<number>();
+  readonly userId = input.required<number>();
 }
 ```
 
@@ -200,7 +212,7 @@ export class UserBadge {
 別名は、テンプレートで使う名前を、クラスのプロパティ名と別にしたいときに使います。
 
 ```ts
-value = input(0, { alias: 'sliderValue' });
+readonly value = input(0, { alias: 'sliderValue' });
 ```
 
 ```html
@@ -215,7 +227,7 @@ function trimString(value: string | undefined): string {
 }
 
 export class TextField {
-  label = input('', { transform: trimString });
+  readonly label = input('', { transform: trimString });
 }
 ```
 
@@ -228,7 +240,7 @@ import { booleanAttribute, Component, input } from '@angular/core';
 
 @Component({ selector: 'app-action-button', template: `...` })
 export class ActionButton {
-  disabled = input(false, { transform: booleanAttribute });
+  readonly disabled = input(false, { transform: booleanAttribute });
 }
 ```
 
@@ -236,7 +248,7 @@ export class ActionButton {
 
 ### 入力から派生した値を作る
 
-`input()`がSignalであることの利点が、もっともよく表れるのが、入力から別の値を導く場面です。第6部で詳しく扱う`computed()`を使うと、入力の変化に追従する派生値を、宣言的に書けます。
+`input()`がSignalであることの利点が、もっともよく表れるのが、入力から別の値を導く場面です。のちのSignalsを扱う章で詳しく扱う`computed()`を使うと、入力の変化に追従する派生値を、宣言的に書けます。
 
 ```ts:src/app/price-tag.ts
 import { Component, computed, input } from '@angular/core';
@@ -246,7 +258,7 @@ import { Component, computed, input } from '@angular/core';
   template: `<p>税込 {{ withTax() }} 円</p>`,
 })
 export class PriceTag {
-  price = input.required<number>();
+  readonly price = input.required<number>();
   protected readonly withTax = computed(() => Math.floor(this.price() * 1.1));
 }
 ```
@@ -272,6 +284,24 @@ export class UserBadge {
 - **必須の入力を保証しにくい**: `@Input`には、値が必ず渡されることを型で強制する手段が、標準ではありませんでした。
 - **Signalと連携しにくい**: 値がただのプロパティなので、Signalベースの`computed()`や`effect()`と自然にはつながりませんでした。
 
+変化を捉えるための、もう1つの旧来の書き方も見ておきましょう。入力をsetterで受け、その中で値の加工や副作用を行うパターンで、既存コードで頻繁に見かけます。
+
+```ts
+// 旧来の書き方: setterで@Inputをインターセプトする
+private _userName = '';
+
+@Input()
+set userName(value: string) {
+  this._userName = value.trim();
+  this.greet(); // 値が届くたびに実行される
+}
+get userName(): string {
+  return this._userName;
+}
+```
+
+setterは値が届くたびに呼ばれるため、`ngOnChanges`を使わずに変化へ反応できます。ただし、値を保持する裏プロパティ（`_userName`）とsetter・getterが常にセットで必要になり、記述量が増えます。
+
 `input()`は、これらをまとめて解決します。入力がSignalなので、変化の検知は`computed()`や`effect()`に任せられ、`ngOnChanges`が不要になります。必須入力は`input.required()`で型として保証できます。両者の違いを表に整理します。
 
 | 観点 | 旧来の`@Input` | 現在の`input()` |
@@ -293,7 +323,7 @@ export class UserBadge {
 `input()`を使い始めるときに、つまずきやすい点を挙げます。
 
 - **`()`の付け忘れ**: `input()`はSignalを返すため、値を読むときは`name()`と括弧が必要です。`{{ name }}`と書くと、値ではなく関数が表示されてしまいます。
-- **入力を書き換えようとする**: `input()`が返すのは読み取り専用のSignalです。子の側で値を変えることはできません。これは、前節の単方向データフローの原則に沿ったものです。書き換えたい場合は、第20章の`model()`を使います。
+- **入力を書き換えようとする**: `input()`が返すのは読み取り専用のSignalです。子の側で値を変えることはできません。これは、前節の単方向データフローの原則に沿ったものです。書き換えたい場合は、次章で学ぶ`model()`を使います。
 - **`required`に既定値を渡す**: `input.required()`は既定値を持てません。型引数で型だけを指定します。
 - **コンストラクターで入力値を読む**: 入力の値は、コンストラクターの時点ではまだ設定されていないことがあります。入力に依存する処理は、`computed()`や`effect()`の中で読むと、値がそろってから安全に扱えます。
 
@@ -315,7 +345,7 @@ import { Component, output } from '@angular/core';
   template: `<button (click)="liked.emit()">いいね</button>`,
 })
 export class LikeButton {
-  liked = output<void>();
+  readonly liked = output<void>();
 }
 ```
 
@@ -325,7 +355,7 @@ export class LikeButton {
 <app-like-button (liked)="onLiked()" />
 ```
 
-子の`liked.emit()`が呼ばれると、親の`onLiked()`が実行されます。第3部で学んだイベントバインディング`(event)`が、標準のDOMイベントだけでなく、こうした自作の出力にも使える、というわけです。
+子の`liked.emit()`が呼ばれると、親の`onLiked()`が実行されます。『テンプレートの記法とDirective概論』の章で学んだイベントバインディング`(event)`が、標準のDOMイベントだけでなく、こうした自作の出力にも使える、というわけです。
 
 ### 値を伴う出力
 
@@ -342,7 +372,7 @@ export class LikeButton {
 })
 export class Rating {
   protected readonly stars = [1, 2, 3, 4, 5];
-  rated = output<number>();
+  readonly rated = output<number>();
 }
 ```
 
@@ -371,7 +401,7 @@ protected onRated(value: number): void {
   `,
 })
 export class SearchBox {
-  search = output<string>();
+  readonly search = output<string>();
 }
 ```
 
@@ -380,14 +410,14 @@ export class SearchBox {
 <app-search-box (search)="applyFilter($event)" />
 ```
 
-`SearchBox`は、検索の実行方法を何も知りません。語を送り出すことに徹しているため、商品一覧でもユーザー一覧でも、同じ部品を使い回せます。これが、第17章で述べた「出力は通知に徹する」設計の具体的な効き目です。
+`SearchBox`は、検索の実行方法を何も知りません。語を送り出すことに徹しているため、商品一覧でもユーザー一覧でも、同じ部品を使い回せます。これが、本章の最初の節で述べた「出力は通知に徹する」設計の具体的な効き目です。
 
 ### 別名と命名の指針
 
 出力にも、テンプレートで使う名前を変える別名（alias）を指定できます。
 
 ```ts
-changed = output<string>({ alias: 'valueChanged' });
+readonly changed = output<string>({ alias: 'valueChanged' });
 ```
 
 命名にはいくつかの慣習があります。
@@ -420,9 +450,19 @@ export class LikeButton {
 - **役割が明確**: `EventEmitter`は名前に「Emitter（送出するもの）」とありながら、内部的にはRxJSのObservableを継承しており、購読もできてしまう、あいまいな存在でした。`output()`は「出力を宣言する」という役割に絞られ、誤用しにくくなっています。
 - **`input()`との一貫性**: 入力が`input()`、出力が`output()`と、関数呼び出しで揃います。宣言の形が統一され、読みやすくなります。
 
+以上の違いを、入力側と同じ形式の表に整理します。
+
+| 観点 | 旧来の`@Output` | 現在の`output()` |
+|---|---|---|
+| 宣言 | `@Output() liked = new EventEmitter<void>()` | `liked = output<void>()` |
+| 必要なもの | `EventEmitter`のインスタンス化 | 関数呼び出しのみ |
+| 送出 | `liked.emit(値)` | `liked.emit(値)`（同じ） |
+| 役割 | Observableを継承し購読もできる二面性 | 出力の宣言に限定 |
+| `input()`との対称性 | デコレーターと関数で不揃い | `input()`と揃う |
+
 ### ObservableをもとにするoutputFromObservable
 
-補足として、RxJSのObservableから出力を作る`outputFromObservable()`という関数もあります。Observableが値を流すたびに、それを出力として送り出したいときに使います。RxJSについては第8部で扱うため、ここでは「Observableと出力をつなぐ手段がある」とだけ知っておけば十分です。
+補足として、RxJSのObservableから出力を作る`outputFromObservable()`という関数もあります。Observableが値を流すたびに、それを出力として送り出したいときに使います。RxJSについては『RxJSの基礎』の章で扱うため、ここでは「Observableと出力をつなぐ手段がある」とだけ知っておけば十分です。
 
 ```ts
 import { outputFromObservable } from '@angular/core/rxjs-interop';
@@ -432,6 +472,8 @@ dataChanged = outputFromObservable(this.data$);
 ```
 
 通常の用途では、`output()`と`emit()`で十分です。既存のObservableを出力に変換したい、という限られた場面のための道具だと捉えてください。
+
+逆に、`output()`が送り出す値をObservableとして扱いたいときは、同じ`@angular/core/rxjs-interop`にある`outputToObservable()`を使います。出力をRxJSの演算子につなげて処理したい、といった場面のための道具です。
 
 なお、`output()`が返すものは、親のイベントバインディングで受けるのが基本ですが、Componentを動的に生成する高度な場面では、`subscribe()`で購読することもできます。この場合は、不要になったときに購読を解除する責任が生じます。ふだんのテンプレート経由のバインディングでは、購読も解除もAngularが引き受けるため、こうした後始末を意識する必要はありません。この手軽さも、テンプレートでのやり取りを基本とすべき理由のひとつです。
 
@@ -444,7 +486,7 @@ type SortEvent = { column: string; direction: 'asc' | 'desc' };
 
 @Component({ selector: 'app-sort-header', template: `...` })
 export class SortHeader {
-  sortChanged = output<SortEvent>();
+  readonly sortChanged = output<SortEvent>();
 
   protected toggle(column: string): void {
     this.sortChanged.emit({ column, direction: 'asc' });

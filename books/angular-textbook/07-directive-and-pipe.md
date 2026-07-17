@@ -40,7 +40,7 @@ import { Directive } from '@angular/core';
 export class Highlight {}
 ```
 
-注目すべきは`selector`です。角括弧で囲んだ`[appHighlight]`は、「`appHighlight`という属性を持つ要素」に適用される、という意味です。第6章で学んだ属性型セレクターがこれにあたります。テンプレートでは、次のように既存の要素へ属性として付けます。
+注目すべきは`selector`です。角括弧で囲んだ`[appHighlight]`は、「`appHighlight`という属性を持つ要素」に適用される、という意味です。前章『テンプレートの記法とDirective概論』で学んだ属性型セレクターがこれにあたります。テンプレートでは、次のように既存の要素へ属性として付けます。
 
 ```html
 <p appHighlight>この段落をハイライトします</p>
@@ -69,32 +69,50 @@ export class Highlight {
 
 `this.el.nativeElement`が、ホストのDOM要素そのものです。ここではその背景色を黄色にしています。これで、`appHighlight`を付けた要素の背景が黄色になります。
 
-ただし、`nativeElement`を直接操作する書き方は、そのままでも動きますが、次に見る`host`を使うほうが宣言的で読みやすくなります。
+ただし、`nativeElement`を直接操作する書き方には注意が必要です。DOMのAPIをそのまま呼ぶため、ブラウザ以外の環境（サーバーサイドレンダリングなど）で動かなかったり、`innerHTML`への代入のように値を無検証で書き込むとセキュリティ上の穴になったりします。手続き的にDOMを操作する必要があるときは、`Renderer2`を使うのが安全です。`Renderer2`はDOM操作を抽象化し、レンダリング環境の違いを吸収します。
+
+```ts:src/app/highlight.ts
+import { Directive, ElementRef, Renderer2, inject } from '@angular/core';
+
+@Directive({
+  selector: '[appHighlight]',
+})
+export class Highlight {
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
+
+  constructor() {
+    this.renderer.setStyle(this.el.nativeElement, 'background-color', 'yellow');
+  }
+}
+```
+
+もっとも、こうした手続き的な操作よりも、次に見る`host`によるバインディングのほうが宣言的で読みやすくなります。多くの場合は`host`で足り、`Renderer2`は`host`では書きにくい細かなDOM操作に絞って使います。
 
 ### hostでイベントとプロパティをバインドする
 
 ハイライトDirectiveを、「マウスが乗ったときだけ色を変える」ように改良します。ここで使うのが、`@Directive`の`host`プロパティです。`host`には、ホスト要素へのイベントリスナーやプロパティバインディングを、まとめて宣言できます。
 
 ```ts:src/app/highlight.ts
-import { Directive } from '@angular/core';
+import { Directive, signal } from '@angular/core';
 
 @Directive({
   selector: '[appHighlight]',
   host: {
     '(mouseenter)': 'onEnter()',
     '(mouseleave)': 'onLeave()',
-    '[style.backgroundColor]': 'background',
+    '[style.backgroundColor]': 'background()',
   },
 })
 export class Highlight {
-  protected background = '';
+  protected readonly background = signal('');
 
   protected onEnter(): void {
-    this.background = 'yellow';
+    this.background.set('yellow');
   }
 
   protected onLeave(): void {
-    this.background = '';
+    this.background.set('');
   }
 }
 ```
@@ -102,13 +120,13 @@ export class Highlight {
 `host`の中身を見てみましょう。
 
 - `'(mouseenter)': 'onEnter()'` は、ホスト要素の`mouseenter`イベントで`onEnter`を呼ぶ、というイベントバインディングです。
-- `'[style.backgroundColor]': 'background'` は、ホスト要素の背景色を`background`プロパティに結びつける、というプロパティバインディングです。
+- `'[style.backgroundColor]': 'background()'` は、ホスト要素の背景色を`background`シグナルの値に結びつける、というプロパティバインディングです。
 
-テンプレートで書いた`(event)`や`[prop]`と、同じ記法がそのまま使えます。マウスが乗ると`background`が`yellow`になり、離れると空になって、背景色が切り替わります。`ElementRef`を直接触らずに、宣言的に振る舞いを書けるのが利点です。
+テンプレートで書いた`(event)`や`[prop]`と、同じ記法がそのまま使えます。マウスが乗ると`background`シグナルが`'yellow'`に変わり、離れると空文字に戻って、背景色が切り替わります。状態を`signal()`で持つため、`set()`で値を更新すると、その変化がそのままバインディングに反映されます。`ElementRef`を直接触らずに、宣言的に振る舞いを書けるのが利点です。
 
 ### 旧来のHostListener・HostBindingとの比較
 
-`host`プロパティは、比較的新しい書き方です。少し前のコードでは、同じことを`@HostListener`と`@HostBinding`というデコレーターで書いていました。
+`host`メタデータ自体は、Angular 2の頃から存在します。新しいのは書き方そのものではなく、公式ドキュメントがこれを標準の書き方として推奨するようになった点です。少し前のコードでは、同じことを`@HostListener`と`@HostBinding`というデコレーターで書くのが一般的でした。
 
 ```ts:旧来の書き方（HostListener・HostBinding）
 import { Directive, HostBinding, HostListener } from '@angular/core';
@@ -136,26 +154,26 @@ export class Highlight {
 ハイライトの色を、使う側から指定できるようにします。Directiveは、Componentと同じく`input()`で外から値を受け取れます。
 
 ```ts:src/app/highlight.ts
-import { Directive, input } from '@angular/core';
+import { Directive, input, signal } from '@angular/core';
 
 @Directive({
   selector: '[appHighlight]',
   host: {
     '(mouseenter)': 'onEnter()',
     '(mouseleave)': 'onLeave()',
-    '[style.backgroundColor]': 'background',
+    '[style.backgroundColor]': 'background()',
   },
 })
 export class Highlight {
   readonly color = input('yellow');
-  protected background = '';
+  protected readonly background = signal('');
 
   protected onEnter(): void {
-    this.background = this.color();
+    this.background.set(this.color());
   }
 
   protected onLeave(): void {
-    this.background = '';
+    this.background.set('');
   }
 }
 ```
@@ -167,7 +185,7 @@ export class Highlight {
 <p appHighlight>既定の黄色でハイライト</p>
 ```
 
-さらに、Directive名と同じ名前の入力を作ると、属性への代入で直接値を渡せます。セレクターと同名の入力に`alias`を使う書き方です。
+さらに、セレクターと同じ名前の入力を用意すると、属性への代入で直接値を渡せます。次のように、入力のプロパティ名をセレクターと同じ`appHighlight`にします。
 
 ```ts
 readonly appHighlight = input('yellow');
@@ -177,7 +195,88 @@ readonly appHighlight = input('yellow');
 <p [appHighlight]="'lightblue'">水色でハイライト</p>
 ```
 
-これで、`appHighlight`という属性の付与と、色の指定を1つにまとめられます。組み込みの`ngClass`が`[ngClass]="..."`と書けるのも、この仕組みによるものです。
+これで、`appHighlight`という属性の付与と、色の指定を1つにまとめられます。組み込みの`ngClass`が`[ngClass]="..."`と書けるのも、この仕組みによるものです。なお、内部のプロパティ名とテンプレートで使う公開名を分けたいときは、`input('yellow', { alias: 'appHighlight' })`のように`alias`で公開名を指定します。
+
+### exportAsでDirectiveをテンプレートから参照する
+
+Directiveのインスタンスを、テンプレート側から直接参照したい場合があります。たとえば、Directiveが公開するメソッドや状態を、同じ要素の別の場所で使いたいときです。これを可能にするのが`exportAs`です。
+
+```ts:src/app/tooltip.ts
+import { Directive, signal } from '@angular/core';
+
+@Directive({
+  selector: '[appTooltip]',
+  exportAs: 'appTooltip',
+})
+export class Tooltip {
+  readonly visible = signal(false);
+
+  show(): void {
+    this.visible.set(true);
+  }
+
+  hide(): void {
+    this.visible.set(false);
+  }
+}
+```
+
+`exportAs: 'appTooltip'`と宣言すると、テンプレート参照変数にDirectiveのインスタンスを代入できます。
+
+```html
+<button appTooltip #t="appTooltip" (click)="t.show()">表示</button>
+@if (t.visible()) {
+  <span>ツールチップの中身</span>
+}
+```
+
+`#t="appTooltip"`は、「`appTooltip`という名前で公開されたDirectiveを、`t`という変数で受け取る」という意味です。組み込みの`ngModel`をテンプレート参照変数で受け、`#ctrl="ngModel"`のように検証状態を取り出す書き方も、この仕組みによるものです。
+
+### hostDirectivesでDirectiveを合成する
+
+作成した属性Directiveの振る舞いを、別のComponentやDirectiveへそのまま取り込みたいことがあります。たとえば、ハイライトの機能を、あるボタンComponentに最初から備えさせたい、というケースです。これを宣言的に行うのが`hostDirectives`です。v15で導入された、Directiveを合成するためのAPIです。
+
+`hostDirectives`にDirectiveを並べると、そのホスト要素へコンパイル時に静的に適用されます。
+
+```ts:src/app/fancy-button.ts
+import { Component } from '@angular/core';
+import { Highlight } from './highlight';
+
+@Component({
+  selector: 'app-fancy-button',
+  hostDirectives: [Highlight],
+  template: `<ng-content />`,
+})
+export class FancyButton {}
+```
+
+これだけで、`app-fancy-button`の要素に`Highlight`の振る舞いが加わります。テンプレート側で`appHighlight`属性を付けて回る必要はありません。
+
+合成元のDirectiveが持つ入力や出力は、既定では外へ公開されません。使う側から渡せるようにするには、オブジェクト形式で`inputs`・`outputs`を明示します。
+
+```ts:src/app/fancy-button.ts
+@Component({
+  selector: 'app-fancy-button',
+  hostDirectives: [
+    {
+      directive: Highlight,
+      inputs: ['color'],
+    },
+  ],
+  template: `<ng-content />`,
+})
+export class FancyButton {}
+```
+
+`inputs: ['color']`とすると、`<app-fancy-button color="lightblue">`のように、合成元の入力を外から指定できます。公開名を変えたいときは`['color: highlightColor']`のように`元の名前: 公開名`と書きます。出力も`outputs`で同様に公開します。
+
+`hostDirectives`には、いくつかの制約があります。
+
+- 指定できるのはstandalone Directiveだけです。
+- 適用はコンパイル時に静的に決まります。条件に応じて実行時に付け外しすることはできません。
+- 合成元のセレクターは無視されます。要素がそのセレクターに一致するかどうかにかかわらず、合成先のホスト要素へ適用されます。
+
+`hostDirectives`は、`@Component`と`@Directive`のどちらにも指定できます。継承（`extends`）と違い、複数のDirectiveを組み合わせられるのが利点です。共通の振る舞いを小さなDirectiveへ切り出し、それらを必要なComponentへ合成する、という再利用ができます。
 
 ### セレクターと命名規則
 
@@ -195,13 +294,13 @@ Directiveのセレクターには、いくつかの慣習があります。
 
 - **`imports`への宣言忘れ**: Componentと同じく、Directiveも使う側のComponentの`imports`に宣言する必要があります。付けたはずの振る舞いが効かないときは、まずここを確認します。
 - **セレクターの角括弧忘れ**: `selector: 'appHighlight'`と角括弧なしで書くと、要素型セレクターと解釈され、属性として機能しません。属性Directiveでは`[appHighlight]`と角括弧で囲みます。
-- **`ElementRef`の直接操作に頼りすぎる**: `nativeElement`を直接触ると、サーバーサイドレンダリング（第62章で扱います）などの環境で問題になることがあります。可能な範囲では`host`によるバインディングを優先します。
+- **`ElementRef`の直接操作に頼りすぎる**: `nativeElement`を直接触ると、サーバーサイドレンダリング（『SSRとモダンAngularへの移行』の章で扱います）などの環境で問題になることがあります。可能な範囲では`host`によるバインディングを、手続き的な操作が必要なら`Renderer2`を優先します。
 
 ## 構造Directiveとng-templateの仕組み
 
 前節では、既存の要素に振る舞いを足す属性Directiveを作りました。この節では、もうひとつの種類である構造Directiveを扱います。構造Directiveは、DOMの構造そのもの、つまり要素の追加や削除を担うDirectiveです。
 
-第12章で学んだ`@if`・`@for`は、いまや制御フローの主役ですが、その前身である`*ngIf`・`*ngFor`は構造Directiveでした。この節では、構造Directiveがどのようにテンプレートを操作しているのか、その土台にある`ng-template`とあわせて解き明かします。仕組みを理解すると、テンプレートの一部を変数のように扱う高度な表現や、既存コードの読解ができるようになります。
+前章『テンプレートの記法とDirective概論』で学んだ`@if`・`@for`は、いまや制御フローの主役ですが、その前身である`*ngIf`・`*ngFor`は構造Directiveでした。この節では、構造Directiveがどのようにテンプレートを操作しているのか、その土台にある`ng-template`とあわせて解き明かします。仕組みを理解すると、テンプレートの一部を変数のように扱う高度な表現や、既存コードの読解ができるようになります。
 
 ### 構造Directiveとは
 
@@ -250,6 +349,20 @@ Directiveのセレクターには、いくつかの慣習があります。
 - **`ViewContainerRef`**: テンプレートを差し込む先の、DOM上の入れ物です。「どこに差し込むか」を表します。
 
 構造Directiveは、この2つを組み合わせて動きます。`ViewContainerRef`に対して「`TemplateRef`の中身を描画せよ」と命じれば要素が現れ、「消せ」と命じれば要素が消えます。`*ngIf`が行っていたのは、まさにこの操作でした。
+
+次の図は、`*ngIf`のような構造Directiveが`ng-template`へ展開され、`TemplateRef`と`ViewContainerRef`を通じてDOMを出し入れするまでの流れを表します。
+
+```mermaid
+flowchart TD
+  star["*ngIf の記述"] --> tmpl["ng-template への展開"]
+  tmpl --> dir["構造Directive"]
+  dir --> tref["TemplateRef が差し込む内容を保持"]
+  dir --> vref["ViewContainerRef が差し込み先を管理"]
+  tref --> judge{"条件が真かどうか"}
+  vref --> judge
+  judge -->|"真"| show["DOMに要素を追加"]
+  judge -->|"偽"| hide["DOMから要素を削除"]
+```
 
 ### 自作の構造Directiveを作る
 
@@ -324,9 +437,24 @@ export class Unless {
 
 `let-name="name"`は、渡されたコンテキストの`name`を、テンプレート内で`name`という変数として使う宣言です。この仕組みを応用すると、「一覧の各行の見た目を、使う側から差し替えられるComponent」のような、柔軟な部品を作れます。
 
+コンテキストには、`$implicit`という特別なキーがあります。これは既定値の受け皿で、`let-item`のようにキー名を指定せずに受け取ると、`$implicit`の値が入ります。主役となる1つの値を渡すときに使います。
+
+```html
+<ng-template #row let-item let-index="index">
+  <p>{{ index }}: {{ item }}</p>
+</ng-template>
+
+<ng-container
+  [ngTemplateOutlet]="row"
+  [ngTemplateOutletContext]="{ $implicit: '山田', index: 0 }"
+/>
+```
+
+`let-item`は`let-item="$implicit"`の省略形で、`$implicit`に入れた`'山田'`を受け取ります。`index`のような追加の値は、これまでどおりキー名を指定して受け取ります。`*ngFor`が各要素を`let item`で渡していたのも、この`$implicit`の仕組みによるものです。
+
 ### 制御フロー時代の構造Directive
 
-第12章で見たとおり、条件分岐や繰り返しという構造Directiveの代表的な用途は、いまや`@if`・`@for`という組み込み制御フローが担っています。そのため、`*ngIf`のような構造Directiveを日常的に書く場面や、自作する機会は、以前より大きく減りました。
+前章で見たとおり、条件分岐や繰り返しという構造Directiveの代表的な用途は、いまや`@if`・`@for`という組み込み制御フローが担っています。そのため、`*ngIf`のような構造Directiveを日常的に書く場面や、自作する機会は、以前より大きく減りました。
 
 とはいえ、`ng-template`と`ngTemplateOutlet`は現在も有効です。再利用可能なテンプレートの断片を扱う場面や、Componentに「差し込むテンプレート」を外から渡す設計では、いまも使われます。また、既存コードには`*ngIf`をはじめとする構造Directiveが数多く残っています。仕組みを理解しておくことは、そうしたコードを読み解くうえでも役立ちます。
 
@@ -344,7 +472,7 @@ export class Unless {
 
 ## Pipeとテンプレートの再利用
 
-第3部もこの節で最後です。ここまで、データバインディング・制御フロー・Directiveと、テンプレートを動かす道具を学んできました。最後に扱うのがPipe（パイプ）です。Pipeは、テンプレートの中で値を整形するための仕組みです。
+この章もこの節で最後です。ここまで、データバインディング・制御フロー・Directiveと、テンプレートを動かす道具を学んできました。最後に扱うのがPipe（パイプ）です。Pipeは、テンプレートの中で値を整形するための仕組みです。
 
 日付を「2026年7月14日」の形で表示したい、数値を通貨の形式にしたい、文字列を大文字にしたい。こうした「表示のための変換」を、クラスを書き換えずにテンプレート側で完結できるのがPipeです。Angularには便利な組み込みPipeが多数用意されており、独自のPipeを作ることもできます。この節で、その使い方と仕組みを押さえます。
 
@@ -357,6 +485,15 @@ Pipeは、テンプレート内で値を変換する仕組みです。縦棒`|`�
 ```
 
 `name()`が`'yamada'`なら、`uppercase`というPipeを通って`'YAMADA'`と表示されます。元の`name`の値は変わりません。Pipeは、あくまで表示のための変換を行うだけです。クラス側のデータはそのままに、見せ方だけを整えられるのが特徴です。
+
+次の図は、値が縦棒でつないだPipeを左から右へ順に通り、整形されて表示されるまでの流れを表します。`date`で書式化した結果を`uppercase`で大文字にする、チェインの例です。
+
+```mermaid
+flowchart LR
+  value["元の値 today"] --> date["date パイプ"]
+  date --> upper["uppercase パイプ"]
+  upper --> view["整形後の表示"]
+```
 
 ### 代表的な組み込みPipe
 
@@ -372,7 +509,7 @@ Angularには、よく使う変換があらかじめPipeとして用意されて
 | `json` | オブジェクトのJSON表示 | `{{ data \| json }}` |
 | `async` | Observable・Promiseの購読 | `{{ data$ \| async }}` |
 
-`json`は、デバッグ中にオブジェクトの中身を確認したいときに重宝します。`date`や`currency`は、地域（ロケール）に応じた書式で表示してくれます。これらの組み込みPipeは、いずれもimportなしでテンプレートに書けます。
+`json`は、デバッグ中にオブジェクトの中身を確認したいときに重宝します。`date`や`currency`は、地域（ロケール）に応じた書式で表示してくれます。ただし、これらの組み込みPipeも、Standalone Componentでは使う前に`imports`への宣言が必要です。`DatePipe`や`AsyncPipe`のようにクラスを個別に加えるか、まとめて提供する`CommonModule`を加えます。importなしでそのまま書けるのは`@if`・`@for`といった制御フロー構文であり、Pipeはこれとは異なる点に注意してください。
 
 ### パラメーターとチェイン
 
@@ -395,6 +532,34 @@ Pipeには、コロン`:`でパラメーターを渡せます。たとえば`dat
 ```
 
 この例では、まず`date`で日付を書式化し、その結果を`uppercase`で大文字にしています。複数の変換を、テンプレート上で簡潔に組み合わせられます。
+
+### date・currencyのロケール設定
+
+`date`・`currency`・`number`・`percent`は、地域（ロケール）に応じた書式で値を整形します。既定のロケールは`en-US`です。そのため、設定しないままだと`date`は英語表記になります。
+
+日本語の書式にするには、まず日本語のロケールデータを登録します。Angularは初期状態で`en-US`のデータしか持たないため、ほかの言語は明示的に登録します。
+
+```ts:src/main.ts
+import { registerLocaleData } from '@angular/common';
+import localeJa from '@angular/common/locales/ja';
+
+registerLocaleData(localeJa);
+```
+
+次に、アプリの既定ロケールを`LOCALE_ID`で切り替えます。`currency`は`LOCALE_ID`とは別に既定の通貨コード（初期値は`USD`）を持つため、円で表示したい場合は`DEFAULT_CURRENCY_CODE`もあわせて設定します。
+
+```ts:src/app/app.config.ts
+import { ApplicationConfig, LOCALE_ID, DEFAULT_CURRENCY_CODE } from '@angular/core';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    { provide: LOCALE_ID, useValue: 'ja' },
+    { provide: DEFAULT_CURRENCY_CODE, useValue: 'JPY' },
+  ],
+};
+```
+
+これで、`{{ today() | date:'long' }}`が「2026年7月14日」のような日本語の書式になり、`{{ price() | currency }}`が円記号で表示されます。特定の箇所だけ通貨を変えたいときは、`{{ price() | currency:'USD' }}`のようにPipe側で指定すれば、その場の指定が優先されます。
 
 ### 自作Pipeを作る
 
@@ -430,7 +595,7 @@ export class TruncatePipe implements PipeTransform {
 
 `description()`が30文字を超えると、30文字＋`...`に切り詰められます。パラメーターに既定値を持たせているため、`| truncate`と引数なしでも動きます。
 
-なお、Pipeも第7章で学んだStandaloneの考え方が適用され、Angular 19以降は`standalone: true`の指定が不要です。単体でimportして使えます。
+なお、Pipeも『TypeScriptとComponentの基本』の章で学んだStandaloneの考え方が適用され、Angular 19以降は`standalone: true`の指定が不要です。単体でimportして使えます。
 
 ### Pure PipeとImpure Pipe
 
@@ -464,7 +629,7 @@ export class FilterActivePipe implements PipeTransform {
 
 `user$`がObservableのとき、`async`Pipeは自動的にそれを購読（subscribe）し、流れてきた値を表示します。さらに、Componentが破棄されるときには購読を自動で解除してくれます。手動での購読と解除が不要になるため、メモリリークを防ぎつつ簡潔に書けます。
 
-実務では、`async`Pipeを`@if`と組み合わせ、値が届いてから表示する書き方がよく使われます。第12章で学んだ`as`で、購読した値に名前を付けられます。
+実務では、`async`Pipeを`@if`と組み合わせ、値が届いてから表示する書き方がよく使われます。前章で学んだ`as`で、購読した値に名前を付けられます。
 
 ```html
 @if (user$ | async; as user) {
@@ -474,7 +639,7 @@ export class FilterActivePipe implements PipeTransform {
 }
 ```
 
-こうすると、`user`が届くまでは「読み込み中」を表示し、届いたら中身を表示できます。`user$ | async`を何度も書かずに、`user`という名前で使い回せる点も利点です。ObservableやRxJSの詳しい仕組みは第8部で扱いますが、その値をテンプレートに映す入り口が、この`async`Pipeだと覚えておいてください。
+こうすると、`user`が届くまでは「読み込み中」を表示し、届いたら中身を表示できます。`user$ | async`を何度も書かずに、`user`という名前で使い回せる点も利点です。ObservableやRxJSの詳しい仕組みは『RxJSの基礎』の章で扱いますが、その値をテンプレートに映す入り口が、この`async`Pipeだと覚えておいてください。
 
 ### Pipeとメソッド呼び出しの違い
 
@@ -489,13 +654,13 @@ export class FilterActivePipe implements PipeTransform {
 
 モダンAngularでは、状態をSignalで持つことが増えています。Signalから導いた値の整形は、Pipeで行うことも、`computed()`で行うこともできます。使い分けの目安は、その変換が「表示のためのものか」「複数箇所で再利用するか」です。
 
-`uppercase`や`date`のような汎用的な表示変換はPipeが向きます。一方、そのComponent固有の、状態から別の状態を導く計算は、`computed()`のほうが自然です。両者は競合するものではなく、役割に応じて併用します。Signalと`computed()`の詳細は、第6部で改めて扱います。
+`uppercase`や`date`のような汎用的な表示変換はPipeが向きます。一方、そのComponent固有の、状態から別の状態を導く計算は、`computed()`のほうが自然です。両者は競合するものではなく、役割に応じて併用します。Signalと`computed()`の詳細は、『SignalsとZoneless』の章で改めて扱います。
 
 ### よくあるつまずき
 
 Pipeでつまずきやすい点を挙げておきます。
 
-- **`imports`への宣言忘れ**: 自作Pipeや、一部の組み込みPipeは、使う側のComponentの`imports`に宣言が必要です。`{{ value | truncate }}`が効かないときは、まずここを確認します。
+- **`imports`への宣言忘れ**: 自作Pipeも組み込みPipeも、使う側のComponentの`imports`に宣言が必要です。`{{ value | truncate }}`や`{{ today() | date }}`が効かないときは、まずここを確認します。
 - **Impure Pipeの多用**: `pure: false`のPipeは変更検知のたびに実行され、パフォーマンスを損ないます。配列の絞り込みなどは、Pipeではなくデータ側（`computed()`など）で行うほうが安全な場面が多くあります。
 - **Pipeで副作用を起こす**: `transform`は、値を変換して返すことに徹するべきです。中でデータを書き換えたり通信したりすると、予期しない再実行で問題が起きます。Pipeは純粋な変換だけを担う、と考えてください。
 

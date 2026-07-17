@@ -27,7 +27,7 @@ title: "双方向バインディングとライフサイクル"
 <app-toggle [(checked)]="isDark" />
 ```
 
-この`[(checked)]`は、第3部で学んだ入力`[checked]`と出力`(checkedChange)`を、同時に書いたものにあたります。つまり、双方向バインディングは、入力と出力の組み合わせを短く書くための記法なのです。親の`isDark`が子へ渡り、子が`checked`を書き換えると、その変更が親の`isDark`へ戻ります。
+この`[(checked)]`は、前章で学んだ入力`[checked]`と出力`(checkedChange)`を、同時に書いたものにあたります。つまり、双方向バインディングは、入力と出力の組み合わせを短く書くための記法なのです。親の`isDark`が子へ渡り、子が`checked`を書き換えると、その変更が親の`isDark`へ戻ります。
 
 ### model()で双方向の値を宣言する
 
@@ -64,7 +64,19 @@ export class Toggle {
 - **`checked`という入力**: 親から値を受け取る口
 - **`checkedChange`という出力**: 変更を親へ返す口
 
-出力の名前は、モデル名に`Change`を付けたものになります。この`checked`と`checkedChange`のペアがあるからこそ、親側で`[(checked)]`という双方向の記法が使えるのです。双方向バインディング`[(checked)]`は、`[checked]`と`(checkedChange)`を同時に書いたものと等価だ、と第3部で触れたのは、このことでした。
+出力の名前は、モデル名に`Change`を付けたものになります。この`checked`と`checkedChange`のペアがあるからこそ、親側で`[(checked)]`という双方向の記法が使えるのです。`[(checked)]`が`[checked]`と`(checkedChange)`を同時に書いたものと等価だと先ほど述べたのは、このためです。
+
+実際、`[(checked)]`は分解でき、親は入力と出力を個別に束縛することもできます。次の2行は、`[(checked)]="isDark"`と同じ意味です。
+
+```html
+<!-- [(checked)]="isDark" を分解した形 -->
+<app-toggle
+  [checked]="isDark()"
+  (checkedChange)="isDark.set($event)"
+/>
+```
+
+値を受け取るだけの`[checked]`、変更の通知だけを受け取る`(checkedChange)`と、片方だけを使うこともできます。双方向の記法は、その両方が必要なときに書く量を減らす省略形だと捉えると、仕組みが理解しやすくなります。
 
 必須にしたい場合は、`input`と同様に`model.required()`が使えます。
 
@@ -103,6 +115,9 @@ export class QuantityInput {
 親は、この部品を`[(value)]`でつなぎ、数量を自分の状態として持てます。
 
 ```ts:src/app/cart-item.ts
+import { Component, computed, signal } from '@angular/core';
+import { QuantityInput } from './quantity-input';
+
 @Component({
   selector: 'app-cart-item',
   imports: [QuantityInput],
@@ -152,9 +167,9 @@ checked = model(false);
 
 ### いつmodel()を使うか
 
-双方向バインディングは便利ですが、どんな場面でも使うわけではありません。第17章の単方向データフローの原則は、依然として基本です。多くのやり取りは、入力`input()`と出力`output()`で素直に表現でき、そのほうがデータの流れを追いやすくなります。
+双方向バインディングは便利ですが、どんな場面でも使うわけではありません。前章『データフローとinput()・output()』で学んだ単方向データフローの原則は、依然として基本です。多くのやり取りは、入力`input()`と出力`output()`で素直に表現でき、そのほうがデータの流れを追いやすくなります。
 
-`model()`が真価を発揮するのは、フォーム部品のように「値を持ち、その値を編集して返す」ことが本質的な役割である場面です。チェックボックス、スライダー、日付選択、独自の入力欄などが典型です。標準の`ngModel`（第9部で扱います）が`[(ngModel)]`で使えるのも、この双方向の仕組みによるものです。
+`model()`が真価を発揮するのは、フォーム部品のように「値を持ち、その値を編集して返す」ことが本質的な役割である場面です。チェックボックス、スライダー、日付選択、独自の入力欄などが典型です。標準の`ngModel`（Formsを扱う章で解説します）が`[(ngModel)]`で使えるのも、この双方向の仕組みによるものです。
 
 :::message
 双方向バインディングを多用すると、値がどこで変わるのかが追いにくくなることがあります。まずは`input()`・`output()`による単方向を基本とし、双方向が自然な部品にだけ`model()`を使う、という使い分けを本書では推奨します。
@@ -171,9 +186,9 @@ checked = model(false);
 
 ## ライフサイクルと入力値の変更検知
 
-第6章で、Componentには生成から破棄までの一生、すなわちライフサイクルがあると触れました。この節では、その中身を詳しく見ていきます。Componentが生まれ、入力を受け取り、画面に現れ、やがて破棄されるまでの各段階で、どんな処理を差し込めるのかを学びます。
+『TypeScriptとComponentの基本』の章で、Componentには生成から破棄までの一生、すなわちライフサイクルがあると触れました。この節では、その中身を詳しく見ていきます。Componentが生まれ、入力を受け取り、画面に現れ、やがて破棄されるまでの各段階で、どんな処理を差し込めるのかを学びます。
 
-あわせて、この部で学んだ`input()`との関わりも整理します。旧来、入力の変化を捉えるにはライフサイクルフックが欠かせませんでしたが、Signalベースの入力は、その多くを不要にします。モダンAngularでライフサイクルとどう付き合うか、その勘所をつかみましょう。
+あわせて、前章で学んだ`input()`との関わりも整理します。旧来、入力の変化を捉えるにはライフサイクルフックが欠かせませんでしたが、Signalベースの入力は、その多くを不要にします。モダンAngularでライフサイクルとどう付き合うか、その勘所をつかみましょう。
 
 ### ライフサイクルフックとは
 
@@ -191,12 +206,30 @@ checked = model(false);
 
 表に挙げていないフックもあります。`ngDoCheck`は変更検知のたびに呼ばれ、`ngAfterContentChecked`・`ngAfterViewChecked`は、それぞれコンテンツ・ビューの確認のたびに呼ばれます。これらは変更検知のサイクルごとに何度も実行されるため、重い処理を書くとアプリ全体が遅くなります。特別な理由がない限り、実装する場面はまれです。フックには「一度だけ呼ばれるもの（`ngOnInit`など）」と「何度も呼ばれるもの（`ngDoCheck`や各`Checked`）」があることを意識すると、どこに何を書くべきかの判断がつきやすくなります。
 
+ここまでに挙げたフックを、生成から破棄まで呼ばれる順に図で示します。変更検知のたびに、`ngDoCheck`から`ngAfterViewChecked`までが繰り返し実行される点に注目してください。
+
+```mermaid
+flowchart TD
+  Create["生成（コンストラクター）"] --> OnChanges["ngOnChanges"]
+  OnChanges --> OnInit["ngOnInit"]
+  OnInit --> DoCheck["ngDoCheck"]
+  DoCheck --> ContentInit["ngAfterContentInit"]
+  ContentInit --> ContentChecked["ngAfterContentChecked"]
+  ContentChecked --> ViewInit["ngAfterViewInit"]
+  ViewInit --> ViewChecked["ngAfterViewChecked"]
+  ViewChecked -.->|変更検知のたびに繰り返す| DoCheck
+  ViewChecked --> OnDestroy["ngOnDestroy"]
+```
+
+`ngOnChanges`は入力を持つComponentでのみ、初回の`ngOnInit`より前に呼ばれ、以降は入力が変わるたびに呼ばれます。`ngOnInit`・`ngAfterContentInit`・`ngAfterViewInit`は初期化時に一度だけ、`ngDoCheck`と各`Checked`は変更検知のたびに実行されます。
+
 ### ngOnInitとngOnDestroy
 
 `ngOnInit`は、Componentの初期化処理を書く場所です。入力値がそろった状態で一度だけ呼ばれるため、初期データの読み込みなどに使われてきました。`OnInit`インターフェースを実装して用います。
 
 ```ts:src/app/user-list.ts
 import { Component, inject, OnInit } from '@angular/core';
+import { UserService } from './user-service';
 
 @Component({ selector: 'app-user-list', template: `...` })
 export class UserList implements OnInit {
@@ -218,30 +251,59 @@ ngOnDestroy(): void {
 }
 ```
 
-なぜ後始末が必要なのでしょうか。破棄されたはずのComponentが、購読やタイマーを通じて動き続けると、メモリリークや意図しない処理の原因になります。`ngOnDestroy`で確実に片づけることが、健全なアプリケーションの条件です。RxJSの購読解除については、第8部で詳しく扱います。
+なぜ後始末が必要なのでしょうか。破棄されたはずのComponentが、購読やタイマーを通じて動き続けると、メモリリークや意図しない処理の原因になります。`ngOnDestroy`で確実に片づけることが、健全なアプリケーションの条件です。RxJSの購読解除については、RxJSを扱う章で詳しく解説します。
+
+`ngOnDestroy`の代わりに、`DestroyRef`を使う書き方もあります。`DestroyRef`は、Angular 16（2023年）で導入された、破棄のタイミングを関数として登録するための仕組みです。`inject(DestroyRef)`で取得し、`onDestroy()`に後始末の処理を渡します。
+
+```ts:src/app/ticker.ts（DestroyRefによる後始末）
+import { Component, DestroyRef, inject } from '@angular/core';
+
+@Component({ selector: 'app-ticker', template: `...` })
+export class Ticker {
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    const id = setInterval(() => console.log('tick'), 1000);
+    // 破棄時にタイマーを止める処理を、開始のすぐそばに登録する
+    this.destroyRef.onDestroy(() => clearInterval(id));
+  }
+}
+```
+
+`OnDestroy`インターフェースを実装する必要がなく、後始末を、その処理を始めた場所のすぐそばに書ける点が特徴です。上の例では、タイマーの開始と停止が同じコンストラクター内にまとまり、対応関係が一目でわかります。購読やタイマーが増えても、それぞれの登録の隣に後始末を置けるため、`ngOnDestroy`に後始末が集まって見通しが悪くなる状況を避けられます。
+
+クラスのメソッドとして書く`ngOnDestroy`は以前からある方法で、既存コードでよく見かけます。`DestroyRef`はより新しく、後始末を自動化する`takeUntilDestroyed`のような関数的なAPIとも組み合わせやすい書き方です。どちらでも後始末は行えるため、周囲のコードのスタイルに合わせて選べば問題ありません。
 
 ### ngOnChangesとSignal入力
 
 `ngOnChanges`は、入力値が変わるたびに呼ばれるフックです。旧来の`@Input`では、入力の変化に応じた処理を、ここに書いていました。
 
 ```ts:旧来の書き方（ngOnChangesで入力変化に反応）
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 
 @Component({ selector: 'app-price-tag', template: `...` })
 export class PriceTag implements OnChanges {
   @Input() price = 0;
   withTax = 0;
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
     // priceが変わるたびに、手作業で再計算する
     this.withTax = Math.floor(this.price * 1.1);
+
+    // changesから、変更前後の値や初回かどうかを判定できる
+    const priceChange = changes['price'];
+    if (priceChange && !priceChange.firstChange) {
+      console.log(`${priceChange.previousValue}円から${priceChange.currentValue}円へ変更`);
+    }
   }
 }
 ```
 
-`price`が変わるたびに`withTax`を計算し直す、という処理です。入力の数が増えると、この`ngOnChanges`は肥大化しがちでした。
+`ngOnChanges`は、引数として`SimpleChanges`を受け取れます。これは、どの入力がどう変わったかを表すオブジェクトです。入力名をキーに、変更前の値`previousValue`、変更後の値`currentValue`、そして初回の設定かどうかを表す`firstChange`を持ちます。上の例では、初回を除いて、変更前後の価格をログに記録しています。
 
-第18章で見たように、`input()`を使うと、この多くが不要になります。入力がSignalなので、派生値は`computed()`で宣言でき、変化への追従は自動で行われます。
+`price`が変わるたびに`withTax`を計算し直す、という処理です。入力が増えると、この`ngOnChanges`は肥大化しがちでした。
+
+前章の「@Inputからinput()へ」の節で見たように、`input()`を使うと、この多くが不要になります。入力がSignalなので、派生値は`computed()`で宣言でき、変化への追従は自動で行われます。
 
 ```ts:src/app/price-tag.ts（現在の書き方）
 import { Component, computed, input } from '@angular/core';
@@ -253,13 +315,46 @@ export class PriceTag {
 }
 ```
 
-`ngOnChanges`も、その中の再計算も要りません。`computed()`が、`price`の変化を検知して自動で再計算します。Signal入力の変化に応じて副作用を起こしたい場合は、`effect()`（第6部で扱います）を使えます。このように、モダンAngularでは、入力の変化にまつわるライフサイクルフックの出番が、大きく減っています。
+`ngOnChanges`も、その中の再計算も要りません。`computed()`が、`price`の変化を検知して自動で再計算します。Signal入力の変化に応じて副作用を起こしたい場合は、`effect()`（『SignalsとZoneless』の章で扱います）を使えます。このように、モダンAngularでは、入力の変化にまつわるライフサイクルフックの出番が、大きく減っています。
 
 ### ビューの初期化フック
 
-`ngAfterViewInit`は、Componentのテンプレート（子ビュー）が初期化された後に呼ばれます。`ngAfterContentInit`は、投影されたコンテンツ（第8章）が初期化された後です。これらは、子要素への参照を扱うために使われてきました。
+`ngAfterViewInit`は、Componentのテンプレート（子ビュー）が初期化された後に呼ばれます。`ngAfterContentInit`は、投影されたコンテンツ（『Componentの構成技法と分割設計』の章で扱いました）が初期化された後です。これらは、子要素への参照を扱うために使われてきました。
 
-もっとも、第8章で学んだ`viewChild()`・`contentChild()`は、Signalベースのクエリです。参照はSignalとして得られ、値がそろえば自動で反映されます。そのため、`ngAfterViewInit`を実装して参照を取りにいく、という旧来のパターンも、必要な場面が減っています。ここでも、Signalがライフサイクルフックを肩代わりしているのです。
+たとえば、テンプレート内の入力欄に、表示直後にフォーカスを当てる処理を考えます。旧来は、`@ViewChild`で要素の参照を宣言し、その参照が使えるようになる`ngAfterViewInit`でフォーカスを当てていました。
+
+```ts:旧来の書き方（@ViewChildとngAfterViewInit）
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+
+@Component({ selector: 'app-search-box', template: `<input #box />` })
+export class SearchBox implements AfterViewInit {
+  @ViewChild('box') box!: ElementRef<HTMLInputElement>;
+
+  ngAfterViewInit(): void {
+    // ビューの初期化後でないと、参照はまだ存在しない
+    this.box.nativeElement.focus();
+  }
+}
+```
+
+参照が使えるのはビューの初期化後に限られるため、`ngAfterViewInit`とセットで書く必要がありました。同じ参照を`ngOnInit`で触ると、まだ存在せずエラーになります。
+
+現在は、`viewChild()`によるSignalベースのクエリが使えます。このSignalクエリは、Angular 19（2024年）で安定版になりました。参照はSignalとして得られるため、`afterNextRender`と組み合わせれば、ライフサイクルフックを実装せずに同じ処理を書けます。
+
+```ts:src/app/search-box.ts（現在の書き方）
+import { afterNextRender, Component, ElementRef, viewChild } from '@angular/core';
+
+@Component({ selector: 'app-search-box', template: `<input #box />` })
+export class SearchBox {
+  private readonly box = viewChild<ElementRef<HTMLInputElement>>('box');
+
+  constructor() {
+    afterNextRender(() => this.box()?.nativeElement.focus());
+  }
+}
+```
+
+ここで使った`viewChild()`は、`contentChild()`とあわせて、Signalベースのクエリです。参照はSignalとして得られ、値がそろえば自動で反映されます。別の値の計算に使うなら`computed()`で、DOM操作に使うなら`afterNextRender`で受けられます。そのため、`ngAfterViewInit`を実装して参照を取りにいく、という旧来のパターンは、必要な場面が減っています。ここでも、Signalがライフサイクルフックを肩代わりしているのです。
 
 ### DOMを扱うafterNextRenderとafterEveryRender
 
@@ -284,12 +379,12 @@ export class Chart {
 
 `afterNextRender`は次の描画完了後に一度だけ、`afterEveryRender`は描画のたびに呼ばれます。これらはコンストラクター内で登録します。なお、`afterEveryRender`は、Angular 20（2025年）で`afterRender`から改称されたものです。少し前のコードや記事では`afterRender`という名前で登場することがあります。
 
-これらの関数は、サーバーサイドレンダリング（第62章）の環境ではブラウザでのみ実行されるよう配慮されており、DOM操作を安全に書けます。とはいえ、DOMの直接操作は最小限にとどめ、まずはテンプレートとバインディングで表現できないかを検討するのが基本です。
+これらの関数は、サーバーサイドレンダリング（『SSRとモダンAngularへの移行』の章）の環境ではブラウザでのみ実行されるよう配慮されており、DOM操作を安全に書けます。とはいえ、DOMの直接操作は最小限にとどめ、まずはテンプレートとバインディングで表現できないかを検討するのが基本です。
 
 ### よくあるつまずき
 
 - **`ngOnInit`とコンストラクターの混同**: コンストラクターは、依存の注入（`inject()`）など、生成時の準備に使います。入力値を使う初期化は、値がそろう`ngOnInit`で行うのが安全です。ただし`input()`とSignalを使えば、多くはそもそもフックなしで書けます。
-- **`ngOnDestroy`での後始末忘れ**: 手動の購読やタイマーは、`ngOnDestroy`で片づけないと残り続けます。`async`パイプ（第16章）や`takeUntilDestroyed`（第8部）を使うと、この後始末を自動化できます。
+- **`ngOnDestroy`での後始末忘れ**: 手動の購読やタイマーは、`ngOnDestroy`や`DestroyRef`で片づけないと残り続けます。`async`パイプ（『Directiveの実装とPipe』の章）や`takeUntilDestroyed`（RxJSの章）を使うと、この後始末を自動化できます。
 - **不要なライフサイクルフックの実装**: Signalで書ける処理を、習慣で`ngOnChanges`や`ngAfterViewInit`に書いてしまうことがあります。モダンAngularでは、まず`computed()`・`effect()`・Signalクエリで書けないかを考えます。
 
 ## まとめ

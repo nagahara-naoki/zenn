@@ -42,7 +42,7 @@ export const routes: Routes = [
 
 ### ネストしたRouterOutlet
 
-子Routeを表示するには、親のComponentのテンプレートに、もうひとつ`RouterOutlet`を置きます。第32章では、アプリの最上位に`<router-outlet />`を置きました。ネストでは、その内側にさらに`<router-outlet />`を置く、という入れ子になります。
+子Routeを表示するには、親のComponentのテンプレートに、もうひとつ`RouterOutlet`を置きます。前章『Routerの基礎』では、アプリの最上位に`<router-outlet />`を置きました。ネストでは、その内側にさらに`<router-outlet />`を置く、という入れ子になります。
 
 ```ts:src/app/product-detail.ts
 import { Component, input } from '@angular/core';
@@ -67,6 +67,19 @@ export class ProductDetail {
 
 `<h1>`とタブの`<nav>`は、どの子Routeでも共通して表示されます。そして、その下の`<router-outlet />`の位置に、`info`か`reviews`のどちらかが差し込まれます。最上位の`RouterOutlet`が`ProductDetail`を表示し、`ProductDetail`の中の`RouterOutlet`が、さらにその子を表示する。この二段構えが、ネストの仕組みです。
 
+次の図は、この二段のRouterOutletが、親Componentの中に子Componentを差し込む階層を表します。
+
+```mermaid
+flowchart TD
+  root["最上位のRouterOutlet"] --> detail["親のProductDetail"]
+  detail --> nav["共通のヘッダーとタブ"]
+  detail --> inner["内側のRouterOutlet"]
+  inner --> info["ProductInfo 基本情報"]
+  inner --> reviews["ProductReviews レビュー"]
+```
+
+親の`ProductDetail`は共通で表示され、内側の`RouterOutlet`の中身だけが、URLに応じて`ProductInfo`と`ProductReviews`のあいだで切り替わります。
+
 ここで、タブのリンクが`routerLink="info"`と、先頭にスラッシュのない相対パスになっている点に注目してください。スラッシュなしの相対パスは、現在のルートを基準に解釈されます。`/products/42`を見ているとき、`info`は`/products/42/info`を意味します。ネストの中では、この相対指定が扱いやすくなります。
 
 ### 共通レイアウトを設計する
@@ -90,6 +103,9 @@ export const routes: Routes = [
 `MainLayout`は、ヘッダーやサイドバーと、中身を差し込む`<router-outlet />`だけを持つComponentです。
 
 ```ts:src/app/main-layout.ts
+import { Component } from '@angular/core';
+import { RouterOutlet, RouterLink } from '@angular/router';
+
 @Component({
   selector: 'app-main-layout',
   imports: [RouterOutlet, RouterLink],
@@ -142,7 +158,7 @@ export class MainLayout {}
 }
 ```
 
-`admin`以下のページでだけ使う`AdminService`を、この範囲に限定して登録できます。第25章で学んだInjectorの階層が、ルートの単位でも働くわけです。管理画面など、特定の領域でだけ必要なServiceを、その範囲に閉じて提供したいときに役立ちます。アプリ全体で使うわけではないServiceを、`providedIn: 'root'`ではなくルート単位に置くことで、関心の範囲を明確にできます。
+`admin`以下のページでだけ使う`AdminService`を、この範囲に限定して登録できます。『inject()とProvider・Injectorの階層』の章で学んだInjectorの階層が、ルートの単位でも働くわけです。管理画面など、特定の領域でだけ必要なServiceを、その範囲に閉じて提供したいときに役立ちます。アプリ全体で使うわけではないServiceを、`providedIn: 'root'`ではなくルート単位に置くことで、関心の範囲を明確にできます。
 
 ### よくあるつまずき
 
@@ -164,7 +180,7 @@ export class MainLayout {}
 
 しかし、利用者が最初に必要とするのは、最初に見る画面のコードだけです。まだ開いていないページや、権限がなくて開けない管理画面のコードは、その時点では要りません。Lazy Loadingは、この「いま要るものだけ読み込む」を実現します。コードをページ単位の塊に分割し、それぞれのページへ移ったときに、対応する塊を追加で読み込むのです。
 
-結果として、最初にダウンロードするコードの量が減り、初回表示が速くなります。第7章で、Standalone Componentが遅延読み込みをしやすくすると述べましたが、その効果がここで具体化します。NgModule時代にも遅延読み込みはありましたが、モジュール単位でしか分割できませんでした。Standaloneでは、Component1つからでも遅延読み込みでき、より細かく、柔軟に分割できるようになっています。
+結果として、最初にダウンロードするコードの量が減り、初回表示が速くなります。『TypeScriptとComponentの基本』の章で、Standalone Componentが遅延読み込みをしやすくすると述べましたが、その効果がここで具体化します。NgModule時代にも遅延読み込みはありましたが、モジュール単位でしか分割できませんでした。Standaloneでは、Component1つからでも遅延読み込みでき、より細かく、柔軟に分割できるようになっています。
 
 ### loadComponentで単一Componentを遅延読み込み
 
@@ -231,13 +247,13 @@ src/app/
     └── ...
 ```
 
-そして、最上位のルートから、各機能の`routes`を`loadChildren`で読み込みます。こうすると、機能ごとにコードが独立し、担当を分けやすく、影響範囲も限定されます。パフォーマンスの分割単位と、設計上の分割単位が一致するのです。第11部で扱うアーキテクチャ設計でも、このFeature単位の分割は重要な柱になります。ひとつの機能が肥大化しても、ほかの機能のコードには影響が及ばない、という独立性が保てます。
+そして、最上位のルートから、各機能の`routes`を`loadChildren`で読み込みます。こうすると、機能ごとにコードが独立し、担当を分けやすく、影響範囲も限定されます。パフォーマンスの分割単位と、設計上の分割単位が一致するのです。『アーキテクチャとテスト』の章で扱うアーキテクチャ設計でも、このFeature単位の分割は重要な柱になります。ひとつの機能が肥大化しても、ほかの機能のコードには影響が及ばない、という独立性が保てます。
 
 ### 先読みで遷移を速くする
 
 Lazy Loadingには、ひとつ引き換えとなる点があります。遅延読み込みするページへ初めて移動するとき、その塊をダウンロードするため、わずかな待ちが生じます。初回表示は速くなる代わりに、各ページの初回遷移で少し待つ、というわけです。
 
-この待ちをやわらげるのが、先読み（Preloading）です。最初の画面を表示し終えて手が空いたタイミングで、遅延読み込みするコードを裏で先に読み込んでおく仕組みです。第32章で触れた`provideRouter()`の`with〜`機能で設定します。
+この待ちをやわらげるのが、先読み（Preloading）です。最初の画面を表示し終えて手が空いたタイミングで、遅延読み込みするコードを裏で先に読み込んでおく仕組みです。前章『Routerの基礎』で触れた`provideRouter()`の`with〜`機能で設定します。
 
 ```ts:src/app/app.config.ts
 import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
@@ -253,7 +269,7 @@ export const appConfig: ApplicationConfig = {
 
 ### 分割されたことを確かめる
 
-Lazy Loadingが効いているかは、本番ビルドの出力で確認できます。第3章で学んだ`ng build`を実行すると、生成されたJavaScriptの一覧が表示されます。遅延読み込みが設定されていれば、最初に読み込む塊（メインバンドル）とは別に、遅延読み込み対象ごとの塊（チャンク）が分かれて出力されます。
+Lazy Loadingが効いているかは、本番ビルドの出力で確認できます。『開発環境・CLIとプロジェクト構成』の章で学んだ`ng build`を実行すると、生成されたJavaScriptの一覧が表示されます。遅延読み込みが設定されていれば、最初に読み込む塊（メインバンドル）とは別に、遅延読み込み対象ごとの塊（チャンク）が分かれて出力されます。
 
 ```bash
 ng build
@@ -263,9 +279,39 @@ ng build
 
 ### GuardとLazy Loadingの組み合わせ
 
-Lazy Loadingは、次章で学ぶGuardと組み合わせると、より効果的になります。とくに`CanMatch`というGuardは、遅延読み込みの前に「そのルートを使うかどうか」を判断できます。
+Lazy Loadingは、この章の次の節で学ぶGuardと組み合わせると、より効果的になります。とくに`CanMatch`というGuardは、遅延読み込みの前に「そのルートを使うかどうか」を判断できます。
 
-たとえば、管理者だけがアクセスできる`admin`機能を考えます。`CanMatch`で管理者かどうかを判定すれば、権限のない利用者に対しては、`admin`のコードそのものをダウンロードさせずに済みます。アクセス制御と、コードの読み込みの節約を、同時に実現できるわけです。Guardの詳細は次章で扱いますが、Lazy Loadingと権限管理が結びつく点は、覚えておく価値があります。
+たとえば、管理者だけがアクセスできる`admin`機能を考えます。ルート定義に`canMatch`を指定すると、`loadChildren`が走る前に判定が行われます。
+
+```ts:src/app/app.routes.ts
+import { Routes } from '@angular/router';
+import { adminGuard } from './admin-guard';
+
+export const routes: Routes = [
+  {
+    path: 'admin',
+    canMatch: [adminGuard], // 管理者でなければ、この定義自体を使わない
+    loadChildren: () => import('./admin/admin.routes').then((m) => m.adminRoutes),
+  },
+];
+```
+
+判定する`adminGuard`は、`CanMatchFn`として関数で書きます。書き方はこの章の次の節で扱う関数型Guardと同じで、`inject()`で依存を受け取ります。
+
+```ts:src/app/admin-guard.ts
+import { inject } from '@angular/core';
+import { CanMatchFn } from '@angular/router';
+import { AuthService } from './auth';
+
+export const adminGuard: CanMatchFn = () => {
+  const auth = inject(AuthService);
+  return auth.isAdmin();
+};
+```
+
+ここが`CanMatch`の要点です。`adminGuard`が`false`を返すと、このルート定義そのものが使われないものとして飛ばされ、`loadChildren`は実行されません。つまり、管理者でない利用者は`admin`のコードを一度もダウンロードしません。アクセス制御と、コードの読み込みの節約が、同時に成り立つわけです。
+
+かつては、遅延読み込みの前に判定するGuardとして`CanLoad`がありました。v15.1以降は`CanMatch`が推奨され、`CanLoad`は非推奨です。`CanMatch`は遅延読み込みの可否だけでなく、ルート定義を使うかどうかそのものを判断できます。そのため、同じパスに複数の候補を並べ、条件に応じて出し分ける、といった使い方にも広げられます。
 
 ### よくあるつまずき
 
@@ -276,9 +322,31 @@ Lazy Loadingは、次章で学ぶGuardと組み合わせると、より効果的
 
 ## Route GuardとResolverの新旧比較
 
-第7部の締めくくりとして、ルーティングに関門を設ける2つの仕組み、GuardとResolverを学びます。Guardは「このページに入ってよいか」を判断する門番、Resolverは「このページを表示する前にデータをそろえる」下ごしらえ役です。どちらも、遷移のタイミングに割り込んで処理を行います。
+この章の締めくくりとして、ルーティングに関門を設ける2つの仕組み、GuardとResolverを学びます。Guardは「このページに入ってよいか」を判断する門番、Resolverは「このページを表示する前にデータをそろえる」下ごしらえ役です。どちらも、遷移のタイミングに割り込んで処理を行います。
 
-これらの書き方も、モダンAngularで大きく変わりました。かつてはクラスとインターフェースで実装していましたが、現在は関数で書きます。この関数型のGuard・Resolverは、第24章で学んだ`inject()`があってこそ成り立つものです。この節では、関数型を主に、旧来のクラス型と比較しながら、アクセス制御と事前データ取得を学びます。
+これらの書き方も、モダンAngularで大きく変わりました。かつてはクラスとインターフェースで実装していましたが、現在は関数で書きます。この関数型のGuard・Resolverは、『inject()とProvider・Injectorの階層』の章で学んだ`inject()`があってこそ成り立つものです。この節では、関数型を主に、旧来のクラス型と比較しながら、アクセス制御と事前データ取得を学びます。
+
+次の図は、遷移が起きたときに、GuardとResolverがどの順で割り込むかを、時間の流れに沿って表します。許可された場合はResolverでデータをそろえてから表示し、拒否された場合はリダイレクトする分岐も示します。
+
+```mermaid
+sequenceDiagram
+  participant u as "利用者"
+  participant r as "Router"
+  participant g as "CanActivate Guard"
+  participant rv as "Resolver"
+  participant c as "Component"
+  u->>r: リンクを操作して遷移を要求
+  r->>g: 遷移してよいか判定を依頼
+  alt 許可された場合
+    g-->>r: true を返す
+    r->>rv: 表示前のデータ取得を依頼
+    rv-->>r: 取得したデータを返す
+    r->>c: データを渡して表示
+  else 拒否された場合
+    g-->>r: UrlTree を返す
+    r->>u: ログインページへリダイレクト
+  end
+```
 
 ### Route Guardとは
 
@@ -307,7 +375,7 @@ export const authGuard: CanActivateFn = () => {
 };
 ```
 
-`authGuard`は、ただの関数です。中で`inject()`を使い、`AuthService`と`Router`を受け取っています。ログイン済みなら`true`を返して遷移を許可し、そうでなければ`createUrlTree`でログインページへの指示を返します。第24章で「関数型のGuardは`inject()`があって初めて成り立つ」と述べたのは、このことです。関数の中で依存を注入できるからこそ、この簡潔な書き方ができます。
+`authGuard`は、ただの関数です。中で`inject()`を使い、`AuthService`と`Router`を受け取っています。ログイン済みなら`true`を返して遷移を許可し、そうでなければ`createUrlTree`でログインページへの指示を返します。先ほど「関数型のGuardは`inject()`があって初めて成り立つ」と述べたのは、このことです。関数の中で依存を注入できるからこそ、この簡潔な書き方ができます。
 
 作ったGuardは、ルート定義の`canActivate`に指定します。
 
@@ -318,6 +386,52 @@ export const routes: Routes = [
 ```
 
 `canActivate: [authGuard]`とすると、`/mypage`へ遷移しようとするたびに`authGuard`が呼ばれ、その戻り値で遷移の可否が決まります。配列なので、複数のGuardを並べることもでき、その場合はすべてが許可したときだけ遷移が進みます。
+
+### 非同期にアクセスを判定する
+
+ここまでのGuardは、その場で`true`か`false`を返す同期的な判定でした。しかし実務では、認証状態をサーバーに問い合わせてから可否を決めたい場面があります。ローカルに持っているフラグではなく、セッションがまだ有効かどうかをサーバーに確認する、といったケースです。
+
+このとき、Guardは`Promise`や`Observable`を返せます。`CanActivateFn`の戻り値は`boolean | UrlTree`だけでなく、`Promise<boolean | UrlTree>`や`Observable<boolean | UrlTree>`も取れるためです。Routerは、返された非同期の結果が確定するまで遷移を保留し、値が返ってから可否を判断します。
+
+まず`Promise`を返す例です。`async`関数にして、サーバーへの問い合わせを`await`します。
+
+```ts:src/app/auth-guard.ts
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from './auth';
+
+export const authGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  // サーバーにセッションの有効性を問い合わせる
+  const isLoggedIn = await auth.checkSession();
+  return isLoggedIn ? true : router.createUrlTree(['/login']);
+};
+```
+
+ここで`inject()`を呼ぶ位置に注意が必要です。`inject()`は、最初の`await`より前に呼びます。`await`をまたぐと注入コンテキストが失われ、`inject()`が失敗するためです。依存の取得は、関数の冒頭で済ませます。
+
+同じ判定を`Observable`で書くこともできます。`HttpClient`のようにサーバー通信の結果を`Observable`で返すAPIを使う場合は、その`Observable`をそのまま返せます。
+
+```ts:src/app/auth-guard.ts
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { map } from 'rxjs';
+import { AuthService } from './auth';
+
+export const authGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  // checkSession$() は Observable<boolean> を返す
+  return auth.checkSession$().pipe(
+    map((isLoggedIn) => (isLoggedIn ? true : router.createUrlTree(['/login']))),
+  );
+};
+```
+
+`Observable`とその演算子は、次章『RxJSの基礎』で詳しく扱います。ここでは、Guardが非同期の結果を返せて、Routerがそれを待つ、という点をおさえてください。ただし、問い合わせに時間がかかると、その間は遷移が始まらず、利用者を待たせてしまいます。認証の確認は素早く返す設計にするか、確認中であることを画面で示す工夫が要ります。
 
 ### Guardの種類
 
@@ -375,9 +489,52 @@ export const productResolver: ResolveFn<Product> = (route) => {
 }
 ```
 
-Component側では、解決されたデータを受け取ります。第32章で設定した`withComponentInputBinding()`があれば、解決データ（ここでは`product`）も`input()`で受け取れます。Resolverを使うと、「データが来るまでのローディング状態」をComponent側で扱わずに済み、表示された時点でデータがそろっている、という作りにできます。
+Component側では、解決されたデータを受け取ります。前章『Routerの基礎』で設定した`withComponentInputBinding()`があれば、解決データのキー（ここでは`product`）と同じ名前の`input()`で、そのまま受け取れます。
 
-ただし、Resolverには注意点もあります。データの取得が終わるまで遷移が完了しないため、取得が遅いと、遷移そのものが待たされます。時間のかかるデータは、Resolverで待たせるより、ページを先に表示してから読み込むほうが、体感がよい場合もあります。何をResolverで先に用意し、何をあとから読み込むかは、設計上の判断になります。
+```ts:src/app/product-detail.ts
+import { Component, input } from '@angular/core';
+import { Product } from './product';
+
+@Component({
+  selector: 'app-product-detail',
+  template: `
+    <h1>{{ product().name }}</h1>
+    <p>{{ product().price }}円</p>
+  `,
+})
+export class ProductDetail {
+  // resolve の { product: ... } を、同名の input() で受け取る
+  readonly product = input.required<Product>();
+}
+```
+
+Resolverを使うと、「データが来るまでのローディング状態」をComponent側で扱わずに済みます。表示された時点でデータがそろっているため、`product()`が空である場合を考えなくてよくなります。
+
+ここで、Resolverが失敗したときの挙動をおさえておきます。Resolverが返す`Observable`がエラーになると、遷移そのものがキャンセルされます。目的のページは表示されず、利用者は元のページにとどまります。何も対処しないと、リンクを押しても無反応に見えてしまいます。そのため、Resolverの中でエラーを受け止め、行き先を決めておきます。
+
+```ts:src/app/product-resolver.ts
+import { inject } from '@angular/core';
+import { ResolveFn, Router } from '@angular/router';
+import { EMPTY, catchError } from 'rxjs';
+import { ProductService } from './product';
+
+export const productResolver: ResolveFn<Product> = (route) => {
+  const service = inject(ProductService);
+  const router = inject(Router);
+  const id = route.paramMap.get('id')!;
+
+  return service.findById(id).pipe(
+    catchError(() => {
+      router.navigate(['/error']); // 取得に失敗したらエラーページへ切り替える
+      return EMPTY; // 空を返すと、元の遷移はキャンセルされる
+    }),
+  );
+};
+```
+
+`catchError`でエラーを捕まえ、エラーページへ誘導してから`EMPTY`を返しています。`EMPTY`は値を出さずに完了する`Observable`で、これを返すと元の遷移はキャンセルされ、代わりにエラーページへの遷移が進みます。エラー時にフォールバックの値を返して遷移を続ける、という選び方もあります。どちらにせよ、失敗をそのままにしないことが肝心です。
+
+もうひとつの注意点は、取得にかかる時間です。データの取得が終わるまで遷移は完了しないため、取得が遅いと、遷移そのものが待たされます。時間のかかるデータは、Resolverで待たせるより、ページを先に表示してから読み込むほうが、体感がよい場合もあります。何をResolverで先に用意し、何をあとから読み込むかは、設計上の判断になります。
 
 ### 旧来のクラス型との比較
 
@@ -385,7 +542,8 @@ Component側では、解決されたデータを受け取ります。第32章で
 
 ```ts:旧来の書き方（クラス型Guard）
 import { Injectable, inject } from '@angular/core';
-import { CanActivate, Router } from '@angular/router';
+import { CanActivate, Router, UrlTree } from '@angular/router';
+import { AuthService } from './auth';
 
 @Injectable({ providedIn: 'root' })
 export class AuthGuard implements CanActivate {

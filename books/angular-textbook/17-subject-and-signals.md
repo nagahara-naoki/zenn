@@ -42,6 +42,16 @@ subject.next('さようなら');
 
 もうひとつの重要な性質が、マルチキャストです。ひとつのSubjectを複数の購読者が`subscribe`すると、`next`で流した値は、すべての購読者に同時に届きます。放送局が電波を流し、複数の受信機がそれを受け取るイメージです。この性質から、Subjectは「複数の場所へ、同じ出来事を知らせる」用途に向きます。
 
+次の図は、ひとつのSubjectに`next`で流し込んだ1つの値が、購読しているすべての購読者へ同時に配られる様子を表します。購読ごとに独立して実行される通常のObservableと違い、値の発生源が1つに束ねられているのがSubjectの特徴です。
+
+```mermaid
+flowchart TD
+  src["値の発生源"] -->|"next で1回流す"| subject(["Subject"])
+  subject --> subA["購読者A"]
+  subject --> subB["購読者B"]
+  subject --> subC["購読者C"]
+```
+
 ### BehaviorSubject
 
 Subjectには、いくつかの派生があります。もっともよく使うのが、BehaviorSubjectです。
@@ -64,7 +74,7 @@ count.subscribe((value) => console.log('現在値:', value)); // 5
 console.log(count.value); // 5
 ```
 
-BehaviorSubjectは「現在の値を持つストリーム」なので、状態の保持にうってつけです。第22章で触れた「状態を持つService」の実装として、長らくこのBehaviorSubjectが使われてきました。Serviceの中でBehaviorSubjectに状態を保持し、Componentがそれを購読する、という形です。
+BehaviorSubjectは「現在の値を持つストリーム」なので、状態の保持にうってつけです。『ServiceとDependency Injection』の章で触れた「状態を持つService」の実装として、長らくこのBehaviorSubjectが使われてきました。Serviceの中でBehaviorSubjectに状態を保持し、Componentがそれを購読する、という形です。
 
 ### ReplaySubjectとAsyncSubject
 
@@ -98,9 +108,9 @@ BehaviorSubjectが「現在の1つ」を渡すのに対し、ReplaySubjectは「
 
 Subjectは、おもに2つの用途で使われてきました。
 
-ひとつは、**Component間のイベント伝達**です。第17章で、親子を越えた通信にはServiceが要ると述べました。Serviceの中にSubjectを持ち、あるComponentが`next`でイベントを流し、別のComponentがそれを購読する、という形で、離れたComponent間の連絡ができます。「通知」を配る用途です。
+ひとつは、**Component間のイベント伝達**です。『データフローとinput()・output()』の章で、親子を越えた通信にはServiceが要ると述べました。Serviceの中にSubjectを持ち、あるComponentが`next`でイベントを流し、別のComponentがそれを購読する、という形で、離れたComponent間の連絡ができます。「通知」を配る用途です。
 
-もうひとつは、**状態の共有**です。BehaviorSubjectに状態を保持し、複数のComponentがその状態を購読して、同じ値を共有します。これが、第10部で扱うStore Serviceの、古典的な実装でした。具体的には、次のような形です。
+もうひとつは、**状態の共有**です。BehaviorSubjectに状態を保持し、複数のComponentがその状態を購読して、同じ値を共有します。これが、『状態管理の基礎』の章で扱うStore Serviceの、古典的な実装でした。具体的には、次のような形です。
 
 ```ts:src/app/cart.ts（BehaviorSubjectによるStore Service）
 @Injectable({ providedIn: 'root' })
@@ -116,13 +126,13 @@ export class CartService {
 }
 ```
 
-ここで重要なのが、`asObservable()`です。`itemsSubject`そのものを外へ公開すると、どのComponentからでも`next`で値を流し込めてしまい、状態の変更経路がばらばらになります。`asObservable()`で読み取り専用にして公開すれば、状態を変えられるのは`CartService`の`add`のようなメソッドだけに限定できます。変更の窓口を絞ることが、状態を追いやすく保つ鍵です。Componentは`items$`を`async`パイプで購読し、`add`を呼んで変更を依頼します。単方向データフロー（第17章）の考え方が、状態管理にも通じているのがわかります。
+ここで重要なのが、`asObservable()`です。`itemsSubject`そのものを外へ公開すると、どのComponentからでも`next`で値を流し込めてしまい、状態の変更経路がばらばらになります。`asObservable()`で読み取り専用にして公開すれば、状態を変えられるのは`CartService`の`add`のようなメソッドだけに限定できます。変更の窓口を絞ることが、状態を追いやすく保つ鍵です。Componentは`items$`を`async`パイプで購読し、`add`を呼んで変更を依頼します。単方向データフロー（『データフローとinput()・output()』の章）の考え方が、状態管理にも通じているのがわかります。
 
 ### SignalとBehaviorSubjectの関係
 
-ここで、第6部で学んだSignalを思い出してください。「現在の値を持ち、変化を購読者に伝える」というBehaviorSubjectの役割は、Signalの役割とよく似ています。実際、モダンAngularでは、状態の保持という用途において、BehaviorSubjectをSignalで置き換えられる場面が多くあります。
+ここで、『SignalsとZoneless』の章で学んだSignalを思い出してください。「現在の値を持ち、変化を購読者に伝える」というBehaviorSubjectの役割は、Signalの役割とよく似ています。実際、モダンAngularでは、状態の保持という用途において、BehaviorSubjectをSignalで置き換えられる場面が多くあります。
 
-```ts:BehaviorSubjectによる状態（従来）
+```ts:BehaviorSubjectによる状態（旧）
 private readonly count$ = new BehaviorSubject(0);
 ```
 
@@ -132,7 +142,7 @@ private readonly count = signal(0);
 
 どちらも「現在の値を持ち、変化を伝える」点で共通します。Signalのほうが、テンプレートでの読み取りが簡潔で、購読解除の心配もありません。そのため、単純な状態の保持なら、Signalが第一の選択肢になりつつあります。
 
-ただし、RxJSが不要になるわけではありません。`debounceTime`や`switchMap`のような、時間的な制御や非同期の合成は、依然としてRxJSの得意分野です。「現在の値の保持」はSignal、「複雑な非同期の流れ」はRxJS、という役割分担が、モダンAngularの姿です。この共存については、次章でさらに深めます。
+ただし、RxJSが不要になるわけではありません。`debounceTime`や`switchMap`のような、時間的な制御や非同期の合成は、依然としてRxJSの得意分野です。「現在の値の保持」はSignal、「複雑な非同期の流れ」はRxJS、という役割分担が、モダンAngularの姿です。この共存については、この章の次の節で詳しく扱います。
 
 ### よくあるつまずき
 
@@ -143,15 +153,29 @@ private readonly count = signal(0);
 
 ## RxJSとSignalsの共存
 
-ここまで、RxJSのObservableと、第6部のSignalという、2つのリアクティブな仕組みを学んできました。どちらも「値の変化に反応する」という点で似ていますが、得意分野が異なります。モダンAngularでは、この2つを対立するものとしてどちらか一方を選ぶのではなく、それぞれの強みを活かして共存させます。
+ここまで、RxJSのObservableと、『SignalsとZoneless』の章で学んだSignalという、2つのリアクティブな仕組みを学んできました。どちらも「値の変化に反応する」という点で似ていますが、得意分野が異なります。モダンAngularでは、この2つを対立するものとしてどちらか一方を選ぶのではなく、それぞれの強みを活かして共存させます。
 
 この節では、RxJSとSignalをつなぐ橋渡しの仕組みと、どちらをどの場面で使うべきかの指針を学びます。橋渡しには、Angularがrxjs-interopとして提供する`toSignal()`と`toObservable()`を使います。この2つを理解すれば、既存のRxJSベースのコードと、新しいSignalベースのコードを、無理なく組み合わせられるようになります。
+
+次の図は、この橋渡しの全体像を表します。左のRxJS（時間をかけた非同期の流れ）と、右のSignals（現在の値）を、`toSignal()`と`toObservable()`が双方向につないでいます。
+
+```mermaid
+flowchart LR
+  subgraph rx["RxJS"]
+    obs["Observable（時間をかけた流れ）"]
+  end
+  subgraph sg["Signals"]
+    sig["Signal（現在の値）"]
+  end
+  obs -->|"toSignal で変換"| sig
+  sig -->|"toObservable で変換"| obs
+```
 
 ### RxJSとSignalの得意分野
 
 まず、2つの仕組みの違いを整理します。似ているようで、主眼が異なります。
 
-Signalは、「現在の値」を扱うのが得意です。いつ読んでも、その時点の値が同期的に得られます。テンプレートとの相性がよく、変更検知とも直結しています（第29章）。状態を保持し、それをUIに反映する、という用途に向いています。読み取りが同期的で、購読の解除も要らず、扱いが単純です。
+Signalは、「現在の値」を扱うのが得意です。いつ読んでも、その時点の値が同期的に得られます。テンプレートとの相性がよく、変更検知とも直結しています（『SignalsとZoneless』の章）。状態を保持し、それをUIに反映する、という用途に向いています。読み取りが同期的で、購読の解除も要らず、扱いが単純です。
 
 RxJSは、「時間をかけて流れる値」を扱うのが得意です。値がいつ、どの順で流れるかという時間的な側面を、細かく制御できます。`debounceTime`で待ち、`switchMap`で切り替え、`catchError`で回復する、といった非同期の複雑な流れは、RxJSの独壇場です。その代わり、購読の管理が必要で、現在の値を同期的に取り出すのは苦手です。
 
@@ -185,9 +209,16 @@ export class Clock {
 
 `toSignal(interval(1000))`で、1秒ごとに値を流すObservableを、Signalに変えています。テンプレートでは`seconds()`と、ふつうのSignalとして読めます。`toSignal()`の利点は2つあります。ひとつは、テンプレートで`async`パイプを使わずに、Signalとして直接読めること。もうひとつは、購読の解除を自動でやってくれることです。Componentが破棄されると、内部の購読も解除されます。`initialValue`は、Observableが最初の値を流す前の値を指定するオプションです。
 
-HTTP通信の結果を`toSignal()`でSignalにすれば、RxJSベースの通信と、Signalベースの画面を、きれいにつなげます。第9部のHTTP通信でも、この組み合わせが登場します。
+HTTP通信の結果を`toSignal()`でSignalにすれば、RxJSベースの通信と、Signalベースの画面を、きれいにつなげます。『HTTP通信』の章でも、この組み合わせが登場します。
 
 `toSignal()`には、いくつかのオプションがあります。`initialValue`のほかに、`requireSync`は、`BehaviorSubject`のように購読と同時に値を流すObservableに対して、初期値なしでも同期的に値を得られるようにするものです。同期的に必ず値があるとわかっているなら、これを使うと`undefined`を扱わずに済みます。これらのオプションは、変換元のObservableの性質に応じて選びます。多くの場合は`initialValue`を指定しておけば十分です。
+
+`async`パイプに慣れていると戸惑いやすい点も、いくつかあります。
+
+- **購読は呼び出した瞬間に始まります**: `async`パイプがテンプレートに現れて初めて購読するのに対し、`toSignal()`は呼び出した時点ですぐに購読を始めます（eager）。フィールドの初期化で一度だけ実行される、と考えるとよいでしょう。
+- **エラーはSignalを読んだときに投げられます**: 変換元のObservableがエラーで終わると、そのエラーは`seconds()`のようにSignalを読んだ瞬間に投げられます。画面でエラーを扱いたいなら、変換する前に`catchError`で捕まえておきます。
+- **injection contextの外では`injector`が必要です**: `toSignal()`は購読解除をそのContextの破棄に結びつけるため、原則としてComponentのフィールド初期化やコンストラクターなど、injection context内で呼びます。それ以外の場所で使うときは、`injector`オプションでInjectorを明示的に渡します。
+- **購読はInjectorが破棄されるまで生きます**: 自動で解除されるのは、属するInjector（多くはComponent）が破棄されたときです。この寿命の感覚は、`takeUntilDestroyed()`と同じだと考えてください。
 
 ### toObservableでSignalをObservableに変換する
 
@@ -219,6 +250,23 @@ export class Search {
 
 ここに、共存の理想的な形が表れています。入力と結果という「状態」はSignalで持ち、その間の「時間制御と非同期合成」はRxJSに任せる。両者の境界を`toObservable()`と`toSignal()`が橋渡ししています。Signalの手軽さと、RxJSの表現力を、同時に得られるのです。
 
+### toObservableが値を流すタイミング
+
+`toObservable()`にも、おさえておきたい癖があります。値の発行が**非同期**である点です。内部ではeffectがSignalの変化を追いかけ、そのeffectが実行されたときに現在の値を流します。effectは同期処理が一段落してから動くため、同じ流れの中でSignalを続けて`set()`すると、途中の値はスキップされ、最後の値だけがObservableに届きます。
+
+```ts
+const count = signal(0);
+const count$ = toObservable(count);
+count$.subscribe((v) => console.log(v));
+
+count.set(1);
+count.set(2);
+count.set(3);
+// 出力されるのは 3 だけ（途中の 1・2 は流れない）
+```
+
+`set()`のたびに1回ずつ値を流したい、という用途には向きません。`toObservable()`は「現在の値が変わったことを、非同期の流れへ橋渡しする」道具であり、すべての中間状態を漏れなく届けるものではない、と理解しておきます。
+
 ### どちらを使うべきか
 
 では、実際の開発で、どちらを選べばよいのでしょうか。判断の指針を示します。
@@ -234,7 +282,7 @@ export class Search {
 
 Signalが状態管理の主役になると、「RxJSはもう不要では」と思うかもしれません。しかし、そうではありません。RxJSは、Signalには置き換えられない領域を持っています。
 
-複数の非同期処理を合成する、値の流れを時間的に制御する、キャンセルや再試行を扱う。こうした「イベントの流れ」を宣言的に組み立てる力は、依然としてRxJSにしかありません。また、HttpClientやRouter、Formsといったフレームワークの機能が、Observableを返す以上、RxJSの理解は欠かせません。Signalとの共存を前提に、RxJSは今後もAngular開発の重要な柱であり続けます。第2章で述べた「新旧を対立させない」姿勢は、ここでも当てはまります。新しいSignalと既存のRxJSは、競合ではなく分担の関係にあるのです。
+複数の非同期処理を合成する、値の流れを時間的に制御する、キャンセルや再試行を扱う。こうした「イベントの流れ」を宣言的に組み立てる力は、依然としてRxJSにしかありません。また、HttpClientやRouter、Formsといったフレームワークの機能が、Observableを返す以上、RxJSの理解は欠かせません。Signalとの共存を前提に、RxJSは今後もAngular開発の重要な柱であり続けます。『Angularとは何か』の章で述べた「新旧を対立させない」姿勢は、ここでも当てはまります。新しいSignalと既存のRxJSは、競合ではなく分担の関係にあるのです。
 
 ### よくあるつまずき
 
@@ -245,9 +293,9 @@ Signalが状態管理の主役になると、「RxJSはもう不要では」と�
 
 ## RouterとRxJS・Signals・状態管理
 
-第8部の締めくくりとして、これまで学んできた要素を組み合わせた、実践的な設計を扱います。Router（第7部）、RxJS（第8部）、Signals（第6部）、そしてService（第5部）。これらは、実際のアプリケーションでは単独ではなく、連携して働きます。この節では、それらがどう噛み合うのかを、具体的な場面を通して確認します。
+この章の締めくくりとして、これまで学んできた要素を組み合わせた、実践的な設計を扱います。Router、RxJS、Signals、そしてService。これらは、実際のアプリケーションでは単独ではなく、連携して働きます。この節では、それらがどう噛み合うのかを、具体的な場面を通して確認します。
 
-とくに焦点を当てるのは、「URLの変化に応じてデータを取得し、画面に反映する」という、どのアプリにも現れる基本的な流れです。ここには、Routerのパラメーター、RxJSの非同期合成、Signalによる状態保持が、すべて登場します。この一連の流れを設計できるようになることが、この部の到達点です。次の第10部で状態管理を本格的に学ぶ前の、橋渡しの回でもあります。
+とくに焦点を当てるのは、「URLの変化に応じてデータを取得し、画面に反映する」という、どのアプリにも現れる基本的な流れです。ここには、Routerのパラメーター、RxJSの非同期合成、Signalによる状態保持が、すべて登場します。この一連の流れを設計できるようになることが、この章の到達点のひとつです。次に控える『状態管理の基礎』の章で状態管理を本格的に学ぶ前の、橋渡しにあたります。
 
 ### 典型的な流れ — URLからデータへ
 
@@ -257,7 +305,7 @@ Signalが状態管理の主役になると、「RxJSはもう不要では」と�
 2. その`id`をもとに、サーバーへデータを要求する（RxJS・HttpClient）
 3. 取得したデータを、画面に表示する（Signal）
 
-第33章で、`withComponentInputBinding()`により、`:id`が`input()`に結びつくことを学びました。ここに、RxJSとSignalを組み合わせると、URLの変化に追従してデータを取得する流れを、宣言的に書けます。
+『Routerの基礎』の章で、`withComponentInputBinding()`により、`:id`が`input()`に結びつくことを学びました。ここに、RxJSとSignalを組み合わせると、URLの変化に追従してデータを取得する流れを、宣言的に書けます。
 
 ### Signal入力を起点に組み立てる
 
@@ -296,6 +344,24 @@ export class ProductDetail {
 
 `/products/42`から`/products/99`へ移ったときも、この流れが自動で働きます。`id`が変わり、`switchMap`が古い通信を打ち切って新しい通信を始め、`product`が更新されます。Router・RxJS・Signalが、それぞれの役割を果たしながら、ひとつの流れとして噛み合っているのがわかります。
 
+ただし、切り替えの瞬間には落とし穴があります。`id`が変わってから新しいデータが届くまでの間、`product()`は**前の商品の値を保持したまま**になります。`toSignal()`は最後に流れた値を覚えているため、`/products/42`から`/products/99`へ移った直後は、99のデータが届くまで42の内容が画面に残り、`@else`の読み込み表示には切り替わりません。
+
+この間を「読み込み中」に見せたいなら、`id`が変わった時点でいったん値を空に戻します。`switchMap`の内側で`startWith(undefined)`を挟むと、切り替えのたびにまず`undefined`を流し、続けて新しいデータを流せます。
+
+```ts
+protected readonly product = toSignal(
+  toObservable(this.id).pipe(
+    switchMap((id) =>
+      this.service.findById(id).pipe(startWith(undefined)),
+    ),
+  ),
+);
+```
+
+これで`id`が変わるたびに`product()`が一度`undefined`に戻り、テンプレートは`@else`側の読み込み表示に切り替わります。新しいデータが届けば、また`@if`側の表示に戻ります。
+
+なお、この「URLの変化をきっかけにデータを取得する」流れは頻出するため、Angular自身も専用の仕組みを用意しつつあります。v19で導入された`resource()`と、そのHTTP版の`httpResource()`は、Signalで表した入力（ここでは`id`）が変わると自動でデータを取得し直し、結果・読み込み中・エラーといった状態をまとめて扱えるAPIです。v22世代では実用に使える段階まで成熟してきました。`toObservable()`と`switchMap`で手組みしていた部分を、より宣言的に置き換えられる場面が増えています。詳しくは『HTTP通信』の章で扱います。ここでは、その下地となる考え方として、Router・RxJS・Signalの連携を理解しておけば十分です。
+
 ### 各要素の役割分担
 
 この設計を、役割の視点で整理します。ひとつの流れの中で、各技術が担っている部分が明確に分かれています。
@@ -305,18 +371,19 @@ export class ProductDetail {
 - **RxJS**: `id`の変化をきっかけに、非同期のデータ取得を制御する（`switchMap`による切り替え）
 - **Signal（結果）**: 取得したデータを、テンプレートで扱いやすい形で保持する
 
-第41章で述べた「状態はSignal、非同期はRxJS」という分担が、ここでも貫かれています。URLという入力も、データという結果も、Signalとして扱い、その間の非同期の制御だけをRxJSに任せています。この一貫した方針が、コードの見通しを保ちます。
+前の節で述べた「状態はSignal、非同期はRxJS」という分担が、ここでも貫かれています。URLという入力も、データという結果も、Signalとして扱い、その間の非同期の制御だけをRxJSに任せています。この一貫した方針が、コードの見通しを保ちます。
 
 ### Routerのイベントを扱う
 
 Routerは、パラメーター以外にも、遷移に関するさまざまな情報をObservableで提供します。`Router`の`events`は、遷移の開始や完了といった出来事を流すObservableです。これを購読すると、「ページ遷移のたびに何かをする」といった処理が書けます。
 
 ```ts:src/app/analytics.ts
-import { inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+@Injectable({ providedIn: 'root' })
 export class Analytics {
   private readonly router = inject(Router);
 
@@ -335,17 +402,24 @@ export class Analytics {
 
 ここでも、これまで学んだ道具が総動員されています。`Router.events`というObservableを、`filter`で遷移完了（`NavigationEnd`）だけに絞り、`takeUntilDestroyed()`で購読解除を自動化しています。RxJSのOperatorとinteropが、Routerのイベント処理を簡潔にしているのです。
 
+このクラスに`@Injectable({ providedIn: 'root' })`が付いている点が重要です。`inject()`と`takeUntilDestroyed()`は、どちらもinjection context（Angularが依存を解決できる文脈）でしか呼び出せません。Serviceのコンストラクターはこのinjection contextにあたるため、そこでの`inject()`や購読が成立します。デコレーターのない素のクラスをどこかで`new`しただけでは、この文脈が存在せず、`inject()`も`takeUntilDestroyed()`も実行時にエラーになります。
+
+もうひとつ意識したいのが、いつこのコンストラクターが動くかです。`providedIn: 'root'`のServiceは、どこかで初めて注入された時点で生成されます。アプリ起動と同時に記録を始めたいなら、ルートのComponentで`inject(Analytics)`を一度呼ぶなどして、生成のきっかけを用意します。いったん生成されれば、コンストラクターで張った購読が、`takeUntilDestroyed()`によってこのService（ルート提供なのでアプリ）が破棄されるまで、遷移イベントを拾い続けます。
+
 ### 状態管理へのつながり
 
 この節で見たのは、ひとつのComponentの中で完結する範囲の連携でした。しかし、アプリが大きくなると、状態は複数のComponentにまたがり、より本格的な管理が必要になります。「取得した商品データを、詳細ページとカートページで共有したい」といった要求です。
 
-こうした、Componentを越えた状態の管理は、第10部の主題です。そこでは、この節で使ったSignalやRxJSを土台に、Store Serviceや、NgRxといった、より大規模な状態管理の仕組みを扱います。この節で学んだ「Router・RxJS・Signalの連携」は、その状態管理の基礎体力になります。個々の技術がどう噛み合うかを理解していれば、大規模な仕組みも、その延長として捉えられます。
+こうした、Componentを越えた状態の管理は、『状態管理の基礎』の章の主題です。そこでは、この節で使ったSignalやRxJSを土台に、Store Serviceや、NgRxといった、より大規模な状態管理の仕組みを扱います。この節で学んだ「Router・RxJS・Signalの連携」は、その状態管理の基礎体力になります。個々の技術がどう噛み合うかを理解していれば、大規模な仕組みも、その延長として捉えられます。
 
 ### Serviceに状態を集約する
 
-ひとつのComponentで完結しない例として、一覧ページと詳細ページで、選択中の商品を共有する場面を考えます。この場合、状態をComponentではなく、Serviceに置きます。第22章で学んだ「状態を持つService」を、Signalで実装します。
+ひとつのComponentで完結しない例として、一覧ページと詳細ページで、選択中の商品を共有する場面を考えます。この場合、状態をComponentではなく、Serviceに置きます。『ServiceとDependency Injection』の章で学んだ「状態を持つService」を、Signalで実装します。
 
 ```ts:src/app/product-store.ts
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { ProductService } from './product';
+
 @Injectable({ providedIn: 'root' })
 export class ProductStore {
   private readonly selectedId = signal<string | null>(null);
@@ -363,7 +437,9 @@ export class ProductStore {
 }
 ```
 
-一覧ページで`select`を呼べば、詳細ページの`selected`も自動で更新されます。両ページが同じ`ProductStore`のインスタンス（`providedIn: 'root'`により単一）を共有しているためです。ここでも、状態はSignal、というモダンAngularの方針が貫かれています。かつてBehaviorSubjectで書いていたこうしたStore Serviceが、Signalによってより簡潔に書けるようになりました。この発想を発展させたものが、第10部で学ぶ状態管理です。
+一覧ページで`select`を呼べば、詳細ページの`selected`も自動で更新されます。両ページが同じ`ProductStore`のインスタンス（`providedIn: 'root'`により単一）を共有しているためです。ここでも、状態はSignal、というモダンAngularの方針が貫かれています。かつてBehaviorSubjectで書いていたこうしたStore Serviceが、Signalによってより簡潔に書けるようになりました。この発想を発展させたものが、『状態管理の基礎』の章で学ぶ状態管理です。
+
+ひとつ補足すると、`computed()`が再計算されるのは、その中で読んでいるSignalが変わったときだけです。この例では`selectedId()`を読んでいるので、`select()`でIDを変えれば`selected`も更新されます。一方、`findByIdSync()`が返すデータそのものが後から変わっても、それがSignalでない限り`selected`は追従しません。`computed()`の中で頼れるのは、同期的に取得できてSignalとして保持しているデータに限られる、と考えてください。サーバーから非同期に取得するデータを扱うなら、前の節の`toSignal()`のように、非同期の結果そのものをSignalにしておく必要があります。
 
 ### よくあるつまずき
 
@@ -371,9 +447,9 @@ export class ProductStore {
 - **URLに表すべき状態をComponentに閉じ込める**: 「どの商品を見ているか」のような、共有・復元したい状態は、Componentの内部ではなくURLで表すと、ブックマークや戻る操作と自然に噛み合います。
 - **非同期の合成を手続き的に書く**: URLの変化に応じた取得を、`subscribe`のネストで書くと追いにくくなります。`toObservable()`と`switchMap`で、宣言的な流れとして組み立てます。
 
-### この部のまとめとしての位置づけ
+### ここまでの集大成としての位置づけ
 
-この節は、第6部から第8部までの集大成にあたります。Signal（状態）、RxJS（非同期）、Router（URL）という3つの柱が、実際のアプリケーションではひとつの流れとして協調することを見てきました。それぞれを個別に学んだときには見えなかった、技術どうしのつながりが、具体的なコードを通して立ち上がってきたはずです。この「組み合わせて設計する」感覚こそ、中級から上級へ進むうえで欠かせないものです。
+この節は、Signals・RxJS・Routerを扱ってきた各章の集大成にあたります。Signal（状態）、RxJS（非同期）、Router（URL）という3つの柱が、実際のアプリケーションではひとつの流れとして協調することを見てきました。それぞれを個別に学んだときには見えなかった、技術どうしのつながりが、具体的なコードを通して立ち上がってきたはずです。この「組み合わせて設計する」感覚こそ、中級から上級へ進むうえで欠かせないものです。
 
 ## まとめ
 

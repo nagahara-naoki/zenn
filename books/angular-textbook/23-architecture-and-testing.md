@@ -23,7 +23,7 @@ title: "アーキテクチャとテスト"
 
 ### 機能単位で分割する
 
-大規模なアプリケーションを構造化する、もっとも基本的な軸が、機能（Feature）単位の分割です。第35章のLazy Loadingでも触れましたが、アプリを「商品」「注文」「管理」といった業務上のまとまりで分け、それぞれを独立したフォルダにまとめます。
+大規模なアプリケーションを構造化する、もっとも基本的な軸が、機能（Feature）単位の分割です。『ルーティング応用』の章のLazy Loadingでも触れましたが、アプリを「商品」「注文」「管理」といった業務上のまとまりで分け、それぞれを独立したフォルダにまとめます。
 
 ```text
 src/app/
@@ -34,7 +34,7 @@ src/app/
 └── core/         … アプリ全体の基盤（認証、設定など）
 ```
 
-この分割の利点は、関連するものが一か所に集まることです。商品に関するComponent・Service・状態・ルートは、すべて`product/`の中にあります。ある機能を理解したいとき、そのフォルダだけを見ればよく、変更の影響範囲もその中に収まりやすくなります。第35章で学んだ`loadChildren`による遅延読み込みも、この機能単位の分割と、そのまま対応します。設計上の分割と、性能上の分割が一致するのです。
+この分割の利点は、関連するものが一か所に集まることです。商品に関するComponent・Service・状態・ルートは、すべて`product/`の中にあります。ある機能を理解したいとき、そのフォルダだけを見ればよく、変更の影響範囲もその中に収まりやすくなります。『ルーティング応用』の章で学んだ`loadChildren`による遅延読み込みも、この機能単位の分割と、そのまま対応します。設計上の分割と、性能上の分割が一致するのです。
 
 この「関連するものを近くに置く」という考え方は、コロケーションと呼ばれます。あるComponentと、それだけが使うServiceや型は、離れた共通フォルダに置くより、そのComponentのそばに置くほうが、見通しがよくなります。「一緒に変更されるものは、一緒に置く」という原則です。逆に、機能をまたいで役割別に分ける（すべてのServiceを一箇所、すべてのComponentを別の一箇所）と、ひとつの機能を追うのに、複数の場所を行き来することになります。役割ではなく、機能とまとまりで分けるのが、大規模開発では扱いやすい構成です。
 
@@ -44,11 +44,11 @@ src/app/
 
 機能という縦の分割に加えて、レイヤー（層）という横の分割も意識します。ひとつの機能の中でも、役割の異なる部品を、層として分けるのです。本書で学んできた要素は、おおむね次の層に整理できます。
 
-- **表示層（Component）**: 画面の見た目と操作を担う。第2部・第3部・第4部。
-- **状態層（Store・Service）**: 状態を保持し、業務ロジックを担う。第5部・第10部。
-- **データアクセス層（Service・HttpClient）**: サーバーとの通信を担う。第9部。
+- **表示層（Component）**: 画面の見た目と操作を担う。Component・テンプレート・データフローの章。
+- **状態層（Store・Service）**: 状態を保持し、業務ロジックを担う。ServiceとDI・状態管理の章。
+- **データアクセス層（Service・HttpClient）**: サーバーとの通信を担う。HTTP通信の章。
 
-Componentは状態層に依存し、状態層はデータアクセス層に依存する。この層構造を意識すると、責務がきれいに分かれます。第22章で学んだ「Componentは薄く、処理はServiceへ」という原則は、このレイヤー分割の一部です。表示・状態・データという層の分離が、アプリ全体を見通しよく保ちます。この層の考え方は、機能内でも機能をまたいでも一貫して適用でき、どの規模のアプリでも通用する基本になります。
+Componentは状態層に依存し、状態層はデータアクセス層に依存する。この層構造を意識すると、責務がきれいに分かれます。『ServiceとDependency Injection』の章で学んだ「Componentは薄く、処理はServiceへ」という原則は、このレイヤー分割の一部です。表示・状態・データという層の分離が、アプリ全体を見通しよく保ちます。この層の考え方は、機能内でも機能をまたいでも一貫して適用でき、どの規模のアプリでも通用する基本になります。
 
 ### 依存の方向を整える
 
@@ -68,15 +68,15 @@ flowchart TD
 
 ### 適切な粒度を保つ
 
-分割は、細かすぎても粗すぎても問題です。第10章でComponentの分割について述べたのと同じ悩みが、アプリ全体の設計にも当てはまります。
+分割は、細かすぎても粗すぎても問題です。『Componentの構成技法と分割設計』の章でComponentの分割について述べたのと同じ悩みが、アプリ全体の設計にも当てはまります。
 
-機能を細かく分けすぎると、機能間のやり取りが増え、かえって複雑になります。逆に、ひとつの機能に何もかも詰め込むと、その機能が肥大化し、`shared/`のような共有領域が、雑多な置き場になってしまいます。目安は、第10章と同じく「名前を付けられるまとまりか」です。`product`のように、役割を言い表せる単位で分けます。
+機能を細かく分けすぎると、機能間のやり取りが増え、かえって複雑になります。逆に、ひとつの機能に何もかも詰め込むと、その機能が肥大化し、`shared/`のような共有領域が、雑多な置き場になってしまいます。目安は、その章と同じく「名前を付けられるまとまりか」です。`product`のように、役割を言い表せる単位で分けます。
 
-そして、アーキテクチャも、最初にすべてを決めきる必要はありません。第48章の状態管理と同じく、小さく始め、規模の拡大に応じて構造を育てるのが現実的です。最初は`app/`直下に平らに置き、機能が増えてきたらフォルダに分ける、という進め方でも構いません。過剰な設計を避け、必要に応じて構造を整えていきます。
+そして、アーキテクチャも、最初にすべてを決めきる必要はありません。『状態管理の基礎』の章と同じく、小さく始め、規模の拡大に応じて構造を育てるのが現実的です。最初は`app/`直下に平らに置き、機能が増えてきたらフォルダに分ける、という進め方でも構いません。過剰な設計を避け、必要に応じて構造を整えていきます。
 
 ### スタイルガイドに沿う
 
-Angularには、公式のスタイルガイドがあります。ファイルの命名、フォルダの構成、Componentの書き方など、推奨される慣習がまとめられています。本書がこれまで従ってきた、型サフィックスなしのファイル名（第4章）や、セレクターの命名規則（第6章）も、このスタイルガイドにもとづくものです。
+Angularには、公式のスタイルガイドがあります。ファイルの命名、フォルダの構成、Componentの書き方など、推奨される慣習がまとめられています。本書がこれまで従ってきた、型サフィックスなしのファイル名（『開発環境・CLIとプロジェクト構成』の章）や、セレクターの命名規則（『TypeScriptとComponentの基本』の章）も、このスタイルガイドにもとづくものです。
 
 チームで開発するとき、こうした共通の規約に沿うことには、大きな価値があります。誰が書いても一定の形になり、他の人のコードも読みやすくなります。独自の流儀を編み出すより、広く知られた公式の慣習に従うほうが、長期的には保守しやすいアプリになります。アーキテクチャ設計も、この「共通の理解に沿う」という姿勢の延長線上にあります。
 
@@ -88,7 +88,7 @@ Angularには、公式のスタイルガイドがあります。ファイルの�
 
 ### 状態の置き場所も設計の一部
 
-第10部で学んだ状態管理も、アーキテクチャ設計の重要な一部です。どの状態を、どの層・どの機能に置くかは、アプリ全体の構造に関わります。第48章で状態を分類したように、ローカルな状態はComponentに、機能内で共有する状態はその機能のStoreに、アプリ全体で共有する状態は`core/`のStoreに、と配置します。
+状態管理の章で学んだ内容も、アーキテクチャ設計の重要な一部です。どの状態を、どの層・どの機能に置くかは、アプリ全体の構造に関わります。『状態管理の基礎』の章で状態を分類したように、ローカルな状態はComponentに、機能内で共有する状態はその機能のStoreに、アプリ全体で共有する状態は`core/`のStoreに、と配置します。
 
 状態の置き場所が適切だと、依存の方向も自然に整います。逆に、共有すべき状態を末端のComponentに置いたり、ローカルで済む状態をアプリ全体のStoreに載せたりすると、依存が入り組み、アーキテクチャが崩れます。「この状態は、どこが持つべきか」という問いは、単なる状態管理の問題ではなく、アーキテクチャ設計そのものなのです。機能分割・レイヤー・依存の方向・状態配置は、すべて連動して、アプリの構造を形づくります。
 
@@ -117,7 +117,7 @@ Angularには、公式のスタイルガイドがあります。ファイルの�
 
 テストには、いくつかの種類があります。ひとつの関数やクラスを対象とする単体テスト（ユニットテスト）、複数の部品の連携を確かめる結合テスト、アプリ全体を通しで動かすE2E（エンドツーエンド）テストです。この節では、主に単体テストと、Componentの結合テストを扱います。
 
-Angularでは、テストの実行環境（テストランナー）として、長らくKarmaとJasmineが使われてきました。しかし、Angular 22では、Vitestが新規プロジェクトの既定になりました。Vitestは、高速で、設定も簡潔なモダンなテストランナーです。新規プロジェクトを`ng new`で作ると、Vitestとその実行に必要なものが用意されます。テストは、第3章で学んだCLIの`ng test`で実行します。
+Angularでは、テストの実行環境（テストランナー）として、長らくKarmaとJasmineが使われてきました。しかし、Karmaはすでに非推奨となり、v22ではVitestが新規プロジェクトの既定になりました。Vitestは、高速で、設定も簡潔なモダンなテストランナーです。新規プロジェクトを`ng new`で作ると、Vitestとその実行に必要なものが用意されます。テストは、『開発環境・CLIとプロジェクト構成』の章で学んだCLIの`ng test`で実行します。
 
 ```bash
 ng test
@@ -125,9 +125,21 @@ ng test
 
 このコマンドで、アプリをテスト用にビルドし、Vitestがテストを実行します。既存のKarmaベースのプロジェクトも動きますが、新しく始めるならVitestが標準です。テストの書き方（`describe`や`it`、`expect`といった記法）は、Vitestでも従来とよく似ており、これまでの知識の多くがそのまま活きます。
 
+Vitestには、テストダブルを作るための独自のAPIがあります。`vi.fn()`は、呼び出しを記録するモック関数を作り、`vi.spyOn(obj, 'method')`は既存メソッドの呼び出しを監視します。
+
+```ts
+const getUsers = vi.fn().mockReturnValue([{ id: '1', name: '山田' }]);
+const saveSpy = vi.spyOn(service, 'save');
+
+service.save({ id: '1' });
+expect(saveSpy).toHaveBeenCalled();
+```
+
+`ng test`は既定でwatchモードで起動し、ファイルを保存するたびに関連するテストだけを再実行します。開発中は、この即時のフィードバックがテストを書く習慣を支えます。テストがコードのどれだけを実行したかを示すカバレッジの計測にも対応しており、テストが手薄な箇所を見つける手がかりになります。
+
 ### Serviceをテストする
 
-もっとも書きやすいのが、Serviceのテストです。とくに、第22章で学んだ「状態を持たないService」は、入力に対する出力を確かめるだけなので、単純です。
+もっとも書きやすいのが、Serviceのテストです。とくに、『ServiceとDependency Injection』の章で学んだ「状態を持たないService」は、入力に対する出力を確かめるだけなので、単純です。
 
 ```ts:src/app/pricing.spec.ts
 import { PricingService } from './pricing';
@@ -142,7 +154,7 @@ describe('PricingService', () => {
 
 `describe`でテストのまとまりを、`it`で個々のテストを表します。`expect(...).toBe(...)`で、「この値は、これと等しいはずだ」という期待を書きます。実際の値が期待と違えば、テストは失敗します。このServiceは依存を持たないため、`new`して直接テストできます。
 
-依存を持つServiceは、その依存を偽物に差し替えてテストします。第23章で学んだDIの利点、「差し替えが容易」が、ここで活きます。本物の通信Serviceの代わりに、決まったデータを返す偽物を注入すれば、通信なしでロジックを確かめられます。
+依存を持つServiceは、その依存を偽物に差し替えてテストします。『ServiceとDependency Injection』の章で学んだDIの利点、「差し替えが容易」が、ここで活きます。本物の通信Serviceの代わりに、決まったデータを返す偽物を注入すれば、通信なしでロジックを確かめられます。
 
 ### TestBedでComponentをテストする
 
@@ -164,7 +176,18 @@ describe('Greeting', () => {
 });
 ```
 
-`TestBed.createComponent`で、テスト対象のComponentを生成します。返ってくる`fixture`（フィクスチャ）は、そのComponentと、そのDOMへのアクセスを束ねたものです。`setInput`で入力を与え、`detectChanges()`で変更検知を走らせて、表示を更新します。そのうえで、`nativeElement`からDOMのテキストを取り出し、期待どおりかを確かめます。「入力を与え、表示を確認する」という、第4部で学んだデータフローが、そのままテストの形になります。
+`TestBed.createComponent`で、テスト対象のComponentを生成します。返ってくる`fixture`（フィクスチャ）は、そのComponentと、そのDOMへのアクセスを束ねたものです。`setInput`で入力を与え、`detectChanges()`で変更検知を走らせて、表示を更新します。そのうえで、`nativeElement`からDOMのテキストを取り出し、期待どおりかを確かめます。「入力を与え、表示を確認する」という、『データフローとinput()・output()』の章で学んだデータフローが、そのままテストの形になります。
+
+要素を探す方法は、`nativeElement`のテキストを見るだけではありません。`fixture.debugElement`が返す`DebugElement`を使うと、`By.css()`のセレクターで特定の要素を絞り込めます。
+
+```ts
+import { By } from '@angular/platform-browser';
+
+const title = fixture.debugElement.query(By.css('h1'));
+expect(title.nativeElement.textContent).toContain('山田');
+```
+
+`query()`は最初に一致した1件、`queryAll()`は一致した全要素を返します。特定のボタンやリンクだけを対象にしたいときに役立ちます。
 
 ### Component Harnessで安定させる
 
@@ -174,15 +197,38 @@ Componentのテストで、DOMを直接調べると、ひとつ問題があり�
 
 Harnessを使うと、テンプレートの構造が変わっても、役割が同じならテストは壊れません。テストが、実装の細部ではなく、振る舞いに向くようになります。Angular Materialのような部品ライブラリは、Harnessを提供しており、それらを使ったテストを安定して書けます。自作のComponentにも、Harnessを用意できます。DOMを直接調べるテストより、Harnessを使うほうが、長期的に壊れにくいテストになります。
 
+Harnessは、テスト環境と結びつけて読み込みます。`@angular/cdk/testing/testbed`の`TestbedHarnessEnvironment`から`HarnessLoader`を取得し、そこから目的のHarnessを`getHarness()`で取り出します。次は、Angular Materialのボタンを`MatButtonHarness`経由でクリックする最小例です。
+
+```ts:src/app/login-form.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { HarnessLoader } from '@angular/cdk/testing';
+import { MatButtonHarness } from '@angular/material/button/testing';
+import { LoginForm } from './login-form';
+
+it('送信ボタンを押すと送信済みになる', async () => {
+  const fixture = TestBed.createComponent(LoginForm);
+  const loader: HarnessLoader = TestbedHarnessEnvironment.loader(fixture);
+
+  // 「送信」というテキストを持つボタンのHarnessを取得してクリックする
+  const button = await loader.getHarness(MatButtonHarness.with({ text: '送信' }));
+  await button.click();
+
+  expect(fixture.componentInstance.submitted()).toBe(true);
+});
+```
+
+Harnessの操作はいずれもPromiseを返す非同期処理のため、テストを`async`にし、`await`で待ちます。クラス名やDOMの階層に触れず、「送信ボタンをクリックする」という意図だけを書けるので、テンプレートを変えてもテストが壊れにくくなります。
+
 ### 何をテストすべきか
 
 テストは、書けば書くほどよい、というものではありません。すべてを網羅しようとすると、テストの保守自体が負担になります。優先すべきは、次のようなものです。
 
 - **業務ロジック**: 価格計算や、複雑な条件判断など、間違えると影響が大きい部分。
-- **状態の変化**: Store（第10部）の、Actionやメソッドによる状態変化。
+- **状態の変化**: Store（状態管理の章）の、Actionやメソッドによる状態変化。
 - **重要な分岐**: エラー処理や、権限による表示の出し分けなど。
 
-逆に、単純な表示だけのComponentや、フレームワークが保証している部分まで、細かくテストする必要は薄いものです。第22章で責務を分離し、業務ロジックをServiceに切り出しておくと、この「重要な部分」がテストしやすい形になります。テストのしやすさは、設計のよさと表裏一体なのです。
+逆に、単純な表示だけのComponentや、フレームワークが保証している部分まで、細かくテストする必要は薄いものです。『ServiceとDependency Injection』の章で責務を分離し、業務ロジックをServiceに切り出しておくと、この「重要な部分」がテストしやすい形になります。テストのしやすさは、設計のよさと表裏一体なのです。
 
 ### Signalとテスト
 
@@ -197,34 +243,42 @@ it('商品を追加すると合計が増える', () => {
 });
 ```
 
-`store.totalPrice()`を呼ぶだけで、派生した合計金額を確認できます。RxJSのObservableのように購読を管理する必要がなく、非同期の完了を待つ必要もありません。第6部で学んだSignalが、状態管理だけでなく、テスト容易性の面でも利点をもたらすのです。モダンAngularのSignalファーストな書き方は、テストのしやすさという形でも報われます。
+`store.totalPrice()`を呼ぶだけで、派生した合計金額を確認できます。RxJSのObservableのように購読を管理する必要がなく、非同期の完了を待つ必要もありません。『SignalsとZoneless』の章で学んだSignalが、状態管理だけでなく、テスト容易性の面でも利点をもたらすのです。モダンAngularのSignalファーストな書き方は、テストのしやすさという形でも報われます。
 
 ### 依存を差し替えてテストする
 
-依存を持つComponentやServiceのテストでは、その依存を偽物に差し替えます。第23章で学んだDIの「差し替えが容易」という利点が、ここで具体的に活きます。TestBedの`providers`で、本物の代わりに偽物を登録します。
+依存を持つComponentやServiceのテストでは、その依存を偽物に差し替えます。『ServiceとDependency Injection』の章で学んだDIの「差し替えが容易」という利点が、ここで具体的に活きます。TestBedの`providers`で、本物の代わりに偽物を登録します。
 
 ```ts:src/app/user-list.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { UserList } from './user-list';
+import { UserService } from './user';
+
 it('ユーザー一覧を表示する', () => {
-  // 本物のUserServiceの代わりに、決まったデータを返す偽物を登録
+  // 本物のUserServiceの代わりに、決まったデータを返す偽物を登録する
   const fakeService = { getUsers: () => [{ id: '1', name: '山田' }] };
 
   TestBed.configureTestingModule({
     providers: [{ provide: UserService, useValue: fakeService }],
   });
 
-  const service = TestBed.inject(UserService);
-  expect(service.getUsers().length).toBe(1);
+  // UserListを生成する。内部で偽物のgetUsers()が呼ばれる
+  const fixture = TestBed.createComponent(UserList);
+  fixture.detectChanges();
+
+  // 偽物が返したデータが、実際に画面へ描画されることを確認する
+  expect(fixture.nativeElement.textContent).toContain('山田');
 });
 ```
 
-第25章で学んだProviderの`useValue`が、テストで役立つ場面です。本物のServiceが通信をしたり、複雑な準備を要したりしても、偽物に差し替えれば、テスト対象のロジックだけに集中できます。こうした偽物は、テストダブルと呼ばれ、単に決まった値を返すもの、呼ばれたことを記録するものなど、目的に応じた種類があります。重要なのは、テスト対象の外側を偽物で固定し、対象そのものの振る舞いを、安定して確かめられるようにすることです。DIを前提に設計されたAngularは、この差し替えが自然に行えるよう作られています。
+『inject()とProvider・Injectorの階層』の章で学んだProviderの`useValue`が、テストで役立つ場面です。本物のServiceが通信をしたり、複雑な準備を要したりしても、偽物に差し替えれば、テスト対象のロジックだけに集中できます。こうした偽物は、テストダブルと呼ばれ、単に決まった値を返すもの、呼ばれたことを記録するものなど、目的に応じた種類があります。重要なのは、テスト対象の外側を偽物で固定し、対象そのものの振る舞いを、安定して確かめられるようにすることです。DIを前提に設計されたAngularは、この差し替えが自然に行えるよう作られています。
 
 ### よくあるつまずき
 
 - **`detectChanges()`を忘れる**: Componentの入力を変えても、`fixture.detectChanges()`を呼ばないと、テンプレートに反映されません。表示を確認する前に、変更検知を走らせます。
 - **DOMの構造に依存しすぎる**: 特定のクラス名やHTML構造を前提にしたテストは、見た目の変更で壊れます。Component Harnessや、役割に着目した検証で、壊れにくくします。
 - **何でもテストしようとする**: 網羅率を追い求めると、テストの保守が負担になります。重要なロジックや分岐を優先し、単純な表示は軽くします。
-- **実際の通信やタイマーを使う**: テストで本物の通信や時間待ちをすると、遅く不安定になります。次章で学ぶ差し替えや`fakeAsync`で、速く安定させます。
+- **実際の通信やタイマーを使う**: テストで本物の通信や時間待ちをすると、遅く不安定になります。この章の次の節で学ぶ差し替えや`fakeAsync`で、速く安定させます。
 
 ## RxJS・NgRx・非同期処理のテスト戦略
 
@@ -237,8 +291,7 @@ it('ユーザー一覧を表示する', () => {
 Observableのテストの基本は、購読して、流れてきた値を確かめることです。同期的に値を流すObservableなら、購読の中で`expect`を書けます。
 
 ```ts:src/app/example.spec.ts
-import { of } from 'rxjs';
-import { map } from 'rxjs';
+import { map, of } from 'rxjs';
 
 it('値を2倍にする', () => {
   const result: number[] = [];
@@ -268,6 +321,30 @@ it('1秒後に値が更新される', fakeAsync(() => {
 
 `fakeAsync`で囲んだテストの中では、時間を仮想的に操作できます。`tick(1000)`で「1秒経過した」ことにすると、その間に予約された非同期処理が実行されます。実際に1秒待つ必要がないため、テストは一瞬で終わります。時間に依存する処理を、確実に、すばやくテストできるのが利点です。Signalの非同期更新や、`debounceTime`を含む処理のテストに役立ちます。
 
+### Zoneless環境でのテスト
+
+前項の`fakeAsync`と`tick`は、Zone.jsが時間や非同期処理を横取りする仕組みに依存します。ところがv22では、Zone.jsを使わないZonelessが新規プロジェクトの既定になりました。そのため、テストで非同期の完了を待つ方法も、新旧で分けて考える必要があります。
+
+既存のZone.jsベースのプロジェクトでは、これまでどおり`fakeAsync`と`tick`が使えます。仮想時間を進めて非同期処理を同期的に扱えるため、`debounceTime`やタイマーの検証に向きます。一方、Zoneless構成にはZone.jsがないため、`fakeAsync`と`tick`は前提を欠きます。代わりに、`fixture.whenStable()`で保留中の非同期処理が片づくのを待ちます。この関数はPromiseを返すので、テストを`async`にして`await`します。
+
+```ts:src/app/search.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { Search } from './search';
+
+it('入力後に検索結果が表示される', async () => {
+  const fixture = TestBed.createComponent(Search);
+  fixture.componentRef.setInput('keyword', 'angular');
+
+  await fixture.whenStable(); // 保留中の非同期処理の完了を待つ
+
+  expect(fixture.nativeElement.textContent).toContain('angular');
+});
+```
+
+さらに、Signalベースのコードでは値を`()`で同期的に読めるため、そもそも待つ必要のない場面が増えます。状態をSignalで持ち、`computed()`で派生させておけば、値をセットした直後に結果を読めます。Zonelessへの移行は、テストの待ち方を`fakeAsync`中心から、`whenStable()`とSignalの同期読み取り中心へと変えていきます。
+
+整理すると、新規プロジェクト（Zoneless）では`whenStable()`とSignalの同期読み取りを基本とし、`fakeAsync`と`tick`は既存のZone.jsベースのプロジェクトで使う、と位置づけられます。
+
 ### HTTP通信をテストする
 
 通信を含むServiceのテストで、実際にサーバーへ通信してしまうと、テストが不安定になります。そこで、通信をテスト用に差し替えます。Angularは、`provideHttpClientTesting`と`HttpTestingController`を提供します。
@@ -295,13 +372,13 @@ it('商品一覧を取得する', () => {
 });
 ```
 
-`provideHttpClientTesting`により、実際の通信は行われず、`HttpTestingController`が横取りします。`expectOne`で「この通信が起きたはずだ」と確認し、`flush`でテスト用の応答を返します。これにより、サーバーなしで、通信の成功・失敗を含めた挙動を確かめられます。第23章のDIによる差し替えの、通信版だと考えるとよいでしょう。
+`provideHttpClientTesting`により、実際の通信は行われず、`HttpTestingController`が横取りします。`expectOne`で「この通信が起きたはずだ」と確認し、`flush`でテスト用の応答を返します。これにより、サーバーなしで、通信の成功・失敗を含めた挙動を確かめられます。『ServiceとDependency Injection』の章のDIによる差し替えの、通信版だと考えるとよいでしょう。
 
 ### NgRxをテストする
 
 NgRxは、要素ごとに責務が分かれているため、実はテストしやすい設計です。要素ごとに、テストの勘所を見ていきます。
 
-**Reducer**は、純粋な関数です。第52章で学んだとおり、同じ状態とActionからは、常に同じ状態を返します。そのため、テストはもっとも単純です。状態とActionを与え、返る状態を確かめるだけです。
+**Reducer**は、純粋な関数です。『NgRxの基礎』の章で学んだとおり、同じ状態とActionからは、常に同じ状態を返します。そのため、テストはもっとも単純です。状態とActionを与え、返る状態を確かめるだけです。
 
 ```ts:src/app/counter.reducer.spec.ts
 it('incrementで count が1増える', () => {
@@ -315,6 +392,58 @@ it('incrementで count が1増える', () => {
 
 **Effects**は、非同期を含むため、少し複雑です。Actionの流れを与え、期待するActionが発行されるかを確かめます。通信を伴う場合は、前述のHTTPテストの手法と組み合わせます。Effectsのテストは、「あるActionを流したら、通信の結果に応じて、成功Actionまたは失敗Actionが発行される」ことを確認するのが基本です。
 
+Effectsへ流し込むActionは、`@ngrx/effects/testing`の`provideMockActions`で差し込みます。`ReplaySubject`などでActionを流し、Effectsが発行するActionを購読して確かめます。
+
+```ts:src/app/user.effects.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { provideMockActions } from '@ngrx/effects/testing';
+import { ReplaySubject } from 'rxjs';
+import { Action } from '@ngrx/store';
+import { UserEffects } from './user.effects';
+
+it('loadで成功Actionが発行される', () => {
+  const actions$ = new ReplaySubject<Action>(1);
+
+  TestBed.configureTestingModule({
+    providers: [
+      UserEffects,
+      provideMockActions(() => actions$),
+      // 偽のAPI Serviceなどを併せて登録する
+    ],
+  });
+  const effects = TestBed.inject(UserEffects);
+
+  effects.load$.subscribe((action) => {
+    expect(action.type).toBe('[User] Load Success');
+  });
+
+  actions$.next({ type: '[User] Load' });
+});
+```
+
+Storeを直接使うComponentやFacadeのテストでは、本物のStoreを動かす代わりに、`@ngrx/store/testing`の`provideMockStore`で偽のStoreを用意します。Selectorの返り値を固定できるため、状態を任意に組み立てられます。`overrideSelector()`でテストの途中から返り値を差し替えることもできます。
+
+```ts:src/app/user-page.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { provideMockStore, MockStore } from '@ngrx/store/testing';
+import { selectUsers } from './user.selectors';
+
+it('Storeのユーザーを表示する', () => {
+  TestBed.configureTestingModule({
+    providers: [
+      provideMockStore({
+        selectors: [{ selector: selectUsers, value: [{ id: '1', name: '山田' }] }],
+      }),
+    ],
+  });
+  const store = TestBed.inject(MockStore);
+
+  // テストの途中でSelectorの返り値を差し替える
+  store.overrideSelector(selectUsers, [{ id: '2', name: '田中' }]);
+  store.refreshState();
+});
+```
+
 このように、Reduxパターンの「純粋な関数への分離」は、テスト容易性という形でも報われます。状態変更ロジックがReducerに、副作用がEffectsに分かれているため、それぞれを独立してテストできるのです。
 
 ### テストしやすさは設計のよさ
@@ -325,7 +454,7 @@ it('incrementで count が1増える', () => {
 
 ### SignalStoreのテスト
 
-第55章で学んだNgRx SignalStoreも、Signalベースであるため、テストしやすい部類です。Storeを注入（またはテスト用に生成）し、メソッドを呼んで、状態のSignalを確認します。
+『NgRxの実務』の章で学んだNgRx SignalStoreも、Signalベースであるため、テストしやすい部類です。Storeを注入（またはテスト用に生成）し、メソッドを呼んで、状態のSignalを確認します。
 
 ```ts:src/app/counter.store.spec.ts
 it('incrementで count が増える', () => {
@@ -342,7 +471,7 @@ it('incrementで count が増える', () => {
 
 ### テストの粒度を考える
 
-テストには粒度があります。ひとつの関数を対象とする細かいテストから、複数の部品の連携を確かめるテスト、アプリ全体を通すE2Eテストまで、対象の広さが異なります。すべてを同じ密度で書くのは非効率です。
+前節で挙げた単体テスト・結合テスト・E2Eテストには、対象とする範囲の広さという粒度の違いがあります。すべてを同じ密度で書くのは非効率です。
 
 一般には、細かい単体テストを土台に多く書き、結合テストをその上に、E2Eテストは要所に絞る、という配分が推奨されます。単体テストは速く、安定し、原因の特定も容易です。E2Eテストは、利用者の視点で全体を確かめられますが、遅く、壊れやすく、原因の特定も難しくなります。この配分の考え方は「テストピラミッド」として知られます。本書では詳しく立ち入りませんが、「速く安定したテストを多く、遅く壊れやすいテストは少なく」という原則を、頭に置いておくとよいでしょう。
 

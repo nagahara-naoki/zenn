@@ -71,11 +71,12 @@ export class ProductListPage {
 
 **継承が楽になる**。クラスを継承するとき、Constructor Injectionでは、親が受け取っている依存を子のコンストラクターでも書き、`super()`へ渡す必要がありました。`inject()`なら、親クラスの中で`inject()`しているため、子はコンストラクターに手を加えなくて済みます。
 
-**関数の中でも使える**。これが特に大きな違いです。`inject()`は、クラスだけでなく、Angularが提供する関数の中でも呼べます。第7部で学ぶ関数型のRoute Guardや、第9部で学ぶ関数型のInterceptorは、この性質の上に成り立っています。たとえば、Guardを次のように関数として書き、その中で依存を注入できます。
+**関数の中でも使える**。これが特に大きな違いです。`inject()`は、クラスだけでなく、Angularが提供する関数の中でも呼べます。『ルーティング応用』の章で学ぶ関数型のRoute Guardや、『HTTP通信』の章で学ぶ関数型のInterceptorは、この性質の上に成り立っています。たとえば、Guardを次のように関数として書き、その中で依存を注入できます。
 
 ```ts:src/app/auth-guard.ts
 import { inject } from '@angular/core';
 import { CanActivateFn } from '@angular/router';
+import { AuthService } from './auth';
 
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService); // 関数の中で注入できる
@@ -127,7 +128,7 @@ private readonly config = inject(AppConfig, { optional: true });
 - **`skipSelf`**: 自身を飛ばして、親のInjectorから探す
 - **`host`**: 探索をホストの境界で止める
 
-これらは、次章で学ぶInjectorの階層と関わります。ふだんは`inject(ProductService)`と書くだけで十分ですが、こうした細かな制御ができることも知っておくと、複雑な場面で役立ちます。旧来は、`@Optional()`・`@Self()`・`@SkipSelf()`といったデコレーターをコンストラクター引数に添えて、同じことを実現していました。`inject()`では、これらをオプションのオブジェクトとして渡せます。
+これらは、本章の次の節で学ぶInjectorの階層と関わります。ふだんは`inject(ProductService)`と書くだけで十分ですが、こうした細かな制御ができることも知っておくと、複雑な場面で役立ちます。旧来は、`@Optional()`・`@Self()`・`@SkipSelf()`といったデコレーターをコンストラクター引数に添えて、同じことを実現していました。`inject()`では、これらをオプションのオブジェクトとして渡せます。
 
 ### よくあるつまずき
 
@@ -149,7 +150,7 @@ ng generate @angular/core:inject
 
 前節までで、Serviceを定義し、それを`inject()`で受け取る流れを学びました。この節では、その裏側にもう一歩踏み込みます。注入されるインスタンスは、いったいどこで作られ、どの範囲で共有されるのでしょうか。その答えを握るのが、ProviderとInjectorの階層です。
 
-`providedIn: 'root'`と書けば、Serviceはアプリ全体でひとつのインスタンスとして共有される、と第22章で述べました。しかし、Serviceの提供のしかたは、これだけではありません。特定のComponentとその子だけで共有したい、あるいはComponentごとに別々のインスタンスを持たせたい、といった調整もできます。それを可能にするのが、Injectorの階層構造です。この節を理解すると、Serviceの「範囲」を意図して設計できるようになります。
+`providedIn: 'root'`と書けば、Serviceはアプリ全体でひとつのインスタンスとして共有される、と前章で述べました。しかし、Serviceの提供のしかたは、これだけではありません。特定のComponentとその子だけで共有したい、あるいはComponentごとに別々のインスタンスを持たせたい、といった調整もできます。それを可能にするのが、Injectorの階層構造です。この節を理解すると、Serviceの「範囲」を意図して設計できるようになります。
 
 ### 2種類のInjector
 
@@ -160,6 +161,23 @@ Angularには、性質の異なる2つのInjectorの階層があります。
 もうひとつは、**ElementInjector（要素インジェクター）**です。こちらは、ComponentやDirectiveごとに作られるInjectorです。`@Component`の`providers`に登録したServiceは、このElementInjectorが管理します。Componentが生成されるときに作られ、破棄されるときに消えます。
 
 この2つが、Componentの階層に沿って積み重なり、ひとつの階層構造をなします。頂点にEnvironmentInjectorがあり、その下に、Componentのネストに対応してElementInjectorが連なる、というイメージです。
+
+EnvironmentInjectorは、アプリ全体の1つだけとは限りません。Routeに`providers`を指定すると、そのRoute配下に**子のEnvironmentInjector**が作られます。とくにLazy Loadingで読み込むRouteでは、その機能の中だけで使うServiceを、この場所に登録できます。
+
+```ts:src/app/app.routes.ts
+import { Routes } from '@angular/router';
+import { AdminApi } from './admin/admin-api';
+
+export const routes: Routes = [
+  {
+    path: 'admin',
+    providers: [AdminApi], // admin配下でのみ共有される
+    loadChildren: () => import('./admin/admin.routes').then((m) => m.adminRoutes),
+  },
+];
+```
+
+`AdminApi`は、`admin`以下のRouteでのみ有効なEnvironmentInjectorに登録されます。`providedIn: 'root'`がアプリ全体で共有されるのに対し、Routeレベルの`providers`は、その機能が表示されている間だけ生きる、中間的なスコープを作ります。ある機能でしか使わないServiceを、アプリ全体へ広げずに閉じ込めたいときに向いています。
 
 ### Serviceを提供する場所
 
@@ -209,6 +227,22 @@ flowchart TD
 
 この「近いところから探し、なければ上へ」という仕組みが、Serviceの範囲を階層で制御できる理由です。あるComponentの`providers`に登録すれば、そのComponentと子孫は、上位の同名Serviceより先に、その登録を見つけます。近いInjectorの登録が優先されるのです。前節で触れた`self`や`skipSelf`といったオプションは、この探索の起点や範囲を調整するものでした。
 
+たとえば`skipSelf`は、自身のElementInjectorを探索から外し、親から探し始めます。あるServiceを`providers`に登録したComponentと同じ要素にDirectiveを置くと、両者は同じElementInjectorを共有します。このDirectiveがそのServiceを注入すると、既定では同じ要素のインスタンスを受け取ります。ホスト側ではなく、ひとつ外側に登録された同名のServiceを使いたいときは、`skipSelf`で自身を飛ばします。
+
+```ts:src/app/section-outline.ts
+import { Directive, inject } from '@angular/core';
+import { SectionContext } from './section-context';
+
+@Directive({ selector: '[appSectionOutline]' })
+export class SectionOutline {
+  // 同じ要素のComponentが提供するSectionContextではなく、
+  // ひとつ外側（親）のSectionContextを参照する
+  private readonly outer = inject(SectionContext, { skipSelf: true });
+}
+```
+
+`self`はこの逆で、探索を自身のElementInjectorだけに限り、親をたどりません。入れ子になった同名Serviceのうち、どの階層のものを使うかを、これらのオプションで意図して選べます。
+
 ### Providerの種類
 
 ここまで、Serviceのクラスをそのまま登録してきました。実は、`providers`への登録には、いくつかの書き方（Provider）があります。「このトークンに対して、何を、どう用意するか」を指定するものです。
@@ -218,7 +252,7 @@ flowchart TD
 - **`useFactory`**: 関数を呼び、その戻り値を提供する。生成に条件や計算が必要なときに使う。
 - **`useExisting`**: 既存のトークンの別名を作る。あるトークンへの要求を、別のトークンへ振り向ける。
 
-たとえば、あるインターフェースの実装を差し替えたいときは、`useClass`が使えます。テスト時に本物のServiceを偽物に差し替える、という第23章の話は、この仕組みで実現します。
+たとえば、あるインターフェースの実装を差し替えたいときは、`useClass`が使えます。テスト時に本物のServiceを偽物に差し替える、という前章で触れた話は、この仕組みで実現します。
 
 ```ts
 // 本番ではRealLoggerを、テストではFakeLoggerを注入する
@@ -226,6 +260,39 @@ providers: [{ provide: Logger, useClass: RealLogger }]
 ```
 
 `provide`が要求されるトークン、`useClass`が実際に用意するクラスです。使う側は`inject(Logger)`と書くだけで、登録を`RealLogger`から`FakeLogger`に変えれば、中身が差し替わります。使う側のコードは、まったく変わりません。
+
+生成に条件や計算が絡むときは、`useFactory`を使います。ファクトリー関数は注入コンテキストで実行されるため、関数の中で`inject()`を呼び、別のServiceや設定値を受け取りながら、返すインスタンスを組み立てられます。
+
+```ts:src/app/logger.provider.ts
+import { inject, Provider } from '@angular/core';
+import { Logger } from './logger';
+import { RealLogger } from './real-logger';
+import { NoopLogger } from './noop-logger';
+import { RuntimeFlags } from './runtime-flags';
+
+export const loggerProvider: Provider = {
+  provide: Logger,
+  useFactory: () => {
+    const flags = inject(RuntimeFlags); // ファクトリー内でも注入できる
+    return flags.debug ? new RealLogger() : new NoopLogger();
+  },
+};
+```
+
+`RuntimeFlags`の`debug`に応じて、返すLoggerを切り替えています。かつては`deps`プロパティに依存を並べて渡していましたが、ファクトリー内で`inject()`が呼べるようになったため、その記述はいりません。
+
+`useExisting`は、既存のトークンに別名を与えます。あるトークンへの要求を、登録済みの別のトークンへ振り向けるもので、1つのインスタンスを複数の名前で参照させるアダプターとして働きます。
+
+```ts
+providers: [
+  FileLogger,
+  { provide: Logger, useExisting: FileLogger }, // Loggerとしても同じFileLoggerを返す
+]
+```
+
+`inject(Logger)`と`inject(FileLogger)`は、どちらも同一の`FileLogger`インスタンスを返します。`useClass`が新しいインスタンスを作るのに対し、`useExisting`は既存のインスタンスを共有する点が異なります。広く使えるインターフェース（`Logger`）で受け取りつつ、実体は具体的なService（`FileLogger`）にしておく、といった設計に向きます。
+
+使い分けの目安を挙げます。素直にクラスを提供するなら`useClass`（クラス名だけの記法もこれにあたります）、できあいの値や設定オブジェクトなら`useValue`、生成に他の依存や分岐が要るなら`useFactory`、既存の登録に別名を付けたいなら`useExisting`を選びます。
 
 ### クラスでない依存とInjectionToken
 
@@ -253,6 +320,45 @@ private readonly baseUrl = inject(API_BASE_URL);
 
 `InjectionToken`により、文字列や設定オブジェクトのような、クラスでない値も、型安全にDIの仕組みへ載せられます。名前の衝突を避けつつ、値を注入できるのです。環境ごとに異なるAPIのURLや、機能のオン・オフを切り替える設定などを、この方法でアプリ全体に配る、といった使い方が典型です。ハードコードを避け、設定を一か所に集められるため、環境の切り替えや設定変更に強い構成になります。
 
+`InjectionToken`には、既定値を持たせることもできます。第2引数に`factory`を渡すと、`providers`への登録がなくても、そのトークン自身が既定のインスタンスを用意します。
+
+```ts:src/app/tokens.ts
+import { InjectionToken } from '@angular/core';
+
+export const WINDOW = new InjectionToken<Window>('WINDOW', {
+  providedIn: 'root',
+  factory: () => window,
+});
+```
+
+こう定義しておくと、どこにも登録せずに`inject(WINDOW)`がそのまま使えます。`providedIn: 'root'`と`factory`を組み合わせたトークンは、どこからも使われなければ最終的なバンドルから取り除かれる（Tree Shakingが効く）ため、既定値を持つトークンの定義方法として推奨されます。
+
+### 同じトークンに複数登録するmulti
+
+ここまでのProviderは、1つのトークンに1つの提供を対応させるものでした。`multi: true`を付けると、**同じトークンに複数のProviderを登録**でき、注入時にはそれらをまとめた配列を受け取ります。
+
+```ts:src/app/app.config.ts
+import { ApplicationConfig, InjectionToken } from '@angular/core';
+
+export const VALIDATORS = new InjectionToken<Validator[]>('VALIDATORS');
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    { provide: VALIDATORS, useValue: lengthValidator, multi: true },
+    { provide: VALIDATORS, useValue: patternValidator, multi: true },
+  ],
+};
+```
+
+```ts
+// 登録されたすべての値が配列で届く
+private readonly validators = inject(VALIDATORS); // Validator[]
+```
+
+同じトークンに`multi: true`で登録すると、`inject()`は個々の値ではなく、それらを集めた配列を返します。この仕組みは、あとから機能を差し込める「拡張点」を作るときに効きます。Angular自身も、複数のInterceptorやアプリ起動時の初期化処理を束ねる土台として`multi`を使っています。中心のコードを書き換えるのではなく、登録を1つ足すだけで機能を追加できるのが利点です。
+
+同じトークンに対して、`multi: true`を付けたProviderと付けないProviderを混在させることはできません。どちらかに統一します。
+
 ### よくあるつまずき
 
 - **どこに提供すべきか迷う**: まずは`providedIn: 'root'`を基本と考えます。Componentごとに独立したインスタンスが必要な、明確な理由があるときだけ、Componentの`providers`を使います。
@@ -264,6 +370,7 @@ private readonly baseUrl = inject(API_BASE_URL);
 - 依存を受け取る方法には、Constructor Injectionと`inject()`があります
 - `inject()`はAngular 14で導入され、フィールド初期化子として依存を受け取ります
 - `inject()`は、コンストラクター不要・継承が楽・関数内でも使える、という利点があります
+- **新規開発では、依存の受け取りに`inject()`を使うのが現在の標準です**
 - Injectorには、アプリ全体のEnvironmentInjectorと、ComponentごとのElementInjectorがあります
 - `providedIn: 'root'`はアプリ全体で単一、Componentの`providers`はComponentごとに別インスタンスです
 - 依存は、要求元から上へInjectorをたどって解決され、近い登録が優先されます

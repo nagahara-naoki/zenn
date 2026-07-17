@@ -141,6 +141,51 @@ class Counter {
 }
 ```
 
+クラスには、インスタンスを生成するときに呼ばれる特別なメソッド、コンストラクタ（`constructor`）を定義できます。プロパティの初期化によく使われます。
+
+```ts
+class Counter {
+  count: number;
+
+  constructor(count: number) {
+    this.count = count;
+  }
+}
+
+const counter = new Counter(10);
+```
+
+TypeScriptには、コンストラクタの引数にアクセス修飾子を付けると、プロパティの宣言と代入を1行にまとめられる書き方があります。これをパラメータプロパティと呼びます。
+
+```ts
+class Counter {
+  constructor(private count: number) {}
+}
+```
+
+この1行だけで、`private`な`count`プロパティが宣言され、コンストラクタに渡された値がそのまま代入されます。プロパティ宣言と代入をそれぞれ書く先ほどの`Counter`と、できあがるものは同じです。
+
+Angularでは、Serviceを注入する旧来のConstructor Injectionで、このパラメータプロパティが多用されてきました。
+
+```ts:旧Constructor Injectionの例
+import { Component } from '@angular/core';
+import { UserService } from './user-service';
+
+@Component({
+  selector: 'app-user-profile',
+  template: `...`,
+})
+export class UserProfile {
+  constructor(private userService: UserService) {}
+
+  loadUser(): void {
+    this.userService.getUser();
+  }
+}
+```
+
+`constructor(private userService: UserService) {}`という1行が、`userService`という`private`プロパティの宣言と、渡されたServiceインスタンスの代入を同時に行っています。以降のメソッドからは、`this.userService`としてそのServiceを使えます。現在の標準はDIを`inject()`関数で受け取る書き方ですが、これは『inject()とProvider・Injectorの階層』の章で扱います。パラメータプロパティの意味を知っておくと、こうした旧来のコードも迷わず読めます。
+
 ### ジェネリクス
 
 ジェネリクスは、型を「後から指定できる」ようにする仕組みです。角かっこ（`<>`）の中に型を書いて、扱う値の型を伝えます。
@@ -152,7 +197,7 @@ const count: Signal<number> = signal(0);
 const names: Array<string> = ['a', 'b'];
 ```
 
-いまはすべてを理解する必要はありません。「`<>`の中は、扱う値の型を表している」と読めれば十分です。Signalの詳細は第6部、Observableの`Observable<T>`は第8部で扱います。
+いまはすべてを理解する必要はありません。「`<>`の中は、扱う値の型を表している」と読めれば十分です。Signalの詳細は『SignalsとZoneless』の章、Observableの`Observable<T>`は『RxJSの基礎（Observable・購読・Operator）』の章で扱います。
 
 サーバー通信でも、`http.get<User[]>(...)`のように、受け取るデータの型をジェネリクスで指定します。型を渡しておくと、返ってきた値がその型として扱われ、後続のコードで補完や型チェックが効くようになります。このように、ジェネリクスはAngularのAPIを使いこなすうえで避けて通れない記法です。最初は`<>`の中身が何を表すのかを読み取れれば十分で、自分で複雑なジェネリクスを書けるようになる必要は、当面ありません。
 
@@ -169,6 +214,24 @@ export class Counter {}
 ```
 
 この例では、`@Component`が「このクラスはComponentである」という役割と、セレクターやテンプレートといった設定を、`Counter`クラスに与えています。Angularは、このデコレーターの情報を読み取って、クラスをComponentとして扱います。デコレーターはAngularのいたるところで使われるので、まずは「クラスに役割や設定を添える記法」として覚えておいてください。
+
+### モジュールとimport・export
+
+Angularのコードは、ファイル1つ1つが独立したモジュールとして扱われます。あるファイルで定義したクラスや関数を別のファイルから使うには、`export`で公開し、`import`で取り込みます。
+
+```ts:counter.ts
+export class Counter {
+  count = 0;
+}
+```
+
+```ts:main.ts
+import { Counter } from './counter';
+
+const counter = new Counter();
+```
+
+`export`が付いていないクラスや関数は、そのファイルの外から参照できません。`import`では、`{ }`の中に取り込みたい名前を並べ、どのファイルから取り込むかをパスで指定します。本書のコード例には、この`import`文が繰り返し登場します。1行目に見慣れない`import`があっても、「どこかのファイルで公開されているものを、ここで使えるように取り込んでいる」と読めれば十分です。
 
 ### オプショナルとnull安全
 
@@ -220,6 +283,16 @@ Componentは、Angularを学ぶうえで最初にして最大の基本です。�
 - **クラス**: 振る舞いやデータを定義するTypeScriptのクラス
 - **スタイル**: 見た目を整えるCSS
 
+次の図は、Componentがどのような要素から成り立ち、何になるのかを表します。
+
+```mermaid
+flowchart TD
+  cls["クラス（状態とロジック）"] --> comp["@Componentがまとめる"]
+  tpl["テンプレート（見た目のHTML）"] --> comp
+  css["スタイル（CSS）"] --> comp
+  comp --> screen["画面の部品となるComponent"]
+```
+
 そして、これら3つを「これはComponentである」とAngularに伝え、結びつけているのが`@Component`デコレーターです。次のコードは、もっとも基本的なComponentの形です。
 
 ```ts:src/app/greeting.ts
@@ -243,6 +316,8 @@ export class Greeting {}
 - **styleUrl / styles**: スタイルを指定します。こちらも別ファイルか直接記述かを選べます。
 - **imports**: このテンプレートで使う、ほかのComponentやDirective、Pipeを宣言します。
 
+このほかにも、`host`（ホスト要素の属性やイベントの扱い方）・`providers`（このComponent配下でDIに登録するService）・`changeDetection`（変更検知の方式）といった設定があります。それぞれ該当する章で扱います。なお、Angular v22で生成する新規Componentは、`changeDetection`が既定で`ChangeDetectionStrategy.OnPush`になります。この意味は『変更検知の仕組み（Default・OnPush・Zone.js）』の章で解説します。
+
 テンプレートやスタイルを別ファイルに分ける場合は、次のように書きます。実務では、こちらの形が一般的です。
 
 ```ts:src/app/greeting.ts
@@ -262,7 +337,7 @@ export class Greeting {}
 
 ### Componentを作る
 
-Componentは、第3章で学んだAngular CLIで生成できます。次のコマンドを実行します。
+Componentは、前章『開発環境・CLIとプロジェクト構成』で学んだAngular CLIで生成できます。次のコマンドを実行します。
 
 ```bash
 ng generate component greeting
@@ -278,13 +353,22 @@ src/app/greeting/
 └── greeting.spec.ts   … テスト
 ```
 
-ここで、ファイル名が`greeting.ts`、クラス名が`Greeting`となっている点に注目してください。第4章でも触れたとおり、モダンAngularのスタイルガイドでは、ファイル名に`.component`のような接尾辞を付けません。古いプロジェクトで見かける`greeting.component.ts`・`GreetingComponent`と、指しているものは同じです。
+ここで、ファイル名が`greeting.ts`、クラス名が`Greeting`となっている点に注目してください。前章でも触れたとおり、モダンAngularのスタイルガイドでは、ファイル名に`.component`のような接尾辞を付けません。古いプロジェクトで見かける`greeting.component.ts`・`GreetingComponent`と、指しているものは同じです。
 
 テンプレートとスタイルは、`template`・`styles`に直接書くインライン形式と、`templateUrl`・`styleUrl`で別ファイルに分ける形式のどちらでも書けます。数行の短いものは直接書くほうが見通しがよく、長くなるものは別ファイルに分けるほうが読みやすくなります。Angular CLIで生成すると、既定では別ファイルに分かれた形になります。本書では、要点を示すために、短い例ではインライン形式を使うことがあります。
 
 ### セレクターとComponentのネスト
 
 Componentの真価は、組み合わせられることにあります。あるComponentのテンプレートの中で、別のComponentをタグとして呼び出せます。これをネスト（入れ子）と呼びます。
+
+次の図は、親Componentのテンプレートに子Componentのセレクターを置くと、画面全体がComponentのツリーとして組み上がるようすを表します。
+
+```mermaid
+flowchart TD
+  root["App（app-root）"] --> greeting["Greeting（app-greeting）"]
+  root --> header["Header（app-header）"]
+  greeting --> icon["UserIcon（app-user-icon）"]
+```
 
 呼び出すときの鍵になるのが、`selector`です。先ほどの`Greeting`は`selector: 'app-greeting'`だったので、ほかのComponentのテンプレートに`<app-greeting>`と書くと、その位置に`Greeting`が描画されます。
 
@@ -303,10 +387,10 @@ import { Greeting } from './greeting';
 export class App {}
 ```
 
-ここで重要なのが`imports: [Greeting]`です。Standalone Componentでは、テンプレートで使う別のComponentを、この`imports`に宣言する必要があります。宣言を忘れると、`<app-greeting>`はただの不明なタグとして扱われ、画面には何も表示されません。
+ここで重要なのが`imports: [Greeting]`です。Standalone Componentでは、テンプレートで使う別のComponentを、この`imports`に宣言する必要があります。宣言を忘れると、Angularのテンプレートコンパイラは`<app-greeting>`というハイフン付きのタグをComponentのセレクターとみなして解決しようとしますが、`imports`に対応するComponentが見つからず、`NG8001`（`'app-greeting' is not a known element`）というコンパイルエラーになります。ビルドが失敗するだけでなく、開発中はIDEの警告やブラウザのエラーオーバーレイにも表示されるため、気づかずに見過ごすことはまずありません。
 
 :::message
-テンプレートに置いたComponentが表示されないときは、まず`imports`への宣言を確認してください。これは初学者がつまずきやすい典型的なポイントです。
+テンプレートに置いたComponentが認識されず`NG8001`のようなエラーになったときは、まず`imports`への宣言を確認してください。これは初学者がつまずきやすい典型的なポイントです。
 :::
 
 なお、子要素を持たないComponentは、`<app-greeting></app-greeting>`と書く代わりに、`<app-greeting />`と自己完結型のタグで書くこともできます。本書でも、内容を差し込まないComponentは、この短い形で書くことがあります。
@@ -338,15 +422,15 @@ export class Greeting {
 }
 ```
 
-`{{ name() }}`は補間（interpolation）と呼ばれる記法で、クラスの値をテンプレートに埋め込みます。ここでは`name`がSignalなので、`name()`と呼び出して値を取り出しています。このようなテンプレートとクラスのやり取り、いわゆるデータバインディングは、次の第3部で本格的に扱います。ここでは「クラスとテンプレートは連携する」という点だけ押さえておけば十分です。
+`{{ name() }}`は補間（interpolation）と呼ばれる記法で、クラスの値をテンプレートに埋め込みます。ここでは`name`がSignalなので、`name()`と呼び出して値を取り出しています。このようなテンプレートとクラスのやり取り、いわゆるデータバインディングは、『テンプレートの記法とDirective概論』の章で本格的に扱います。ここでは「クラスとテンプレートは連携する」という点だけ押さえておけば十分です。
 
 ### Componentが生まれてから消えるまで
 
 Componentは、画面に表示されるときに生成され、不要になると破棄されます。生成・表示・破棄といった節目には、それぞれ処理を差し込むための仕組みが用意されています。これをライフサイクルと呼びます。
 
-たとえば「Componentが表示された直後にデータを読み込む」「破棄されるときに後始末をする」といった処理を、決められたタイミングで実行できます。ライフサイクルは、入力値の変化とあわせて第21章で詳しく扱います。いまは「Componentには一生（ライフサイクル）がある」ということだけ知っておいてください。
+たとえば「Componentが表示された直後にデータを読み込む」「破棄されるときに後始末をする」といった処理を、決められたタイミングで実行できます。ライフサイクルは、入力値の変化とあわせて『双方向バインディングとライフサイクル』の章で詳しく扱います。いまは「Componentには一生（ライフサイクル）がある」ということだけ知っておいてください。
 
-たとえば、`ngOnInit`は生成直後の初期化処理に、`ngOnDestroy`は破棄されるときの後始末に使われます。データの読み込みを`ngOnInit`で行う、といった使い方が代表例です。これらの名前だけ頭の片隅に置いておくと、第21章での理解がスムーズになります。なお、モダンAngularでは、こうした初期化の一部を、SignalやDIの仕組みで置き換えられる場面も増えています。その話題は、該当する章で改めて触れます。
+たとえば、`ngOnInit`は生成直後の初期化処理に、`ngOnDestroy`は破棄されるときの後始末に使われます。データの読み込みを`ngOnInit`で行う、といった使い方が代表例です。これらの名前だけ頭の片隅に置いておくと、その章での理解がスムーズになります。なお、モダンAngularでは、こうした初期化の一部を、SignalやDIの仕組みで置き換えられる場面も増えています。その話題は、該当する章で改めて触れます。
 
 ## NgModuleからStandalone Componentへ
 
@@ -417,7 +501,7 @@ Standalone Componentは、Angular 14（2022年）でプレビューとして登�
 少し前のプロジェクトでは、`@Component`に`standalone: true`と明記されていることがあります。これはStandaloneであることを示す当時の書き方で、Angular 19以降では省略できます。逆に`standalone: false`と書かれている場合は、NgModuleに登録して使う従来のComponentを表します。
 :::
 
-Standaloneには、見通しのよさ以外の利点もあります。各Componentが自分の依存を把握しているため、必要になったときにだけ読み込む「遅延読み込み」がしやすくなります。結果として、最初に読み込むコードの量を減らし、アプリの初期表示を速くしやすくなります。遅延読み込みは、第7部のルーティングで詳しく扱います。
+Standaloneには、見通しのよさ以外の利点もあります。各Componentが自分の依存を把握しているため、必要になったときにだけ読み込む「遅延読み込み」がしやすくなります。結果として、最初に読み込むコードの量を減らし、アプリの初期表示を速くしやすくなります。遅延読み込みは、『ルーティング応用（ネスト・Lazy Loading・Guard）』の章で詳しく扱います。
 
 ### 新旧のコードを比べる
 
@@ -425,6 +509,9 @@ Standaloneには、見通しのよさ以外の利点もあります。各Compone
 
 ```ts:旧来の書き方（NgModule時代）
 // greeting.ts と greeting.module.ts の2ファイルが必要
+import { NgModule } from '@angular/core';
+import { Greeting } from './greeting';
+
 @NgModule({
   declarations: [Greeting],
   exports: [Greeting],
@@ -435,6 +522,8 @@ export class GreetingModule {}
 Standalone時代では、モジュールが不要になり、Component1つで完結します。
 
 ```ts:src/app/greeting.ts（現在の書き方）
+import { Component } from '@angular/core';
+
 @Component({
   selector: 'app-greeting',
   imports: [/* 必要な部品 */],
@@ -449,9 +538,13 @@ export class Greeting {}
 
 NgModuleは、部品を束ねるだけでなく、アプリ全体の設定を登録する役割も担っていました。この役割も、モダンAngularでは形を変えています。
 
-たとえば、ルーティングを使うには、かつては`RouterModule.forRoot(routes)`をNgModuleの`imports`に登録していました。現在は、第4章で見たように、`app.config.ts`で`provideRouter(routes)`という関数を使います。同じように、HTTP通信も`HttpClientModule`のimportから`provideHttpClient()`へと変わりました。「モジュールをimportする」書き方から、「`provide〜`という関数を並べる」書き方へ移ったのです。
+たとえば、ルーティングを使うには、かつては`RouterModule.forRoot(routes)`をNgModuleの`imports`に登録していました。現在は、前章『開発環境・CLIとプロジェクト構成』で見たように、`app.config.ts`で`provideRouter(routes)`という関数を使います。同じように、HTTP通信も`HttpClientModule`のimportから`provideHttpClient()`へと変わりました。「モジュールをimportする」書き方から、「`provide〜`という関数を並べる」書き方へ移ったのです。
 
 ```ts:旧来の書き方（NgModuleでの設定登録）
+import { NgModule } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { HttpClientModule } from '@angular/common/http';
+
 @NgModule({
   imports: [RouterModule.forRoot(routes), HttpClientModule],
 })
@@ -459,12 +552,17 @@ export class AppModule {}
 ```
 
 ```ts:src/app/app.config.ts（現在の書き方）
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { routes } from './app.routes';
+
 export const appConfig: ApplicationConfig = {
   providers: [provideRouter(routes), provideHttpClient()],
 };
 ```
 
-また、`*ngIf`や`*ngFor`を使うために必要だった`CommonModule`のimportも、現在は不要です。条件分岐や繰り返しは、`@if`や`@for`という組み込みの構文に置き換わり、importなしで使えるようになりました。これらの新しい構文は、第3部で詳しく扱います。
+また、`*ngIf`や`*ngFor`を使うために必要だった`CommonModule`のimportも、現在は不要です。条件分岐や繰り返しは、`@if`や`@for`という組み込みの構文に置き換わり、importなしで使えるようになりました。これらの新しい構文は、『テンプレートの記法とDirective概論』の章で詳しく扱います。
 
 かつては、よく使う部品をまとめた`SharedModule`を作り、各所でimportする手法も一般的でした。Standaloneでは、必要なComponentやDirectiveを、使う側が直接`imports`に書きます。共有のための中間モジュールを設けなくても、部品を個別に取り込めます。
 

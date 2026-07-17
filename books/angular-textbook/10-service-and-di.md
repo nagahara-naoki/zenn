@@ -15,7 +15,7 @@ title: "ServiceとDependency Injection"
 
 ## ServiceとComponentの責務
 
-第2部から第4部にかけて、Componentの作り方と、Component間のやり取りを学んできました。ここまでのアプリケーションは、いわばComponentだけで組み立てられていました。しかし、規模が大きくなると、Componentだけでは無理が生じます。データの取得、業務ルールの計算、複数のComponentで共有したい状態。こうした関心事を、画面を担うComponentに押し込めると、たちまち見通しが悪くなります。
+ここまでの章では、Componentの作り方から、テンプレートやDirective、Component間でのデータの受け渡しまでを学んできました。そこで扱ったアプリケーションは、いわばComponentだけで組み立てられていました。しかし、規模が大きくなると、Componentだけでは無理が生じます。データの取得、業務ルールの計算、複数のComponentで共有したい状態。こうした関心事を、画面を担うComponentに押し込めると、たちまち見通しが悪くなります。
 
 そこで登場するのがServiceです。Serviceは、Componentから切り出した処理を受け持つ、ふつうのクラスです。この節では、Serviceとは何か、Componentとどのように責務を分ければよいのかを、具体例を通して整理します。責務の分け方は、アプリケーション全体の設計を左右する重要な判断です。
 
@@ -28,7 +28,7 @@ Serviceは、特定の役割を持った処理をまとめたクラスです。�
 - 複数のComponentで共有したいデータの保持
 - ログの記録や、外部ライブラリの呼び出し
 
-これらをComponentから切り離すと、Componentは「受け取って表示する」「操作を受け付ける」という本来の役割に集中できます。第10章で「1つのComponentは1つの関心事に集中する」と述べましたが、Serviceは、その関心事の分離を、画面の外側にまで広げる手段だといえます。
+これらをComponentから切り離すと、Componentは「受け取って表示する」「操作を受け付ける」という本来の役割に集中できます。『Componentの構成技法と分割設計』の章で「1つのComponentは1つの関心事に集中する」と述べましたが、Serviceは、その関心事の分離を、画面の外側にまで広げる手段だといえます。
 
 ### なぜComponentから切り出すのか
 
@@ -38,7 +38,7 @@ Serviceは、特定の役割を持った処理をまとめたクラスです。�
 
 2つ目は、**見通し**です。Componentがデータ取得も計算も抱えていると、テンプレートとの対応関係が読み取りにくくなります。処理をServiceへ追い出せば、Componentのクラスは「Serviceを呼び、結果を表示に橋渡しする」だけの、薄く読みやすいものになります。
 
-3つ目は、**テストのしやすさ**です。業務ロジックがServiceに分かれていれば、画面を通さずに、そのロジック単体をテストできます。Componentのテストと、ロジックのテストを、それぞれの関心に応じて分けられます。テストについては第11部で詳しく扱いますが、責務の分離は、テスト容易性の土台になります。
+3つ目は、**テストのしやすさ**です。業務ロジックがServiceに分かれていれば、画面を通さずに、そのロジック単体をテストできます。Componentのテストと、ロジックのテストを、それぞれの関心に応じて分けられます。テストについては『アーキテクチャとテスト』の章で詳しく扱いますが、責務の分離は、テスト容易性の土台になります。
 
 ### @InjectableでServiceを定義する
 
@@ -58,21 +58,23 @@ import { Injectable } from '@angular/core';
 })
 export class ProductService {
   getProducts(): Product[] {
-    // データを返す処理（詳細は第9部のHTTP通信で扱う）
+    // データを返す処理（詳細はHTTP通信の章で扱う）
     return [/* 省略 */];
   }
 }
 ```
 
-注目すべきは`@Injectable({ providedIn: 'root' })`です。`providedIn: 'root'`は、「このServiceをアプリケーション全体で使えるように登録する」という指定です。この一行があると、Serviceはアプリのどこからでも受け取れるようになります。しかも、実際に使われている場合にだけ最終的な成果物に含まれるため、使わないServiceは自動的に取り除かれます。この仕組みは、次章以降で詳しく扱うDIの一部です。
+クラスに付いている`@Injectable`は、このクラスがDIの対象であることを示す印です。Serviceが自身の中で`inject()`を使ってほかの依存を受け取る場合には、この印が欠かせません。
+
+あわせて注目したいのが、引数の`providedIn: 'root'`です。これは、「このServiceをアプリケーション全体で使えるように登録する」という指定です。この一行があると、Serviceはアプリのどこからでも受け取れるようになります。しかも、実際に使われている場合にだけ最終的な成果物に含まれるため、使わないServiceは自動的に取り除かれます。この仕組みは、本章の後半で詳しく扱うDIの一部です。
 
 ### Serviceはひとつのインスタンスが共有される
 
 `providedIn: 'root'`で登録したServiceは、アプリケーション全体でひとつのインスタンスだけが作られ、それがすべての利用者で共有されます。あるComponentが受け取る`ProductService`も、別のComponentが受け取る`ProductService`も、同じひとつのインスタンスです。
 
-この性質は、状態を共有したいときに役立ちます。たとえば、`ProductService`が取得済みの商品データを保持していれば、複数の画面がその同じデータを参照できます。第17章で触れた、親子を越えた状態共有の課題を、Serviceが解決する糸口がここにあります。共有される単一のインスタンスを通じて、離れたComponentどうしが同じ状態を見られるのです。
+この性質は、状態を共有したいときに役立ちます。たとえば、`ProductService`が取得済みの商品データを保持していれば、複数の画面がその同じデータを参照できます。『データフローとinput()・output()』の章で触れた、親子を越えた状態共有の課題を、Serviceが解決する糸口がここにあります。共有される単一のインスタンスを通じて、離れたComponentどうしが同じ状態を見られるのです。
 
-一方で、共有されるということは、状態の扱いに注意が要るということでもあります。あるComponentがServiceの状態を変えれば、その変化はほかのすべての利用者に及びます。この点は、状態管理を扱う第10部で、あらためて掘り下げます。
+一方で、共有されるということは、状態の扱いに注意が要るということでもあります。あるComponentがServiceの状態を変えれば、その変化はほかのすべての利用者に及びます。この点は、『状態管理の基礎』の章で、あらためて掘り下げます。
 
 ### ComponentとServiceの責務を分ける
 
@@ -125,9 +127,43 @@ export class PricingService {
 
 このServiceは、どのComponentから呼ばれても、渡された値だけで結果を決めます。内部に状態がないため、動きが予測しやすく、単体テストも「入力を渡して戻り値を確かめる」だけで済みます。業務ルールが各Componentに散らばるのを防ぎ、計算の根拠を一か所に集められる点も利点です。
 
-もうひとつは、**状態を持つService**です。取得したデータや、アプリの現在の状態を、自身の中に保持します。共有される単一インスタンスという性質を活かし、複数のComponentから参照される「状態の置き場所」として働きます。第10部で学ぶStore Serviceは、この発展形です。
+もうひとつは、**状態を持つService**です。取得したデータや、アプリの現在の状態を、自身の中に保持します。共有される単一インスタンスという性質を活かし、複数のComponentから参照される「状態の置き場所」として働きます。『状態管理の基礎』の章で学ぶStore Serviceは、この発展形です。
 
-どちらのServiceも役割がありますが、状態を持つServiceは、変化の伝わり方に注意が必要です。モダンAngularでは、Serviceが持つ状態をSignalで表現することで、その変化をComponentへ自然に伝えられます。Serviceの中で`signal()`を使って状態を保持し、Componentはそれを読み取るだけで、変化に追従した表示が得られるのです。この手法は、第6部のSignalsと、第10部の状態管理で詳しく扱います。まずは「状態を持つか持たないか」でServiceを見分ける視点を持っておくと、設計の判断がしやすくなります。
+どちらのServiceも役割がありますが、状態を持つServiceは、変化の伝わり方に注意が必要です。モダンAngularでは、Serviceが持つ状態をSignalで表現することで、その変化をComponentへ自然に伝えられます。Serviceの中で`signal()`を使って状態を保持し、Componentはそれを読み取るだけで、変化に追従した表示が得られるのです。
+
+たとえば、買い物カゴの中身を保持する`CartService`は、次のように書けます。
+
+```ts:src/app/cart.ts
+import { Injectable, signal } from '@angular/core';
+
+@Injectable({ providedIn: 'root' })
+export class CartService {
+  readonly items = signal<CartItem[]>([]);
+
+  add(item: CartItem): void {
+    this.items.update((current) => [...current, item]);
+  }
+}
+```
+
+`items`が、このServiceの抱える状態です。この`CartService`を注入したComponentは、`items()`を読むだけで現在のカゴの中身を表示できます。
+
+```ts:src/app/cart-badge.ts
+import { Component, inject, computed } from '@angular/core';
+
+@Component({
+  selector: 'app-cart-badge',
+  template: `<span>カート: {{ count() }} 点</span>`,
+})
+export class CartBadge {
+  private readonly cart = inject(CartService);
+  protected readonly count = computed(() => this.cart.items().length);
+}
+```
+
+`add()`でカゴに商品が加わると`items`が更新され、それを読んでいる`count`も自動で変わります。`CartService`は単一のインスタンスなので、別のComponentが商品を加えても、このバッジは同じ状態を映します。
+
+この手法は、『SignalsとZoneless』の章と、『状態管理の基礎』の章で詳しく扱います。まずは「状態を持つか持たないか」でServiceを見分ける視点を持っておくと、設計の判断がしやすくなります。
 
 ### よくあるつまずき
 
@@ -172,7 +208,7 @@ export class ProductListPage {
 DIでは、クラスは「自分が何を必要とするか」を宣言するだけで、その用意はAngularに任せます。Angularが、必要なインスタンスを作って（あるいは既存のものを見つけて）、渡してくれます。この「外から渡してもらう」ことを、注入（injection）と呼びます。
 
 ```ts:src/app/product-list-page.ts
-import { Component, inject } from '@angular/core';
+import { inject } from '@angular/core';
 
 export class ProductListPage {
   private readonly service = inject(ProductService);
@@ -181,7 +217,7 @@ export class ProductListPage {
 
 `inject(ProductService)`は、「`ProductService`を注入してください」という宣言です。自分で`new`していない点に注目してください。どのインスタンスを渡すか、どう準備するかは、Angularが引き受けます。`ProductListPage`は、`ProductService`が手に入るという事実だけに関心を持ち、その出どころを気にしません。
 
-このように、必要なものを用意する責任を、使う側から外部の仕組みへ移すことを、制御の反転（Inversion of Control）と呼びます。第1章でフレームワークの特徴として触れた考え方が、DIという形で具体的に働いているのです。
+このように、必要なものを用意する責任を、使う側から外部の仕組みへ移すことを、制御の反転（Inversion of Control）と呼びます。『Angularとは何か』の章でフレームワークの特徴として触れた考え方が、DIという形で具体的に働いているのです。
 
 ### DIを支える3つの要素
 
@@ -222,15 +258,15 @@ DIを使っていれば、テストのときだけ、通信をしない偽物の
 providers: [{ provide: ProductService, useValue: fakeProductService }]
 ```
 
-`ProductListPage`のコードは、一文字も変える必要がありません。`inject(ProductService)`と書いてあるだけで、注入される中身が本物か偽物かは、外の登録が決めます。もし`new ProductService()`と自分で作っていたら、この差し替えはできず、テストのために本体のコードを書き換えるはめになっていたはずです。DIが、コードを変えずに振る舞いを差し替える柔軟さを生んでいるのです。この差し替えの仕組みは、次章以降のProviderの登録方法とあわせて、より詳しく扱います。
+`ProductListPage`のコードは、一文字も変える必要がありません。`inject(ProductService)`と書いてあるだけで、注入される中身が本物か偽物かは、外の登録が決めます。もし`new ProductService()`と自分で作っていたら、この差し替えはできず、テストのために本体のコードを書き換えるはめになっていたはずです。DIが、コードを変えずに振る舞いを差し替える柔軟さを生んでいるのです。この差し替えの仕組みは、次章のProviderの登録方法とあわせて、より詳しく扱います。
 
 ### DIは至るところで使われている
 
 DIは、自分で作ったServiceだけのものではありません。Angularが提供する多くの機能も、DIを通して受け取ります。すでに本書に登場したものだけでも、次のように数多くあります。
 
-- `ElementRef`（第14章）: ホスト要素への参照を`inject()`で受け取りました
-- `TemplateRef`・`ViewContainerRef`（第15章）: 構造Directiveで注入しました
-- これから学ぶ`HttpClient`（第9部）や`Router`（第7部）も、`inject()`で受け取ります
+- `ElementRef`（『Directiveの実装とPipe』の章）: ホスト要素への参照を`inject()`で受け取りました
+- `TemplateRef`・`ViewContainerRef`（『Directiveの実装とPipe』の章）: 構造Directiveで注入しました
+- これから学ぶ`HttpClient`（『HTTP通信』の章）や`Router`（『Routerの基礎』の章）も、`inject()`で受け取ります
 
 私たちが`inject(HttpClient)`と書けるのは、Angularが`HttpClient`をProviderとして登録しているからです。つまり、DIはAngularという枠組み全体を貫く共通の作法であり、フレームワークの機能も、自作のServiceも、同じ仕組みで手に入ります。この一貫性を理解すると、Angularのさまざまな機能が、なぜ`inject()`一つで使えるのかが腑に落ちます。
 
@@ -246,6 +282,10 @@ export class ProductListPage {
 ```
 
 この「注入コンテキスト」の外、たとえばボタンクリックのハンドラーの中などで`inject()`を呼ぶと、エラーになります。依存の取得は、クラスの初期化のタイミングで行う、と覚えておけば、多くの場合つまずきません。詳しい仕組みは、次章の`inject()`の解説であらためて触れます。
+
+### よくあるつまずき
+
+- **interfaceをトークンにできると思い込む**: DIのトークンは、実行時に存在する値でなければなりません。TypeScriptの`interface`は型の情報でしかなく、コンパイルすると消えてしまうため、トークンには使えません。クラスはそれ自身が実行時の値なのでトークンになりますが、設定値やインターフェースで表される依存を注入したいときは、`InjectionToken`という専用のトークンを用意します。
 
 ## まとめ
 
