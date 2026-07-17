@@ -1,7 +1,7 @@
 title: "Angularの教科書"
 summary: "基礎からRxJS・NgRx・Signals時代の設計まで。初学者から上級者までを対象に、Angularを網羅的かつ深く解説する。NgModuleからStandalone、Zone.jsからZoneless、`@Input`から`input()`といった新旧比較を軸に、モダンAngular（v22世代）の標準を体系的に学ぶ。"
 topics: ["angular", "typescript", "rxjs", "ngrx", "frontend"]
-published: false
+published: true
 price: 0
 chapters:
   - 01-preface
