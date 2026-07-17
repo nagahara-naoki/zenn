@@ -1,5 +1,5 @@
 title: "Honoの教科書"
-summary: "基礎からHTTP、Web標準API、D1、認証、テスト、OpenAPI、Hono RPC、マルチランタイムまで。TypeScriptで型安全なWeb APIを作りながら、Honoを体系的に学ぶ。"
+summary: "基礎からHTTP、Web標準API、認証、テスト、OpenAPI、Hono RPC、マルチランタイムまで。TypeScriptで型安全なWeb APIを作りながら、Honoを体系的に学ぶ。"
 topics: ["hono", "typescript", "cloudflare", "api", "backend"]
 published: true
 price: 0
