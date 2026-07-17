@@ -109,6 +109,10 @@ API全体の入口は`src/app.ts`に集めます。
 
 ここでは、共通Middleware、エラー処理、ルート登録、OpenAPI設定をまとめます。
 
+次のコードは完成形の中心なので、少し長くなります。
+読むときは、細かいimportよりも、`createApp()`の中で何を登録しているかを追ってください。
+エラー処理、ヘルスチェック、各ルート、OpenAPI仕様という順番で、API全体の骨組みを作っています。
+
 ```ts:src/app.ts
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { HTTPException } from 'hono/http-exception';
@@ -209,6 +213,10 @@ export default createApp();
 
 `src/index.ts`は薄く保ちます。アプリケーションの中身は`src/app.ts`に寄せます。
 
+この分け方にしておくと、Workersの入口と、テストで使うアプリ生成処理を分離できます。
+本番では`export default createApp()`を使い、テストでは`createApp()`を呼び出して同じルート構成を再現します。
+入口を薄くするのは、見た目のためだけでなく、テストしやすさのためでもあります。
+
 ## エラーレスポンスを統一する
 
 エラー形式は、APIの使いやすさに直結します。
@@ -259,6 +267,10 @@ export const createErrorResponse = (
 ## OpenAPIのルートを登録する
 
 OpenAPIを使うルートは、`createRoute()`で定義し、`app.openapi()`で登録します。
+
+ここでのポイントは、仕様と実装を近くに置くことです。
+`createRoute()`にはRequestとResponseの形を書き、`app.openapi()`には実際のHandlerを書きます。
+この2つが離れすぎると、仕様だけ更新されて実装が古い、またはその逆が起きやすくなります。
 
 ```ts:src/routes/tasks.ts
 import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
@@ -361,6 +373,10 @@ export const createTaskService = (repo: TaskRepository) => {
 ## D1とマイグレーションを確認する
 
 D1のテーブルは、マイグレーションで管理します。
+
+完成形では、データベース構造もアプリケーションの一部として扱います。
+手元でたまたま作ったテーブルに依存するのではなく、マイグレーションを実行すれば同じ構造を再現できる状態にしておきます。
+これがあると、ローカル、テスト、本番で構造のずれに気づきやすくなります。
 
 ```sql:migrations/0001_initial.sql
 CREATE TABLE users (
@@ -515,6 +531,10 @@ curl http://localhost:8787/openapi.json
 ## ローカルで完成確認する
 
 最後に、ローカルで完成状態を確認します。
+
+ここでの確認は、単にサーバーが起動するかを見るだけではありません。
+マイグレーションを適用し、認証付きでタスクを作り、テストまで通すことで、APIの主要な経路を一通り確認します。
+学習用APIでも、この一連の確認を習慣にしておくと、変更を怖がらずに進めやすくなります。
 
 ```sh
 npm install

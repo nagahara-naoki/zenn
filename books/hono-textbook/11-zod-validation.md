@@ -97,6 +97,10 @@ if (result.success) {
 
 Honoでは、`zValidator()`を使うと、ZodスキーマをMiddlewareとして使えます。
 
+第10章の`validator()`では、検証処理を自分で書きました。
+ここでは、その検証条件をZodスキーマへ移します。
+Handlerから見ると、検証済みの値を`c.req.valid('json')`で受け取る点は同じです。
+
 ```ts
 app.post(
   '/tasks',
@@ -397,6 +401,10 @@ Standard Schemaは、複数のTypeScriptバリデーションライブラリで�
 
 最後に、タスク作成と更新をZodで書き直します。
 
+ここからのコードでは、`as CreateTaskInput`のような型アサーションが消えることに注目してください。
+外部入力を「そういう型だとみなす」のではなく、Zodで検証してからHandlerへ渡します。
+この違いが、前章からの一番大きな改善点です。
+
 ```ts:src/index.ts
 app.post(
   '/tasks',
@@ -457,6 +465,10 @@ app.patch(
 ```
 
 Handlerの中から、型アサーションが消えました。これは大きな前進です。
+
+また、作成と更新で別々のスキーマを使っている点も重要です。
+作成では`title`が必須ですが、更新では`title`も`completed`も任意です。
+同じタスクを扱っていても、APIの用途が違えば入力の約束も変わります。
 
 ## まとめ
 

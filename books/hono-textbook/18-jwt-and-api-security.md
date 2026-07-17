@@ -161,6 +161,10 @@ export type PasswordHasher = {
 ただし、これは「本書のサンプルを完結させるための実装」です。
 本番では、Argon2id、bcrypt、scryptなど、パスワード保存向けに設計された方式や外部認証基盤も検討してください。
 
+次のコードは、暗号処理そのものよりも「保存形式」に注目してください。
+パスワードそのものは保存せず、ソルトとハッシュ値を組み合わせた文字列だけを保存します。
+また、アルゴリズム名や反復回数も一緒に入れておくことで、将来設定を変えたときに古いデータを扱いやすくしています。
+
 ```ts
 // src/services/password.ts
 const encoder = new TextEncoder()
@@ -257,6 +261,10 @@ export type UserRepository = {
 ```
 
 D1実装です。
+
+ここでも、第15章と同じ考え方を使います。
+D1から返る行は`UserRow`として受け取り、アプリケーション内では`User`へ変換して扱います。
+`password_hash`のようなDBの列名を、ServiceやHandlerへ広げないことがポイントです。
 
 ```ts
 // src/repositories/d1-user-repository.ts
@@ -453,6 +461,10 @@ JWTのPayloadには、必要最小限の情報だけを入れます。
 
 `/auth/login` でJWTを返します。
 
+このコードでは、登録とログインを同じ`authRoute`にまとめています。
+読むときは、Handlerの中でやっていることを3つに分けると追いやすいです。
+入力を検証し、Serviceで認証処理を行い、最後にHTTPレスポンスへ変換します。
+
 ```ts
 // src/routes/auth.ts
 import { Hono } from 'hono'
@@ -633,6 +645,10 @@ JWT Payloadから `sub` を取り出せば、ユーザーIDがわかります。
 
 そこで、認証済みユーザーを `Variables` へ保存します。
 
+`Variables`へ保存する理由は、後続のHandlerで安全に同じ情報を使うためです。
+JWT Payloadを毎回直接読むと、`sub`の型チェックやユーザー存在確認があちこちに散らばります。
+Middlewareで一度だけ確認しておくと、タスク操作側は「認証済みユーザーがいる」前提で書けます。
+
 ```ts
 // src/middlewares/current-user.ts
 import { createMiddleware } from 'hono/factory'
@@ -703,6 +719,10 @@ export type ListTasksQuery = {
 ```
 
 D1のSQLでは、必ず `user_id = ?` を条件に入れます。
+
+ここは認可の中でも特に重要です。
+JWTでユーザーを確認できても、SQLで`user_id`を条件に入れなければ、他人のタスクを取得できる余地が残ります。
+認証は入口で行い、認可はデータを取り出す条件にも反映します。
 
 ```ts
 where.push('user_id = ?')

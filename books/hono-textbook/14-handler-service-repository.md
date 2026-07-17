@@ -33,6 +33,10 @@ Serviceはアプリケーションの仕事。
 Repositoryはデータの置き場所。
 ```
 
+この分割の目的は、ファイル数を増やすことではありません。
+「変更したい理由」が違うコードを、同じ場所に置きすぎないことです。
+HTTPの返し方を変えたいとき、業務ルールを変えたいとき、保存先を変えたいときで、触る場所が分かれている状態を目指します。
+
 ## まず全体像を見る
 
 この章で目指す構成は、次のような流れです。
@@ -147,6 +151,10 @@ export type UpdateTaskInput = {
 
 次に、Serviceを作ります。
 
+このServiceでは、まだ保存先に`Map`を使っています。
+つまり、この段階のServiceは「業務ルール」と「保存処理」が少し混ざった中間形です。
+まずはHandlerから処理を外へ出し、その後でRepositoryへさらに分ける、という順番で進めます。
+
 ```ts
 // src/services/task-service.ts
 import type { CreateTaskInput, Task, UpdateTaskInput } from '../models/task'
@@ -205,6 +213,10 @@ export function createTaskService() {
 ```
 
 Handler側は、このServiceを呼び出します。
+
+Handlerから見ると、`taskService.createTask()`を呼べばタスクが作られます。
+タスクIDをどう作るか、更新日時をどう入れるか、内部で`Map`を使うかは、Handlerの関心ではありません。
+この小さな切り分けだけでも、Handlerの見通しはかなりよくなります。
 
 ```ts
 // src/routes/tasks.ts
@@ -526,6 +538,10 @@ flowchart TB
 
 最後に、Handler側でRepositoryとServiceを組み立てます。
 
+ここからのコードでは、3つの役割が一度に登場します。
+読む順番は、上から順に追うよりも、まず先頭の2行に注目すると分かりやすいです。
+Repositoryを作り、それをServiceへ渡し、そのServiceを各Handlerから呼び出しています。
+
 ```ts
 // src/routes/tasks.ts
 import { Hono } from 'hono'
@@ -588,6 +604,8 @@ Serviceはアプリケーションの操作を表しています。
 Repositoryは保存先を隠しています。
 
 この3つが分かれると、コードの見通しがよくなります。
+特に次章で保存先をD1に変えるとき、この分割の意味がはっきりします。
+Handlerはほとんど同じまま、Repositoryの実装だけを差し替えられるからです。
 
 ## Domain ModelとDB Model
 

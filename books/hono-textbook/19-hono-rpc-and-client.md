@@ -87,6 +87,10 @@ export default app
 
 クライアント側では、この型を読み込んでHono Clientを作ります。
 
+ここで共有しているのは、実行時の`app`ではなく型だけです。
+クライアントはサーバーの処理を直接呼ぶわけではありません。
+あくまでHTTP APIを呼び出しますが、その呼び出し方をTypeScriptが補助してくれる、という理解が安全です。
+
 ## typeofでAPIの型を表現する
 
 Honoでは、ルート定義をチェーンで書くほど型推論が効きやすくなります。
@@ -125,6 +129,10 @@ export const client = hc<AppType>('http://localhost:8787')
 ```
 
 これで、`client` からAPIを呼び出せます。
+
+`hc<AppType>()`は、APIクライアントを作る入口です。
+引数のURLは実際のAPIの場所で、型引数の`AppType`は「このAPIにはどんなルートがあるか」を表します。
+URLと型の両方がそろって、初めて型付きのHTTPクライアントとして使えます。
 
 ```ts
 const res = await client.tasks.$get()
@@ -271,6 +279,10 @@ if (res.ok) {
 ## POSTを呼び出す
 
 タスク作成APIです。
+
+ここでは、`fetch()`のようにURLや`method: 'POST'`を手で書きません。
+`client.tasks.$post()`という呼び出し自体が、`POST /tasks`を表しています。
+そのため、パスやメソッドの指定ミスを減らせます。
 
 ```ts
 const res = await client.tasks.$post({
@@ -448,6 +460,10 @@ async function createTask(body: CreateTaskBody) {
 Angularアプリから使う場合も、基本は同じです。
 
 AngularのServiceにHono Clientを閉じ込めると、コンポーネントがHTTPの詳細を知らずに済みます。
+
+コンポーネントは画面の状態やユーザー操作に集中し、APIの呼び出し方はServiceへ寄せます。
+Hono Clientを使う場合も、Angularの設計としては普段のAPI Serviceと同じです。
+違うのは、Serviceの内側でサーバー側のルート型を使える点です。
 
 ```ts
 // task-api.service.ts

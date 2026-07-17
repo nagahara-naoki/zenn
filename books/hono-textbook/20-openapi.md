@@ -107,6 +107,10 @@ flowchart TB
 
 本書では、まず `@hono/zod-openapi` を使って、ZodスキーマからOpenAPIを生成します。
 
+ここで目指すのは、仕様書を別管理で書き起こすことではありません。
+できるだけ実装に近いスキーマからOpenAPIを作り、実装と仕様のずれを減らします。
+Hono RPCがTypeScript向けの型共有なら、OpenAPIはチームや言語をまたいだ仕様共有です。
+
 ## @hono/zod-openapiを導入する
 
 `@hono/zod-openapi` を使うと、Zodスキーマを使いながらOpenAPIを生成できます。
@@ -138,6 +142,9 @@ export default app
 `OpenAPIHono` は、OpenAPIの情報を持てるHonoアプリケーションです。
 
 ルート定義には、`createRoute()` と `app.openapi()` を使います。
+
+通常の`app.get()`や`app.post()`に近い感覚で使えますが、先にルート仕様を作る点が違います。
+仕様として何を受け取り、何を返すのかを`createRoute()`に書き、その仕様に対応するHandlerを`app.openapi()`で登録します。
 
 ## Zodスキーマを再利用する
 
@@ -283,6 +290,10 @@ API利用者が知りたいのは、失敗したときに何が返るかでも�
 
 `createRoute()` で、OpenAPI用のルート定義を作ります。
 
+この定義は、API利用者に見せる契約書のようなものです。
+Handlerの中身を知らなくても、どんなクエリを渡せるか、どんなステータスコードが返るかを読み取れるようにします。
+そのため、成功レスポンスだけでなく、認証エラーなどもここに含めます。
+
 ```ts
 // src/routes/openapi/tasks.ts
 import { createRoute } from '@hono/zod-openapi'
@@ -326,6 +337,10 @@ export const listTasksRoute = createRoute({
 ## app.openapi()で実装する
 
 作ったルート仕様を、`app.openapi()` に渡します。
+
+ここでは、仕様と実装がつながります。
+`listTasksRoute`で定義したクエリは、Handlerの中で`c.req.valid('query')`として取得できます。
+Zodで検証した値を使う流れは、これまでの`zValidator()`と同じです。
 
 ```ts
 import { OpenAPIHono } from '@hono/zod-openapi'

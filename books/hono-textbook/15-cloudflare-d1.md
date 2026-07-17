@@ -24,6 +24,10 @@ flowchart LR
 D1に直接依存するのはRepositoryだけです。
 ServiceやHandlerの形は、できるだけ変えません。
 
+この章はコマンド、SQL、TypeScriptが続くため、少し重く見えるかもしれません。
+ただし、やっていることは一貫しています。
+「D1に保存するための準備」と「Repositoryの中だけをD1実装に変えること」の2つに分けて読むと、全体を追いやすくなります。
+
 ## データベースが必要な理由
 
 インメモリの `Map` は、学習には便利です。
@@ -372,6 +376,10 @@ export type TaskRepository = {
 
 この形に合わせて、D1実装を作ります。
 
+次のコードは長いですが、見るポイントは多くありません。
+`TaskRow`を`Task`へ変換すること、SQLの値を`.bind()`で渡すこと、RepositoryのInterfaceと同じメソッドを実装していること。
+まずはこの3点を確認しながら読んでください。
+
 ```ts
 // src/repositories/d1-task-repository.ts
 import type { CreateTaskInput, Task, UpdateTaskInput } from '../models/task'
@@ -504,6 +512,10 @@ export function createD1TaskRepository(db: D1Database): TaskRepository {
 
 これで、D1を使うRepositoryができました。
 
+`list()`と`findById()`はD1から行を取得し、`toTask()`でアプリケーション用の形に変換します。
+`create()`と`update()`は、TypeScript側の`boolean`をD1の`0`または`1`へ変換して保存します。
+`delete()`は、D1が返す変更件数を見て、削除できたかどうかを`boolean`で返します。
+
 ただし、ひとつ注意があります。
 
 上の `update()` では、まず `findById()` で現在のタスクを取得し、そのあと `UPDATE` しています。
@@ -585,6 +597,10 @@ export const tasksRoute = new Hono<Env>()
 ## タスクCRUDをD1へ接続する
 
 CRUD全体をD1 Repositoryへ接続した例です。
+
+ここでは、Handlerの中身がインメモリ版とほとんど同じであることを確認してください。
+違いは、`createD1TaskRepository(c.env.DB)`でRepositoryを作っている点です。
+この差だけで保存先がD1に変わるなら、前章でInterfaceを作った効果が出ています。
 
 ```ts
 // src/routes/tasks.ts
