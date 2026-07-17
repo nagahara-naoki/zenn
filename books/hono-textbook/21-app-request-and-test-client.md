@@ -1,5 +1,5 @@
 ---
-title: "`app.request()`と`testClient()`によるテスト"
+title: "app.request() と testClient() によるテスト"
 ---
 
 前章では、OpenAPIでAPI仕様を共有する方法を学びました。
