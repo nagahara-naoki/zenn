@@ -1,0 +1,31 @@
+title: "NgRxの教科書"
+summary: "状態の分類からAction・Reducer・Selector・Effects、Entity、SignalStoreまで。Angularアプリケーションの状態管理を、設計判断とともに体系的に学ぶ。"
+topics: ["angular", "ngrx", "rxjs", "typescript", "frontend"]
+published: true
+price: 0
+chapters:
+  - 01-preface
+  - 02-state-management-complexity
+  - 03-ngrx-unidirectional-data-flow
+  - 04-ngrx-setup
+  - 05-state-design
+  - 06-action-design
+  - 07-reducer-and-immutable-update
+  - 08-feature-store-and-create-feature
+  - 09-selector-and-memoization
+  - 10-selector-composition-viewmodel
+  - 11-effects-basics
+  - 12-api-call-and-flattening-operator
+  - 13-effect-error-cancel-state
+  - 14-entity-collection
+  - 15-router-store-devtools-meta-reducer
+  - 16-loading-error-cache
+  - 17-large-scale-architecture
+  - 18-signal-store-basics
+  - 19-signal-store-async-extensions
+  - 20-component-store-migration
+  - 21-testing-reducer-selector
+  - 22-testing-effects-component-signal-store
+  - 23-ngrx-anti-patterns
+  - 24-state-management-strategy
+  - 25-appendix
