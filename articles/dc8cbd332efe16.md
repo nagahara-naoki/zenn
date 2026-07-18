@@ -8,7 +8,7 @@ published: true
 
 設定、cache、connection pool、監視registryなど、同じ範囲で1つのinstanceを共有したいresourceがあります。そこで「どこからでも使えるglobal object」を作ると手軽ですが、共有範囲が曖昧なままでは、利用者間のdata混在、testの順序依存、破棄できない接続を生みます。
 
-Singleton（シングルトン）は、あるclassのinstanceを1つに制御し、そのinstanceへのglobalなaccess pointを提供する生成パターンです。しかし現代のJavaScriptで重要なのは、古典的な `private constructor + getInstance()` の形より、「どの範囲で1つか」「誰が作り、いつ破棄するか」です。
+Singleton（シングルトン）は、あるclassのinstanceを1つに制御し、そのinstanceへのglobalなaccess pointを提供する生成パターンです。しかし現代のJavaScriptで効くのは、古典的な `private constructor + getInstance()` の形より、「どの範囲で1つか」「誰が作り、いつ破棄するか」です。
 
 本記事ではES Modulesによる共有、遅延初期化、非同期生成、SSR、testを段階的に検討します。TanStack QueryのQueryClientとJotaiのdefault storeも公式資料に照らして読みますが、公式のGoF分類と教育的な類推は区別します。
 
@@ -32,7 +32,7 @@ export function getCurrentUser(): User | undefined {
 
 browserの単一tabだけなら動いても、SSR serverでは複数requestが同じmodule instanceを共有し得ます。request Aが設定したユーザーを、同時実行のrequest Bが読むdata leakにつながります。testでも前のcaseが値を残すと、単独実行では通るのにsuiteでは落ちます。
 
-問題はinstanceが1つであること自体ではなく、共有してはいけない状態を広すぎるscopeへ置いたことです。ユーザー、locale、request ID、transactionなどはrequest固有です。Singletonを検討する前に、その値を共有して安全かを問います。
+問題の原因はinstance数そのものより、共有してはいけない状態を広すぎるscopeへ置いたことです。ユーザー、locale、request ID、transactionなどはrequest固有です。Singletonを検討する前に、その値を共有して安全かを問います。
 
 ```ts
 // request固有値は明示的なcontextで渡す
@@ -50,7 +50,7 @@ async function handleRequest(context: RequestContext): Promise<Response> {
 
 GoFのSingletonは、classがinstanceを1つだけ持つことを保証し、そのinstanceへアクセスするpointを提供します。生成数の制御とglobal accessが組み合わさったパターンです。古典的なobject-oriented言語では、private constructor、static field、static `getInstance` がよく使われます。
 
-ただし「1つ」は宇宙全体で1つという意味ではありません。JavaScriptではbrowser tab、Realm、Worker、Node.js process、module loader、package copy、test sandboxなどの境界があります。同じソースがbundleへ複数回含まれれば、それぞれが別のmodule状態を持つこともあります。processを複数起動すればmemoryは共有されません。
+ただし「1つ」は宇宙全体で1つという意味ではありません。JavaScriptではbrowser tab、Realm、Worker、Node.js process、module loader、package copy、test sandboxなどの境界があります。同じソースがbundleへ複数回含まれれば、それぞれが別のmodule状態を持つ場合があります。processを複数起動すればmemoryは共有されません。
 
 また、1つに制限することと、どこからでも直接importできることは別に考えられます。composition rootで1instanceを作って依存として渡せば、利用数は1つでもglobal accessは避けられます。多くのアプリではこちらの方が依存関係とtestを明示できます。
 
@@ -139,7 +139,7 @@ export function getMetrics(): MetricsRegistry {
 
 同期実行では途中に `await` がないため同じevent loop上で二重生成されません。ただし別Worker、別process、同じpackageの複製までは防げず、取得関数の乱用は依存も隠します。
 
-非同期生成では単に完成instanceをcacheするだけでは競合します。2つの呼び出しが最初の `await` 前に「未生成」と判断し、接続を2つ作る可能性があります。完成値ではなく初期化Promiseを直ちにcacheします。
+非同期生成では、完成instanceだけをcacheすると競合します。2つの呼び出しが最初の `await` 前に「未生成」と判断し、接続を2つ作る可能性があります。完成値ではなく初期化Promiseを直ちにcacheします。
 
 ```ts
 type Database = {
@@ -327,7 +327,7 @@ function App() {
 
 TanStack QueryのESLintルール `stable-query-client` も、QueryClientはapplication lifecycleで1つの安定instanceを持つべきと説明しつつ、serverではasync server componentが1requestに1回実行されるため例外を示しています。高度なSSR公式guideでは、requestごとにQueryClientを作る構成が案内されています。clientでの「1つ」をserverへそのまま広げない好例です。
 
-ただしQueryClientのconstructorはpublicで、複数instanceも作れます。TanStack Query公式がGoF Singletonとして分類しているわけではありません。本記事では「定めたlifecycle内で安定した1instanceを共有する」というSingleton的な運用を学ぶ教育的な類推として扱っています。強制されたinstance数ではなく、Providerがscopeを決めています。
+ただしQueryClientのconstructorはpublicで、複数instanceも作れます。TanStack Query公式がGoF Singletonとして分類しているわけではありません。本記事では「定めたlifecycle内で安定した1instanceを共有する」というSingleton的な運用を学ぶ教育的な類推として扱っています。instance数を強制しているのではなく、Providerがscopeを決めています。
 
 ## Jotaiのdefault storeをSingleton的に読む
 
@@ -346,7 +346,7 @@ SSRでdefault storeへ利用者固有状態を置く場合は共有範囲を確�
 
 ## より単純な代替案とトレードオフ
 
-不変な定数なら、object instanceではなく通常の `export const` で十分です。stateを持たない純粋関数も共有instanceを必要としません。依存を1か所で組み立てたいだけならcomposition root、requestごとの値なら引数やcontext、階層ごとの状態ならProviderを使えます。
+不変な定数なら、object instanceを作らず通常の `export const` で十分です。stateを持たない純粋関数も共有instanceを必要としません。依存を1か所で組み立てたいだけならcomposition root、requestごとの値なら引数やcontext、階層ごとの状態ならProviderを使えます。
 
 Singletonは生成costを抑え、cacheやconnection poolを共有できます。一方、依存をimportの裏へ隠し、初期化順序とtest隔離を難しくします。lazy初期化でも設定タイミングが見えにくくなる場合があります。
 
@@ -367,13 +367,13 @@ Singletonへ可変設定を持たせ、途中で書き換える設計にも注�
 
 Singleton的な共有が向くのは、同じscope内で本当に1つの状態を共有する必要があり、複数生成がresource競合や一貫性低下を起こし、lifecycleを明確に所有できる場合です。client applicationのcache client、process単位のmetrics registry、connection poolなどが候補です。
 
-導入前には「1つとはtab、request、processのどれか」「共有する状態に利用者固有dataがないか」「複数processでも整合するか」「いつ初期化し、失敗時にどう再試行し、誰が破棄するか」「testごとに隔離できるか」「global accessではなく依存注入できないか」を確認します。
+導入前には「1つとはtab、request、processのどれか」「共有する状態に利用者固有dataがないか」「複数processでも整合するか」「いつ初期化し、失敗時にどう再試行し、誰が破棄するか」「testごとに隔離できるか」「global accessを避けて依存注入できないか」を確認します。
 
-instanceを制限することが目的になっている、将来複数設定を使う可能性が高い、状態を独立testしたい、request固有である場合は避けます。必要なのが単なる共有ではなくscope管理なら、ProviderやDI containerのlifetime、明示的なresource containerの方が意図を表せます。
+instanceを制限することが目的になっている、将来複数設定を使う可能性が高い、状態を独立testしたい、request固有である場合は避けます。必要なのが単なる共有よりscope管理なら、ProviderやDI containerのlifetime、明示的なresource containerの方が意図を表せます。
 
 ## まとめ
 
-Singletonで最も重要なのは、static fieldの書き方ではなくscopeとlifecycleです。ES Modulesは同一module instance内の共有を簡潔にしますが、Worker、process、bundle、SSR requestを越えた一意性までは保証しません。まずcomposition rootで1instanceを作って渡す方法を検討し、global accessが本当に必要な場合だけ取得APIを置きます。
+Singletonで最初に見るのは、static fieldの書き方ではありません。scopeとlifecycleです。ES Modulesは同一module instance内の共有を簡潔にしますが、Worker、process、bundle、SSR requestを越えた一意性までは保証しません。まずcomposition rootで1instanceを作って渡す方法を検討し、global accessが本当に必要な場合だけ取得APIを置きます。
 
 非同期生成ではPromiseをcacheし、初期化失敗と再試行を設計します。resourceにはcloseするownerを定め、request固有dataはrequest scopeへ隔離します。TanStack QueryとJotaiは安定した共有instanceと明示的な分離の両方を学べる例ですが、公式のGoF分類ではありません。実行環境の境界を踏まえて「どこで1つか」を説明できることが、安全な共有設計の出発点です。
 
