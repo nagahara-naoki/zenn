@@ -48,7 +48,7 @@ console.log(Object.hasOwn(User.prototype, "greet")); // true
 console.log(user.hasToken()); // true
 ```
 
-private fieldの `#token` は通常のproperty keyではなく、`Object.keys`、`Reflect.ownKeys`、property descriptorから列挙できません。ここから先は「なぜこの観測結果になるか」を仕様層で説明します。
+private fieldの `#token` は通常のproperty keyとして扱われず、`Object.keys`、`Reflect.ownKeys`、property descriptorから列挙できません。ここから先は「なぜこの観測結果になるか」を仕様層で説明します。
 
 ## 仕様層：class定義の評価
 
@@ -68,7 +68,7 @@ class constructorは `[[Construct]]` を持つためconstructできますが、�
 // User("Taro"); // TypeError
 ```
 
-これらはV8固有ではなく、準拠実装に要求される動作です。
+この挙動はV8固有の都合ではありません。準拠実装に要求される動作です。
 
 ## 仕様層：methodとfieldは同時には作られない
 
@@ -148,7 +148,7 @@ class Counter {
 console.log(new Counter().value); // 2
 ```
 
-constructor body内の代入が先に実行され、その後field initializerが上書きするのではありません。これは特定エンジンの都合ではなく仕様上の順序です。
+constructor body内の代入が先に実行され、その後field initializerが上書きするわけではありません。これは特定エンジンの都合ではなく仕様上の順序です。
 
 ## 仕様層：NewTargetがprototypeを決める
 
@@ -200,7 +200,7 @@ class Derived extends Base {
 new Derived();
 ```
 
-出力順は `0, 1, 2, 3, 4` です。`super()` より前にログを出すことはできますが、派生側の `this` を参照すると `ReferenceError` になります。
+出力順は `0, 1, 2, 3, 4` です。`super()` より前にログは出せますが、派生側の `this` を参照すると `ReferenceError` になります。
 
 この順序は、基底constructorからoverride可能なmethodを呼ぶ危険も説明します。呼び出された派生methodは、まだ派生fieldが初期化されていない状態を観測する可能性があります。これは設計上避けるべきですが、原因の説明は仕様層だけで完結します。
 
@@ -266,7 +266,7 @@ console.log(Object.hasOwn(wallet, "#balance")); // false
 // wallet.#balance; // class外なのでSyntaxError
 ```
 
-private method/accessorとprivate fieldは仕様上の追跡方法にも違いがありますが、利用コードが特定のメモリ配置を仮定することはできません。重要な保証は、通常のproperty reflectionに現れず、宣言classのprivate nameを持つコードだけがアクセスできることです。
+private method/accessorとprivate fieldは仕様上の追跡方法にも違いがありますが、利用コードは特定のメモリ配置を仮定できません。保証されるのは、通常のproperty reflectionに現れず、宣言classのprivate nameを持つコードだけがアクセスできることです。
 
 ## ここからV8実装層へ移る
 
@@ -283,7 +283,7 @@ private method/accessorとprivate fieldは仕様上の追跡方法にも違い�
 
 ## V8実装層：Map（Hidden Class）でshapeを表す
 
-V8の公式資料では、各heap objectはMapと呼ばれる内部構造への参照を持ちます。一般向けの説明ではHidden Classとも呼ばれますが、JavaScriptの `class` とは別物です。
+公式資料では、V8の各heap objectはMapと呼ばれる内部構造への参照を持ちます。一般向けの説明ではHidden Classとも呼ばれますが、JavaScriptの `class` とは別物です。
 
 Mapは、objectのshapeに関する情報を表します。named propertyの情報、property数、prototypeへの参照などが関連し、同じshapeを持つobjectがMapやdescriptor情報を共有できるようにします。
 
@@ -296,7 +296,7 @@ const a = createPoint(1, 2);
 const b = createPoint(3, 4);
 ```
 
-V8では、同じ順序で同じnamed propertyを持つ `a` と `b` が同じMapへ到達しやすくなります。空objectへ `x` を追加し、次に `y` を追加するようなshape変化は、Map間のtransitionとして管理されます。
+同じ順序で同じnamed propertyを持つ `a` と `b` は、V8内部で同じMapへ到達しやすくなります。空objectへ `x` を追加し、次に `y` を追加するようなshape変化は、Map間のtransitionとして管理されます。
 
 ```text
 Map0（propertyなし）
@@ -320,7 +320,7 @@ second.x = 1;
 
 ## V8実装層：propertyの保存場所は一種類ではない
 
-V8はnamed propertyとarray index相当のelementを別のstoreとして扱います。named propertyにも、object本体へ置くin-object property、別のproperties store、追加削除が多い場合のdictionary propertyなどがあります。
+V8では、named propertyとarray index相当のelementを別のstoreとして扱います。named propertyにも、object本体へ置くin-object property、別のproperties store、追加削除が多い場合のdictionary propertyなどがあります。
 
 ```js
 const object = { name: "Taro" };
@@ -352,7 +352,7 @@ class User {
 }
 ```
 
-adminだけが `permissions` を持つため複数shapeになります。ただし、不在に意味があるならこの設計が正しく、性能のために意味を変えてはいけません。
+この例では、adminだけが `permissions` を持つため複数shapeになります。ただし、不在に意味があるならこの設計が正しいです。性能のために意味を変えてはいけません。
 
 意味上、全Userがpermissionsを持つなら、常に初期化する方がdomain modelもshapeも揃います。
 
@@ -407,7 +407,7 @@ assert.equal(statusDescriptor?.writable, true);
 assert.equal(statusDescriptor?.configurable, true);
 ```
 
-Mapを観測するV8内部関数 `%DebugPrint` などは、d8や特定flag付き環境で使われる非標準debug機能です。構文自体が通常のJavaScriptとしてportableではなく、名称や出力も変更されます。production codeやlibraryの分岐条件に使いません。
+Mapを観測するV8内部関数 `%DebugPrint` などは、d8や特定flag付き環境で使われる非標準debug機能です。構文自体が通常のJavaScriptとしてportableではありません。名称や出力も変更されます。production codeやlibraryの分岐条件に使いません。
 
 性能を調べるときも、一回のconsole計測や内部Mapの見た目だけで結論を出しません。warm-upを含む現実的なworkload、複数回の計測、CPU profile、heap profileを使い、変更前後の利用者向け指標を比較します。
 
