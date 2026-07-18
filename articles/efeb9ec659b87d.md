@@ -14,7 +14,7 @@ published: true
 
 ## まず呼び出し方を分類する
 
-通常関数について、最初に確認する表です。アロー関数だけは別の規則です。
+通常関数について、最初に確認する表です。アロー関数には別の規則があります。
 
 | 呼び出し方 | 関数内の `this` |
 | --- | --- |
@@ -106,7 +106,7 @@ setTimeout(() => {
 }, 0);
 ```
 
-アロー関数がcartを `this` にするのではありません。アロー関数の本体で、改めて `cart.total()` という正しいメソッド呼び出しを行っています。この違いを理解すると、「アロー関数ならthis問題がすべて解決する」という誤解を避けられます。
+ここでcartを `this` にしているのはアロー関数ではありません。アロー関数の本体で、改めて `cart.total()` という正しいメソッド呼び出しを行っています。この違いを理解すると、「アロー関数ならthis問題がすべて解決する」という誤解を避けられます。
 
 ## 単独呼び出しとstrict mode
 
@@ -168,7 +168,7 @@ function calculateCartTotal(targetCart, discount = 0) {
 }
 ```
 
-アロー関数へ `call` や `apply` を使っても、`this` は変更できません。引数自体は渡せますが、アロー関数は外側の `this` を参照し続けます。
+`call` や `apply` を使っても、アロー関数の `this` は変更できません。引数自体は渡せますが、外側の `this` を参照し続けます。
 
 ## bindはthisを固定した新しい関数を返す
 
@@ -209,7 +209,7 @@ button.removeEventListener("click", view.render.bind(view)); // 別の関数
 
 ## アロー関数は外側のthisを使う
 
-アロー関数は呼び出し方による `this` bindingを作りません。定義されたレキシカルな外側の `this` を参照します。そのため、メソッド内のコールバックで同じインスタンスを使うときに便利です。
+アロー関数は、呼び出し方による `this` bindingを作りません。定義されたレキシカルな外側の `this` を参照します。そのため、メソッド内のコールバックで同じインスタンスを使うときに便利です。
 
 ```js
 const cartView = {
@@ -290,7 +290,7 @@ class CartView {
 }
 ```
 
-もう一つの方法は、public fieldへアロー関数を代入することです。アロー関数はインスタンス初期化時の `this` を閉じ込めます。ただしprototypeで一つのメソッドを共有する方式と違い、各インスタンスに関数が作られます。必要なコールバックだけに限定すると、意図とコストのバランスを取りやすくなります。
+もう一つの方法は、public fieldへアロー関数を代入することです。この書き方はインスタンス初期化時の `this` を閉じ込めます。ただしprototypeで一つのメソッドを共有する方式と違い、各インスタンスに関数が作られます。必要なコールバックだけに限定すると、意図とコストのバランスを取りやすくなります。
 
 ```js
 class CartView {
@@ -326,13 +326,13 @@ const created = new Cart(cart.items);
 console.log(created.total());
 ```
 
-アロー関数は `[[Construct]]` を持たないので `new` で呼べません。classは `new` なしで呼ぶと例外になり、意図しないグローバル書き込みを防ぎます。インスタンス生成を表すなら、古いconstructor関数よりclassか、`createCart()` のようなファクトリー関数が明確です。
+`new` で呼べないのは、アロー関数が `[[Construct]]` を持たないためです。classは `new` なしで呼ぶと例外になり、意図しないグローバル書き込みを防ぎます。インスタンス生成を表すなら、古いconstructor関数よりclassか、`createCart()` のようなファクトリー関数が明確です。
 
 bound functionを `new` で呼ぶと、bind時に指定した `this` はconstructor用の新しいオブジェクトへ置き換わります。ただし固定した引数は使われます。この例外があるため、「bindが常にthisを変更不能に固定する」と断言するのは不正確です。
 
 ## DOMイベントではcurrentTargetを優先する
 
-`addEventListener` へ通常関数を渡した場合、DOM仕様ではコールバック呼び出し時の `this` はイベントの `currentTarget` になります。アロー関数なら外側の `this` のままです。
+`addEventListener` へ通常関数を渡した場合、DOM仕様ではコールバック呼び出し時の `this` はイベントの `currentTarget` になります。アロー関数を渡すと、外側の `this` のままです。
 
 ```js
 button.addEventListener("click", function (event) {
@@ -397,7 +397,7 @@ const total = calculateTotal(cart, 500);
 
 ## まとめ
 
-JavaScriptの `this` は、通常関数なら定義場所より呼び出し方を先に見ます。メソッドを変数やコールバックへ渡すと、元オブジェクトとの関係は自動で保存されません。アロー関数だけは自身のbindingを作らず、外側の `this` を使います。
+JavaScriptの `this` は、通常関数なら定義場所より呼び出し方を先に見ます。メソッドを変数やコールバックへ渡すと、元オブジェクトとの関係は自動で保存されません。例外はアロー関数です。自身のbindingを作らず、外側の `this` を使います。
 
 - `obj.method()` では、呼び出しのreceiverである `obj` が `this` になる。
 - メソッドを取り出した `func()` は、strict modeで `this` が `undefined` になる。
