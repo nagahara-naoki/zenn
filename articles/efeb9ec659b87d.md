@@ -1,420 +1,237 @@
 ---
-title: "JavaScriptのthisを「呼び出し方」から理解する"
-emoji: "🤖"
+title: "JavaScriptのthisを図で理解する：値を決めるのは呼び出し方"
+emoji: "🎯"
 type: "tech"
-topics: ["javascript", "this", "初心者"]
+topics: ["javascript", "this", "関数"]
 published: true
 ---
 
-オブジェクトのメソッドは動くのに、変数へ取り出した途端 `this` が `undefined` になる。イベントハンドラーをアロー関数へ変えたら参照先が変わる。JavaScriptの `this` は、関数の定義だけを見ても判断できないことが混乱の原因です。
+JavaScriptの `this` は、関数を定義した場所だけでは決まりません。通常の関数では「その関数をどう呼び出したか」が値を決めます。
 
-先に結論を述べると、通常の関数の `this` は、主に**関数をどの形で呼び出したか**で決まります。`obj.method()` なら `obj`、`func.call(obj)` なら明示した `obj`、`new Func()` なら新しく作られるオブジェクトです。単独の `func()` はstrict modeで `undefined` になります。一方、アロー関数は自身の `this` を作らず、定義された外側の `this` を使います。
+まず呼び出し式の形を分類し、最後にアロー関数だけを別ルールとして扱うと整理できます。
 
-この記事では買い物かごの例を育てながら、メソッド呼び出し、関数の切り離し、`call`・`apply`・`bind`、class、constructor、DOMイベント、デバッグ方法まで整理します。最後には、`this` を使わない方が読みやすい場面も判断できるようにします。
+## 呼び出し式を5種類に分ける
 
-## まず呼び出し方を分類する
+| 呼び出し方 | 例 | `this` |
+| --- | --- | --- |
+| メソッド呼び出し | `user.greet()` | `user` |
+| 単独呼び出し | `greet()` | strict modeでは `undefined` |
+| 明示的な指定 | `greet.call(user)` | 第1引数 |
+| bind済み関数 | `bound()` | `bind` 時に固定した値 |
+| `constructor` 呼び出し | `new User()` | 新しく作られるオブジェクト |
 
-通常関数について、最初に確認する表です。アロー関数には別の規則があります。
+アロー関数はこの表の決め方を使わず、外側の `this` をそのまま参照します。
 
-| 呼び出し方 | 関数内の `this` |
+```mermaid
+flowchart TD
+    A[関数を呼ぶ] --> B{newを付けた?}
+    B -- はい --> C[新しいオブジェクト]
+    B -- いいえ --> D{call / apply / bind?}
+    D -- はい --> E[明示した値]
+    D -- いいえ --> F{obj.methodの形?}
+    F -- はい --> G[ドットの左側]
+    F -- いいえ --> H[単独呼び出しの規則]
+```
+
+この分類は、規則の優先順位としても使えます。`new`、明示指定、メソッド呼び出し、単独呼び出しのどれに当たるかを外側から確認し、アロー関数ならその分類を止めて定義時の外側を見ます。`this` の値を推測で補わず、呼び出し式の記号から機械的に絞るのがコツです。
+
+デバッガーで関数本体へ入ったときだけ `this` を見ると、なぜその値になったかは分かりません。Call Stackを1段戻り、実際の呼び出し式を探してください。フレームワークが呼び出している場合は、そのフレームワークのコールバック契約が呼び出し方を決めています。
+
+## メソッド呼び出しではドットの左側を見る
+
+```js
+const user = {
+  name: "Aki",
+  greet() {
+    return `Hello, ${this.name}`;
+  },
+};
+
+console.log(user.greet()); // "Hello, Aki"
+```
+
+`greet` がどこで定義されたかより、`user.greet()` の形で呼ばれたことが重要です。`prototype` から見つけたメソッドでも同じです。
+
+```js
+const base = {
+  greet() {
+    return `Hello, ${this.name}`;
+  },
+};
+
+const member = Object.create(base);
+member.name = "Mika";
+
+console.log(member.greet()); // "Hello, Mika"
+```
+
+関数は `base` にありますが、呼び出しの受け手は `member` なので `this === member` です。
+
+## メソッドを取り出すと、オブジェクトとの関係が外れる
+
+よくある不具合は、メソッドを変数やコールバックへ渡したときに起きます。
+
+```js
+const greet = user.greet;
+greet(); // strict modeではthisがundefined
+
+setTimeout(user.greet, 0); // user.greet()としては呼ばれない
+```
+
+`user.greet` を読み取った結果は関数オブジェクトです。変数 `greet` には「元はuserのメソッドだった」という情報が残りません。
+
+これは、関数とオブジェクトの結び付きがプロパティアクセスの瞬間に固定されるわけではないためです。`const greet = user.greet` は、配列から数値を取り出すのと同じく値を読み取る操作です。その関数を後でどう呼ぶかは別の式が決めます。
+
+対処は、呼び出し時にオブジェクトとの関係を保つことです。
+
+```js
+setTimeout(() => user.greet(), 0);
+
+const boundGreet = user.greet.bind(user);
+setTimeout(boundGreet, 0);
+```
+
+どちらも動きますが、意味は少し違います。ラッパー関数は呼び出し時に `user` を参照し、`bind` は作成時に `this` を固定した新しい関数を返します。
+
+## `call`・`apply`・`bind` の違い
+
+| API | 実行のタイミング | 引数の渡し方 | 戻り値 |
+| --- | --- | --- | --- |
+| `call` | その場で実行 | 個別 | 元の関数の結果 |
+| `apply` | その場で実行 | 配列風の値 | 元の関数の結果 |
+| `bind` | 後で実行 | 一部を事前指定できる | 新しい関数 |
+
+```js
+function introduce(prefix, suffix) {
+  return `${prefix}${this.name}${suffix}`;
+}
+
+const person = { name: "Aki" };
+
+introduce.call(person, "Hello, ", "!");
+introduce.apply(person, ["Hello, ", "!"]);
+
+const greetAki = introduce.bind(person, "Hello, ");
+greetAki("!");
+```
+
+`bind` 済みの関数へ `call` で別の `this` を渡しても、固定された値は変わりません。必要以上にbindすると、呼び出し側から受け手を変更できなくなるため、所有者が明確な場面に限ります。
+
+## アロー関数は外側の `this` を使う
+
+アロー関数は、自分専用の `this` を作りません。定義された外側のスコープから `this` を参照します。
+
+```js
+class Timer {
+  seconds = 0;
+
+  start() {
+    setInterval(() => {
+      this.seconds += 1;
+    }, 1_000);
+  }
+}
+```
+
+コールバック内のアロー関数は、`start()` の `this` を使います。通常関数に変えると、タイマーがどのように呼び出すかに依存します。
+
+一方、オブジェクトのメソッド自体をアロー関数で書くのは注意が必要です。
+
+```js
+const user = {
+  name: "Aki",
+  greet: () => `Hello, ${this.name}`,
+};
+```
+
+このアロー関数の `this` は `user` ではありません。オブジェクトリテラルは新しい `this` を作らないからです。状態の所有者を受け手にしたいなら、メソッド構文を使います。
+
+## クラスのメソッドも自動ではbindされない
+
+クラスのメソッドも、取り出して呼ぶと `this` を失います。
+
+```js
+class Counter {
+  count = 0;
+
+  increment() {
+    this.count += 1;
+  }
+}
+
+const counter = new Counter();
+button.addEventListener("click", counter.increment); // thisがcounterではない
+```
+
+代表的な選択肢は2つです。
+
+```js
+button.addEventListener("click", () => counter.increment());
+
+const increment = counter.increment.bind(counter);
+button.addEventListener("click", increment);
+```
+
+解除が必要なイベントでは、登録時と同じ関数参照を保持します。`bind` やアロー関数を解除時にもう一度作っても、別の関数なので削除できません。
+
+## `new` では新しいオブジェクトが `this` になる
+
+通常の関数を `new` とともに呼ぶと、新しいオブジェクトが作られ、関数内の `this` に渡されます。
+
+```js
+function User(name) {
+  this.name = name;
+}
+
+const user = new User("Aki");
+console.log(user.name); // "Aki"
+```
+
+`call` や `bind` より `new` の規則が優先される場面があります。関数が `constructor` として使われる設計なら、通常呼び出しと混ぜず、クラスや命名で用途を明確にします。
+
+## DOMイベントでは `target` と `currentTarget` を区別する
+
+DOMイベントリスナーを通常関数で登録した場合、`this` は一般に `currentTarget` と同じ要素です。ただし、イベントが実際に発生した子要素は `target` です。
+
+| 値 | 指すもの |
 | --- | --- |
-| `cart.total()` | `cart` |
-| `const f = cart.total; f()` | strict modeでは `undefined` |
-| `f.call(cart)` / `f.apply(cart)` | 第1引数の `cart` |
-| `const g = f.bind(cart); g()` | bindした `cart` |
-| `new Cart()` | 新しく生成されるオブジェクト |
-| アロー関数 `() => this` | 定義された外側の `this` |
+| `event.target` | イベントが発生した最も内側の要素 |
+| `event.currentTarget` | 現在リスナーを実行している要素 |
+| `this` | 通常関数では多くの場合 `currentTarget` |
 
-複数の規則が重なるときは、概ね `new` によるconstructor呼び出し、`bind`・`call`・`apply` による明示指定、`obj.method()` のメソッド呼び出し、単独呼び出しの順に確認します。ただしbound functionを `new` で呼ぶ場合やアロー関数など、単純な順位表だけでは説明できない点も後で扱います。
+アロー関数では `this` が要素にならないため、DOMコードでは `event.currentTarget` を明示して使うと、関数形式を変えても意味が残ります。
 
-## メソッド呼び出しでは左側のオブジェクトを見る
+## `this` を使わない方が読みやすい場面もある
 
-買い物かごオブジェクトを作ります。`cart.total()` という呼び出しでは、参照の基点になった `cart` が `this` です。
+関数が必要とする値を引数で受け取れるなら、`this` を使わない方が依存関係が明確です。
 
 ```js
-const cart = {
-  taxRate: 0.1,
-  items: [
-    { name: "本", unitPrice: 1200, quantity: 2 },
-    { name: "ペン", unitPrice: 300, quantity: 1 },
-  ],
-
-  subtotal() {
-    return this.items.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    );
-  },
-
-  total() {
-    return Math.floor(this.subtotal() * (1 + this.taxRate));
-  },
-};
-
-console.log(cart.total()); // 2970
-```
-
-`total` を定義した場所が `this` を永久にcartへ結び付けたわけではありません。同じ関数を別のオブジェクトのプロパティへ置き、そのオブジェクト経由で呼べば `this` は変わります。
-
-```js
-const taxFreeCart = {
-  taxRate: 0,
-  items: cart.items,
-  subtotal: cart.subtotal,
-  total: cart.total,
-};
-
-console.log(taxFreeCart.total()); // 2700
-```
-
-「ドットの左側」と覚える方法は多くの例で使えますが、正確にはCallExpressionを評価して得たReferenceのbase valueが `this` 値に関わります。普段は、**呼び出しの瞬間に、どのオブジェクトから関数を取得したか**を見ると十分です。
-
-## メソッドを取り出すと関係が外れる
-
-メソッドを変数へ代入すると、変数には関数オブジェクトだけが入ります。「元はcartのメソッドだった」という所有者情報が自動で保存されるわけではありません。
-
-```js
-const detachedTotal = cart.total;
-
-detachedTotal();
-// ES Modulesやstrict modeでは、thisがundefinedになりエラー
-```
-
-分割代入でも同じです。
-
-```js
-const { subtotal } = cart;
-subtotal(); // this.itemsを読めない
-```
-
-メソッドを配列API、Promise、タイマー、イベントAPIなどへそのまま渡すときも、呼び出すのは受け取った側です。元のオブジェクトは保持されません。
-
-```js
-const totals = [cart, taxFreeCart].map(cart.total);
-// mapはコールバックをcartのメソッドとして呼ばない
-```
-
-対策は「呼び出しを包む」「bindする」「そもそも `this` を引数へ変える」の三つです。短期利用のコールバックなら、アロー関数でメソッド呼び出しを包む方法が最も局所的です。
-
-```js
-const totals = [cart, taxFreeCart].map(
-  (targetCart) => targetCart.total(),
-);
-
-setTimeout(() => {
-  console.log(cart.total());
-}, 0);
-```
-
-ここでcartを `this` にしているのはアロー関数ではありません。アロー関数の本体で、改めて `cart.total()` という正しいメソッド呼び出しを行っています。この違いを理解すると、「アロー関数ならthis問題がすべて解決する」という誤解を避けられます。
-
-## 単独呼び出しとstrict mode
-
-通常関数を `func()` と単独で呼ぶと、strict modeでは `this` は `undefined` です。ES Modulesとclass本体は常にstrict modeとして扱われます。
-
-```js
-"use strict";
-
-function showThis() {
-  console.log(this);
-}
-
-showThis(); // undefined
-```
-
-非strictの古典的scriptでは、単独呼び出しの `this` がグローバルオブジェクトへ置換されることがあります。しかし、現代のコードでこの挙動へ依存してはいけません。実行形式をscriptからmoduleへ変えるだけで壊れ、ブラウザーとNode.jsの最上位環境も同一ではありません。
-
-グローバルオブジェクトが本当に必要なら `globalThis` を使い、依存であることを明示します。ただし多くの場合、必要な値を引数で受け取る方がテストと再利用が容易です。
-
-```js
-function readLocale(environment) {
-  return environment.navigator?.language ?? "ja-JP";
-}
-
-const locale = readLocale(globalThis);
-```
-
-`this` とグローバルスコープも分けて考えます。トップレベルの `this`、トップレベルの変数、`globalThis` のプロパティは、script、module、CommonJSなどで関係が異なります。
-
-## call・applyで呼び出し時に指定する
-
-通常関数の `call` と `apply` は、その一回の呼び出しに使う `this` を明示します。違いは引数の渡し方です。`call` は個別、`apply` は配列風の値で渡します。
-
-```js
-function calculateTotal(discount = 0, shipping = 0) {
-  const subtotal = this.items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
+function calculateTotal(order) {
+  return order.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const taxable = Math.max(0, subtotal - discount);
-  return Math.floor(taxable * (1 + this.taxRate)) + shipping;
-}
-
-console.log(calculateTotal.call(cart, 500, 600));
-console.log(calculateTotal.apply(cart, [500, 600]));
-```
-
-別オブジェクトの処理を借りる用途にも使えますが、借りる側が必要なプロパティを暗黙に満たす必要があります。構造が変わると実行時まで失敗しません。共通計算として再利用したいだけなら、オブジェクトを通常の引数にした関数の方が契約を読みやすくできます。
-
-```js
-function calculateCartTotal(targetCart, discount = 0) {
-  const subtotal = targetCart.items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0,
-  );
-  return Math.floor(
-    Math.max(0, subtotal - discount) * (1 + targetCart.taxRate),
-  );
 }
 ```
 
-`call` や `apply` を使っても、アロー関数の `this` は変更できません。引数自体は渡せますが、外側の `this` を参照し続けます。
+`this` が向くのは、オブジェクトが状態の所有者であり、`object.method()` という読み方が自然な場面です。単なる計算関数やコールバックまで `this` に依存させる必要はありません。
 
-## bindはthisを固定した新しい関数を返す
+引数で受け取る関数は、必要な値がシグネチャに現れます。`this` を使うメソッドは、受け手のオブジェクトを暗黙の引数として受け取る、と考えられます。暗黙の関係が業務上自然ならメソッド、呼び出し元ごとに対象を明示したいなら通常関数を選ぶと、コードレビューでも依存を確認しやすくなります。
 
-`bind` は元の関数を実行せず、指定した `this` と、必要なら先頭の引数を固定した新しいbound functionを返します。
+## 期待した値にならないときの確認順
 
-```js
-const boundTotal = cart.total.bind(cart);
-
-console.log(boundTotal());
-setTimeout(boundTotal, 0);
-```
-
-`bind` の戻り値は元の関数とは別オブジェクトです。イベントを解除する場合、登録時と同じbound functionを保存して使う必要があります。
-
-```js
-const view = {
-  cart,
-  render() {
-    output.textContent = String(this.cart.total());
-  },
-};
-
-const handleClick = view.render.bind(view);
-button.addEventListener("click", handleClick);
-
-// 破棄時
-button.removeEventListener("click", handleClick);
-```
-
-次の書き方では、`bind` を呼ぶたびに新しい関数ができるため解除できません。
-
-```js
-button.addEventListener("click", view.render.bind(view));
-button.removeEventListener("click", view.render.bind(view)); // 別の関数
-```
-
-何度も `bind` を重ねても、最初にbindした `this` は後のbindで置き換わりません。引数は追加で前置できます。意図が分かりづらくなるため、通常は一度だけbindします。
-
-## アロー関数は外側のthisを使う
-
-アロー関数は、呼び出し方による `this` bindingを作りません。定義されたレキシカルな外側の `this` を参照します。そのため、メソッド内のコールバックで同じインスタンスを使うときに便利です。
-
-```js
-const cartView = {
-  cart,
-
-  renderItems() {
-    return this.cart.items.map((item) => {
-      return `${item.name}: ${item.quantity}個`;
-    });
-  },
-};
-```
-
-`map` がアロー関数をどのように呼んでも、アロー関数は `renderItems` の `this` を使います。以前は `const self = this` と保存したり、第2引数の `thisArg` を渡したりしましたが、レキシカルに使いたい場面ではアロー関数が自然です。
-
-反対に、オブジェクトのメソッド自体をアロー関数で定義しても、呼び出したオブジェクトは受け取りません。
-
-```js
-const badCart = {
-  items: [],
-  total: () => {
-    return this.items.length; // badCartのthisではない
-  },
-};
-```
-
-`call`、`apply`、`bind` でもアロー関数の `this` は変えられません。「後で呼び出し元を差し替える関数」には通常関数、「外側の文脈を維持する短いコールバック」にはアロー関数、と使い分けます。
-
-## classのメソッドは自動でbindされない
-
-class構文でも、prototype methodの `this` は呼び出し方で決まります。classに書いたからインスタンスへ固定されるわけではありません。
-
-```js
-class Cart {
-  constructor(items, taxRate = 0.1) {
-    this.items = items;
-    this.taxRate = taxRate;
-  }
-
-  subtotal() {
-    return this.items.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    );
-  }
-
-  total() {
-    return Math.floor(this.subtotal() * (1 + this.taxRate));
-  }
-}
-
-const instance = new Cart(cart.items);
-const detached = instance.total;
-// detached(); // thisがundefined
-```
-
-UIコールバックとして頻繁に渡すメソッドは、constructorで一度bindし、解除にも使える参照を保持できます。
-
-```js
-class CartView {
-  constructor(cart, button) {
-    this.cart = cart;
-    this.button = button;
-    this.handleClick = this.handleClick.bind(this);
-  }
-
-  mount() {
-    this.button.addEventListener("click", this.handleClick);
-  }
-
-  unmount() {
-    this.button.removeEventListener("click", this.handleClick);
-  }
-
-  handleClick() {
-    console.log(this.cart.total());
-  }
-}
-```
-
-もう一つの方法は、public fieldへアロー関数を代入することです。この書き方はインスタンス初期化時の `this` を閉じ込めます。ただしprototypeで一つのメソッドを共有する方式と違い、各インスタンスに関数が作られます。必要なコールバックだけに限定すると、意図とコストのバランスを取りやすくなります。
-
-```js
-class CartView {
-  constructor(cart) {
-    this.cart = cart;
-  }
-
-  handleClick = () => {
-    console.log(this.cart.total());
-  };
-}
-```
-
-## newによるconstructor呼び出し
-
-constructableな通常関数やclassを `new` で呼ぶと、新しいオブジェクトが作られ、constructor本体の `this` になります。明示的に別のオブジェクトをreturnしない限り、その新しいオブジェクトが結果です。
-
-```js
-function Cart(items, taxRate = 0.1) {
-  this.items = items;
-  this.taxRate = taxRate;
-}
-
-Cart.prototype.total = function total() {
-  const subtotal = this.items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0,
-  );
-  return Math.floor(subtotal * (1 + this.taxRate));
-};
-
-const created = new Cart(cart.items);
-console.log(created.total());
-```
-
-`new` で呼べないのは、アロー関数が `[[Construct]]` を持たないためです。classは `new` なしで呼ぶと例外になり、意図しないグローバル書き込みを防ぎます。インスタンス生成を表すなら、古いconstructor関数よりclassか、`createCart()` のようなファクトリー関数が明確です。
-
-bound functionを `new` で呼ぶと、bind時に指定した `this` はconstructor用の新しいオブジェクトへ置き換わります。ただし固定した引数は使われます。この例外があるため、「bindが常にthisを変更不能に固定する」と断言するのは不正確です。
-
-## DOMイベントではcurrentTargetを優先する
-
-`addEventListener` へ通常関数を渡した場合、DOM仕様ではコールバック呼び出し時の `this` はイベントの `currentTarget` になります。アロー関数を渡すと、外側の `this` のままです。
-
-```js
-button.addEventListener("click", function (event) {
-  console.log(this === event.currentTarget); // true
-  this.disabled = true;
-});
-
-button.addEventListener("click", (event) => {
-  event.currentTarget.disabled = true;
-});
-```
-
-DOMコードでは `this` より `event.currentTarget` を使うと意図が明示的です。`event.target` は実際にイベントが発生した子要素になり得るので、リスナーを登録した要素とは限りません。
-
-イベントAPIによってコールバックの呼び出し規則は異なります。配列メソッドには任意の `thisArg` を受け取るものもありますが、Promiseのハンドラーに元オブジェクトを補う規則はありません。「コールバックならthisはこれ」と一般化せず、受け取るAPIの契約を確認します。
-
-## thisを使うべき場面と使わない場面
-
-`this` は、同じ操作を複数のオブジェクトへ適用し、呼び出し元をreceiverとして扱う設計に向いています。classのインスタンスメソッド、オブジェクトの振る舞い、DOMの一部のコールバック契約が代表例です。
-
-一方、単純な計算、データ変換、依存が少ない処理では、必要な値を引数へ明示した方が理解しやすくなります。関数を見ただけで入力が分かり、切り離しても壊れず、テストでbindする必要もありません。
-
-```js
-function calculateTotal({ items, taxRate }, discount = 0) {
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0,
-  );
-  return Math.floor(Math.max(0, subtotal - discount) * (1 + taxRate));
-}
-
-const total = calculateTotal(cart, 500);
-```
-
-可変状態を隠したいだけなら、クロージャやモジュールスコープも候補です。すべてをclassと `this` で表す必要はありません。反対に、引数の先頭へ同じcontextオブジェクトを何層も渡すなら、状態と操作をオブジェクトへまとめる方が自然かもしれません。
-
-判断基準は「`this` を使えるか」ではなく、「呼び出したreceiverによって振る舞いが決まることが、利用側へとって自然か」です。
-
-## デバッグするときの確認順
-
-`Cannot read properties of undefined` などがメソッド内で起きたら、値を直す前に呼び出し方を確認します。
-
-1. 対象が通常関数かアロー関数かを確認する。
-2. 実際の呼び出し式全体を見て、`obj.method()` か `func()` かを確認する。
-3. 分割代入、引数渡し、コールバック登録でメソッドを切り離していないか確認する。
+1. アロー関数か、通常関数かを確認する。
+2. 定義ではなく、実際の呼び出し式を見る。
+3. メソッドを変数やコールバックへ取り出していないか探す。
 4. `call`、`apply`、`bind`、`new` が使われていないか確認する。
-5. class fieldのアロー関数なら、インスタンスごとに作られた関数か確認する。
-6. DOMイベントなら `target` と `currentTarget` を区別する。
-7. ES Module、strict mode、テスト環境など実行形式の違いを確認する。
+5. DOMイベントなら `target` と `currentTarget` を分ける。
+6. そもそも引数で渡した方が明確ではないか検討する。
 
-ブレークポイントで停止し、consoleで `this`、対象関数、コールスタックを確認します。メソッド内部へログを追加するだけでは、誰がどの式で呼んだかを見落とすことがあります。呼び出し元へブレークポイントを置くか、スタックを上へたどります。
-
-テストでは、公開されている想定の呼び出し方で振る舞いを確認します。同じメソッドを別receiverへ借用できることが契約でないなら、その柔軟性までテストする必要はありません。逆にコールバックとして渡すAPIなら、切り離された状態でも動くようbind済みか、ラッパーを要求するのかをテスト名で明示します。
-
-## よくある誤解
-
-「`this` は関数を定義したオブジェクト」は誤りです。通常関数は呼び出し時に決まり、同じ関数でもreceiverを変えられます。「アロー関数は自身を `this` にする」も誤りで、外側の `this` を使います。
-
-「bindすれば元の関数が変わる」も誤りです。bindは新しい関数を返すので、戻り値を保存しなければ効果を利用できません。「classのメソッドは自動bind」でもありません。prototype methodを取り出せば `this` は外れます。
-
-また、DevTools consoleで式を試した結果を、そのままES Moduleや本番コードへ一般化しないことも大切です。consoleの評価コンテキスト、ページのscript種別、Node.jsのモジュール方式で最上位の `this` は異なります。問題が起きたコードと同じ実行形式で最小再現を作ります。
-
-## まとめ
-
-JavaScriptの `this` は、通常関数なら定義場所より呼び出し方を先に見ます。メソッドを変数やコールバックへ渡すと、元オブジェクトとの関係は自動で保存されません。例外はアロー関数です。自身のbindingを作らず、外側の `this` を使います。
-
-- `obj.method()` では、呼び出しのreceiverである `obj` が `this` になる。
-- メソッドを取り出した `func()` は、strict modeで `this` が `undefined` になる。
-- 一回だけ指定するなら `call` / `apply`、新しい固定関数が必要なら `bind` を使う。
-- アロー関数は外側の `this` を保つが、オブジェクトのメソッド代わりにはならない。
-- classのprototype methodも自動bindされない。登録と解除には同じ関数参照を使う。
-- `new` は新しいオブジェクトを `this` にし、アロー関数はconstructorにできない。
-- 単純な計算では、`this` より明示引数の方が読みやすいことが多い。
-
-迷ったときは「この関数を誰のプロパティとして取得し、どの構文で呼んだか」を一行で書き出してください。それでもreceiverという考え方が不自然なら、`this` を使わず必要な値を引数へ渡す設計が、より素直な可能性があります。
+`this` は「現在のオブジェクト」を自動で指す特別な変数ではありません。通常関数では呼び出し方、アロー関数では外側の環境が値を決めます。関数の定義場所だけを見ず、呼び出し式を分類する習慣を付けると予測できるようになります。
 
 ## 参考資料
 
-- [ECMAScript: Ordinary Function Calls](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-ordinary-function-calls)
-- [ECMAScript: EvaluateCall](https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-evaluatecall)
+- [ECMAScript: ResolveThisBinding](https://tc39.es/ecma262/multipage/executable-code-and-execution-contexts.html#sec-resolvethisbinding)
 - [ECMAScript: Function.prototype.call](https://tc39.es/ecma262/multipage/fundamental-objects.html#sec-function.prototype.call)
 - [ECMAScript: Bound Function Exotic Objects](https://tc39.es/ecma262/multipage/ordinary-and-exotic-objects-behaviours.html#sec-bound-function-exotic-objects)
-- [ECMAScript: Arrow Function Definitions](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-arrow-function-definitions)
-- [DOM Standard: Event listener callback](https://dom.spec.whatwg.org/#concept-event-listener-inner-invoke)
-- [MDN: this](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Operators/this)
+- [MDN: this](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/this)
