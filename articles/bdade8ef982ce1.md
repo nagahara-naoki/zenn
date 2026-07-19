@@ -1,214 +1,190 @@
 ---
-title: "constructorの内部構造：ECMAScript仕様とV8実装を分けて読む"
-emoji: "🤖"
+title: "constructorの内部構造を読む：ECMAScript仕様とV8実装を分けて理解する"
+emoji: "⚙️"
 type: "tech"
 topics: ["javascript", "ecmascript", "v8", "constructor"]
 published: true
 ---
 
-constructorの内部を読むときは、ECMAScript仕様とエンジン実装を分けます。仕様は観測可能な結果と順序を定め、V8はChromeやNode.jsでそれを実現する一つの実装です。
+JavaScriptのクラスを深く調べると、ECMAScript仕様の `[[Construct]]`、`InitializeInstanceElements` と、V8の `Map`（Hidden Class、隠しクラス）、インラインキャッシュといった用語が同時に出てきます。ここで混乱しやすいのは、言語が保証する挙動と、特定エンジンの高速化手法を同じ説明へ混ぜることです。
 
-- `[[Construct]]`、`NewTarget`、`[[Prototype]]` は仕様上の概念
-- Map（Hidden Class）、DescriptorArray、inline cache、Ignition、TurboFanはV8固有の用語
+ECMAScript仕様は「どの結果にならなければならないか」を定めます。V8実装は「その結果をどう高速に作るか」を選びます。この記事では、まず仕様上の生成順を追い、その後でV8がオブジェクトの形をどう扱うかを見ます。
 
-したがって、「constructorがHidden Classを作る」「`[[Prototype]]` は必ずこのメモリ位置にある」とは言えません。この記事は仕様が保証する動作を先に追い、その後にV8の最適化を重ねます。
+## 2つの層は答える質問が違う
 
-## 観測対象となるclass
+| 層 | 答える質問 | 代表的な用語 |
+| --- | --- | --- |
+| ECMAScript仕様 | JavaScriptとして何が観測されるか | `[[Construct]]`, `NewTarget`, フィールド初期化 |
+| エンジン実装 | 仕様どおりの挙動をどう高速化するか | V8 `Map`, 要素, インラインキャッシュ, GC |
 
-次のコードを一貫した題材にします。
+```mermaid
+flowchart TD
+    A[JavaScript source] --> B[ECMAScript仕様が意味を定める]
+    B --> C[V8が仕様を実装]
+    B --> D[SpiderMonkeyが仕様を実装]
+    B --> E[JavaScriptCoreが仕様を実装]
+    C --> F[同じ観測結果]
+    D --> F
+    E --> F
+```
+
+V8の `Map` やインオブジェクトプロパティはECMAScriptの語ではありません。逆に、`[[Construct]]` は概念上の内部メソッドであり、V8のソースコードに同じ名前の関数がそのまま存在するとは限りません。
+
+この記事で繰り返し使う用語も、先に役割をそろえておきます。
+
+| 用語 | この記事での意味 |
+| --- | --- |
+| `[[Construct]]` | `constructor` として呼ばれたときの仕様上の内部処理 |
+| `NewTarget` | どの `constructor` を生成の起点として扱うかを示す値 |
+| インスタンス要素 | 各インスタンスへ作る `public`・`private` フィールドなどの要素 |
+| V8 `Map` | プロパティの構成など、オブジェクトの形状を表すV8内部の情報 |
+| インライン キャッシュ | 過去のプロパティアクセス結果を使い、同じ形のオブジェクトを速く扱う仕組み |
+| GC | 到達できなくなったメモリを回収するガベージコレクション |
+
+用語を完全に暗記してから進む必要はありません。コードの実行順を知りたいときは仕様側、速度やメモリ配置を知りたいときはV8側を見る、という分類だけ保って読み進めてください。
+
+## 観測対象のクラスを1つ決める
+
+次のクラスを通して順序を追います。
 
 ```js
-class User {
+class Account {
   role = "member";
-  #token = crypto.randomUUID();
+  label = `${this.id}:${this.role}`;
+  #token;
 
-  constructor(name) {
-    this.name = name.trim();
+  constructor(id, token) {
+    this.id = id;
+    this.#token = token;
   }
 
-  greet() {
-    return `Hello, ${this.name}`;
-  }
-
-  hasToken() {
-    return this.#token.length > 0;
+  describe() {
+    return this.label;
   }
 }
 
-const user = new User(" Taro ");
+const account = new Account("user-42", "secret");
 ```
 
-実行後に標準APIから観測できる事実は次のとおりです。
+この例には、`public` フィールド、`private` フィールド、`constructor` 本体、`prototype` メソッドがあります。ソースに書かれた順序だけから結果を推測すると、初期化時点を誤ります。
 
-```js
-console.log(Object.keys(user)); // ["role", "name"]
-console.log(Object.getPrototypeOf(user) === User.prototype); // true
-console.log(Object.hasOwn(user, "greet")); // false
-console.log(Object.hasOwn(User.prototype, "greet")); // true
-console.log(user.hasToken()); // true
+`label` の初期化時点では、`constructor` 本体の `this.id = id` がまだ実行されていません。そのため、生成直後の `label` は `"undefined:member"` になります。後で `id` を設定しても、`label` は自動再計算されません。
+
+この小さな結果を、仕様上の順序から説明していきます。
+
+## クラス定義の評価では、インスタンスはまだ作られない
+
+JavaScriptエンジンが `class Account { ... }` を評価すると、クラスコンストラクターとして使う関数オブジェクトと、そのプロトタイプオブジェクトを作ります。メソッド定義は `prototype` 側へ配置され、`static` 要素はクラス側で処理されます。
+
+```mermaid
+flowchart LR
+    A[Account class object] --> B[static member]
+    A -->|prototype property| C[Account.prototype]
+    C --> D[describe method]
+    E[account instance] -. newするまで存在しない .-> C
 ```
 
-private fieldの `#token` は通常のproperty keyとして扱われず、`Object.keys`、`Reflect.ownKeys`、property descriptorから列挙できません。ここから先は「なぜこの観測結果になるか」を仕様層で説明します。
+この段階で `role`、`label`、`#token` を持つ `Account` インスタンスが作られるわけではありません。インスタンスフィールドの定義はクラスに記録され、`new Account(...)` のたびに各インスタンスへ初期化されます。
 
-## 仕様層：class定義の評価
+`prototype` メソッドとフィールドの違いは、ここにあります。
 
-class定義を評価すると、constructor function objectとprototype objectが作られます。仕様の `ClassDefinitionEvaluation` は、`extends` の評価、二つのobjectの関連付け、class elementsの処理を行います。instance methodはprototypeへ定義され、instance fieldの定義情報は各instanceの初期化まで保持され、static fieldとstatic blockはclass評価中に実行されます。
+| クラス本体の要素 | 主な配置・処理時点 |
+| --- | --- |
+| インスタンスメソッド | クラス評価時に `prototype` へ定義 |
+| `static` メソッド | クラス評価時にクラスオブジェクトへ定義 |
+| インスタンスフィールド | インスタンス生成ごとに初期化 |
+| `private` インスタンスフィールド | インスタンス生成ごとに `private` 要素として初期化 |
+| `static` フィールド | クラス評価時に初期化 |
 
-class名 `User` の値はfunction objectです。
+## `new` から `constructor` の `[[Construct]]` へ進む
 
-```js
-console.log(typeof User); // function
-console.log(Object.hasOwn(User, "prototype")); // true
-console.log(User.prototype.constructor === User); // true
+`new Account("user-42", "secret")` を評価すると、`Account` が `constructor` として呼べるかを確認し、引数とともに内部の構築処理へ進みます。
+
+基底クラスでは、概念上おおむね次の順です。
+
+```mermaid
+sequenceDiagram
+    participant N as new式
+    participant C as Account constructor
+    participant O as 新しいobject
+    N->>C: [[Construct]](arguments, NewTarget)
+    C->>O: prototypeを決めてobjectを作る
+    C->>O: instance elementsを初期化
+    C->>O: constructor本体を実行
+    C-->>N: objectを返す
 ```
 
-class constructorは `[[Construct]]` を持つためconstructできますが、通常関数としての呼び出しは拒否されます。
+この順序では、`public` フィールドと `private` フィールドの初期化が `constructor` 本体より前です。したがって `label` フィールドを初期化する時点で、`role` はすでに `"member"` ですが、`id` はまだ存在しません。
 
 ```js
-// User("Taro"); // TypeError
+const account = new Account("user-42", "secret");
+
+console.log(account.id);       // "user-42"
+console.log(account.role);     // "member"
+console.log(account.label);    // "undefined:member"
+console.log(account.describe()); // "undefined:member"
 ```
 
-この挙動はV8固有の都合ではありません。準拠実装に要求される動作です。
+フィールド初期化子から `constructor` 引数を直接参照できない理由も同じです。引数は `constructor` 本体の環境で利用できますが、フィールド初期化子へ同名のローカル変数として渡されるわけではありません。
 
-## 仕様層：methodとfieldは同時には作られない
+## `NewTarget` が作るオブジェクトの `prototype` を決める
 
-class bodyの要素は、instance method、instance field、static elementで処理時点が違います。
+通常の `new Account()` では、実行する `constructor` と `NewTarget` はどちらも `Account` です。継承や `Reflect.construct` では異なる場合があります。
 
-通常のinstance methodはclass定義評価時にprototype objectへ定義されます。
-
-```js
-const descriptor = Object.getOwnPropertyDescriptor(
-  User.prototype,
-  "greet",
-);
-
-console.log(descriptor);
-// value: function, writable: true,
-// enumerable: false, configurable: true
-```
-
-一方、`role = "member"` はclass定義時に `User.prototype.role` を作りません。field definitionに対応する情報がconstructor側へ関連付けられ、各instanceの初期化時に評価されます。
+オブジェクト作成時は、概念上 `NewTarget.prototype` が `prototype` 候補になります。これにより、基底 `constructor` の初期化処理を使いながら、派生側の `prototype` を持つオブジェクトを作れます。
 
 ```js
-console.log(Object.hasOwn(User.prototype, "role")); // false
-
-const first = new User("Taro");
-const second = new User("Hanako");
-
-console.log(Object.hasOwn(first, "role"));  // true
-console.log(Object.hasOwn(second, "role")); // true
-```
-
-field initializerの式もinstanceごとに実行されます。題材の `crypto.randomUUID()` が毎回呼ばれるのはこのためです。methodのfunction objectをprototypeで共有することと、fieldの値を各instanceへ持つことを区別できます。
-
-static fieldとstatic blockはclass定義評価の終盤で実行され、instance生成を待ちません。
-
-```js
-let count = 0;
-
-class Example {
-  static id = ++count;
-  instanceId = ++count;
+function Base(id) {
+  this.id = id;
 }
 
-console.log(Example.id); // 1
-console.log(count);      // 1
+function Derived() {}
+Derived.prototype.describe = function () {
+  return this.id;
+};
 
-new Example();
-console.log(count);      // 2
+const value = Reflect.construct(Base, ["item-1"], Derived);
+
+console.log(Object.getPrototypeOf(value) === Derived.prototype); // true
+console.log(value.describe()); // "item-1"
 ```
 
-これも言語が定める評価タイミングです。V8がどのbytecodeへ変換するかにかかわらず、同じ順序が観測されなければなりません。
+`Target` は実行する `constructor`、`NewTarget` は主に生成するオブジェクトの `prototype` と、`constructor` 内の `new.target` に影響します。この分離は、派生クラスの生成規則を理解するうえで重要です。
 
-## 仕様層：newから[[Construct]]へ進む
+## 派生クラスでは `super()` が `this` を用意する
 
-`new User(" Taro ")` を評価すると、仕様はconstructorがconstruct可能か確認し、抽象操作 `Construct` を経由して `User.[[Construct]]` を呼びます。引数リストに加え、`NewTarget` として最初のconstructorも渡します。
-
-通常の基底classの `[[Construct]]` は、要点を絞ると次の順序です。
-
-1. constructor呼び出し用の新しい実行contextを準備する
-2. `OrdinaryCreateFromConstructor(NewTarget, "%Object.prototype%")` で新しいordinary objectを作る
-3. そのobjectをconstructor本体の `this` としてbindする
-4. `InitializeInstanceElements` でprivate method/accessorとinstance fieldを初期化する
-5. constructor bodyを評価する
-6. 明示returnの規則に従い、最終的なobjectを返す
-
-この順序から、基底classではfield initializerがconstructor bodyより先に実行されることが分かります。
+派生クラスは、基底クラスと初期化順が違います。
 
 ```js
-class Counter {
-  value = 1;
+class AdminAccount extends Account {
+  permissions = ["read"];
 
-  constructor() {
-    console.log(this.value); // 1
-    this.value = 2;
+  constructor(id, token) {
+    super(id, token);
+    this.permissions.push("write");
   }
 }
-
-console.log(new Counter().value); // 2
 ```
 
-constructor body内の代入が先に実行され、その後field initializerが上書きするわけではありません。これは特定エンジンの都合ではなく仕様上の順序です。
+派生 `constructor` は、自分で最初のオブジェクトを作りません。`super()` を通じて基底 `constructor` の構築処理を実行し、返された `this` を受け取ります。その後、派生クラスのインスタンスフィールドを初期化し、`super()` より後の `constructor` 本体を続けます。
 
-## 仕様層：NewTargetがprototypeを決める
-
-`OrdinaryCreateFromConstructor` は、`NewTarget.prototype` がオブジェクトなら、新しいordinary objectの `[[Prototype]]` に使います。オブジェクトでなければ、constructorのrealmにある既定intrinsic prototypeへフォールバックします。
-
-継承時に基底constructorまで `NewTarget` が伝わるため、基底側でobjectを作っても最終的な派生prototypeが選ばれます。
-
-```js
-class Entity {
-  constructor() {
-    console.log(new.target.name);
-  }
-}
-
-class UserEntity extends Entity {}
-
-const entity = new UserEntity(); // UserEntity
-
-console.log(
-  Object.getPrototypeOf(entity) === UserEntity.prototype,
-); // true
+```mermaid
+sequenceDiagram
+    participant D as AdminAccount constructor
+    participant B as Account constructor
+    D->>B: super(id, token)
+    B->>B: 基底fieldを初期化
+    B->>B: 基底constructor本体
+    B-->>D: thisを返す
+    D->>D: permissionsを初期化
+    D->>D: push(write)
 ```
 
-「`super()` は単に `Entity.call(this)` を実行する」という説明では、この動作を再現できません。class constructorは `call` できず、派生constructorでは `this` が `super()` の結果としてbindされるからです。
+`super()` より前に `this` を使えないのは、まだ派生 `constructor` の `this` が初期化されていないためです。単に「親を先に呼ぶ決まり」と覚えるより、誰がオブジェクトを作るかを見ると理解しやすくなります。
 
-## 仕様層：派生classではsuper後にfieldを初期化する
+## `public` フィールドは通常の代入と同じとは限らない
 
-派生constructorは、基底classと違って最初に自分の `this` objectを作りません。`super(...)` が基底constructorをconstructし、その結果を派生側の `this` としてbindします。その直後に、派生classのinstance elementsを初期化します。
-
-```js
-class Base {
-  baseField = console.log("1: base field");
-
-  constructor() {
-    console.log("2: base constructor");
-  }
-}
-
-class Derived extends Base {
-  derivedField = console.log("3: derived field");
-
-  constructor() {
-    console.log("0: before super");
-    super();
-    console.log("4: derived constructor");
-  }
-}
-
-new Derived();
-```
-
-出力順は `0, 1, 2, 3, 4` です。`super()` より前にログは出せますが、派生側の `this` を参照すると `ReferenceError` になります。
-
-この順序は、基底constructorからoverride可能なmethodを呼ぶ危険も説明します。呼び出された派生methodは、まだ派生fieldが初期化されていない状態を観測する可能性があります。これは設計上避けるべきですが、原因の説明は仕様層だけで完結します。
-
-## 仕様層：fieldは代入ではなくdefineされる
-
-public field initializerは、見た目が `this.name = value` に近くても、仕様上は `DefineField` を通じてown data propertyを定義します。通常の `[[Set]]` と同じではありません。
-
-この違いは、prototype上にsetterがある場合に観測できます。
+クラスフィールドの初期化は、概念上プロパティを定義する処理です。`constructor` 本体の `this.x = value` は通常、代入の規則に従います。この違いは、`prototype` 連鎖上にセッターがある場合に観測できます。
 
 ```js
 class Base {
@@ -217,228 +193,152 @@ class Base {
   }
 }
 
-class FieldExample extends Base {
+class WithField extends Base {
   value = 1;
 }
 
-class AssignmentExample extends Base {
+class WithAssignment extends Base {
   constructor() {
     super();
     this.value = 1;
   }
 }
 
-const field = new FieldExample(); // setterは呼ばれない
-new AssignmentExample();          // setter 1
-
-console.log(Object.hasOwn(field, "value")); // true
+new WithField();      // 通常、Baseのsetterを呼ばず自身のfieldを定義
+new WithAssignment(); // Baseのsetterを呼ぶ
 ```
 
-field初期化はreceiver自身へpropertyをdefineするため、継承したsetterを呼びません。通常代入は `[[Set]]` を通り、setterを見つけて呼びます。
+フィールド初期化子を「`constructor` の先頭へ代入文を移した構文糖」と説明すると、この差を表せません。普段のコードでは同じ結果に見えることが多いものの、プロパティ定義と代入は別の抽象操作です。
 
-public fieldとして作られるpropertyは、通常 `writable: true`、`enumerable: true`、`configurable: true` です。
+## `private` フィールドは文字列キーのプロパティではない
+
+`#token` は、`account["#token"]` で読めるプロパティではありません。`private` 名に対応する内部要素として扱われ、宣言したクラスのコードからだけアクセスできます。
 
 ```js
-console.log(
-  Object.getOwnPropertyDescriptor(field, "value"),
-);
+console.log(Object.keys(account));
+// id, role, labelなどは見えるが、#tokenは含まれない
+
+console.log(account["#token"]); // undefined
 ```
 
-transpilerの設定や古い変換方式によっては、class fieldを単純代入へ変換し、setterに関する挙動がnative実行と異なることがあります。TypeScriptのtargetや `useDefineForClassFields`、Babel設定を確認する理由になります。
+`private` フィールドの存在確認は、通常の `in` や `Object.hasOwn` と同じ仕組みではありません。ECMAScript仕様上も、通常プロパティと `private` 要素は区別されています。
 
-## 仕様層：private elementは通常propertyではない
+これはTypeScriptの `private` キーワードとも違います。TypeScriptの通常の `private` は主にコンパイル時のアクセス制御で、出力先や設定によっては通常プロパティとして実行されます。JavaScriptの `#private` はランタイムで強制されます。
 
-`#token` は文字列 `"#token"` やSymbol keyとして外部から取得できません。仕様はprivate nameとprivate element用の抽象操作を定義し、objectに対応するprivate elementがなければアクセス時に `TypeError` とします。
+## ここからV8実装：`Map` はオブジェクトの形状を表す
+
+ECMAScript仕様は、プロパティをどのメモリレイアウトで保存するかを定めません。V8では、オブジェクトの構造を表すために `Map` と呼ばれる内部オブジェクトを使います。一般的な解説ではHidden Classとも呼ばれますが、JavaScriptの `Map` オブジェクトとは別物です。
+
+概念的には、プロパティを同じ順序で追加したオブジェクトは、同じ形状の遷移をたどり、`Map` を共有しやすくなります。
 
 ```js
-class Wallet {
-  #balance = 0;
-
-  deposit(amount) {
-    this.#balance += amount;
-  }
+function Point(x, y) {
+  this.x = x;
+  this.y = y;
 }
 
-const wallet = new Wallet();
-
-console.log(Reflect.ownKeys(wallet)); // []
-console.log(Object.hasOwn(wallet, "#balance")); // false
-// wallet.#balance; // class外なのでSyntaxError
+const first = new Point(1, 2);
+const second = new Point(3, 4);
 ```
 
-private method/accessorとprivate fieldは仕様上の追跡方法にも違いがありますが、利用コードは特定のメモリ配置を仮定できません。保証されるのは、通常のproperty reflectionに現れず、宣言classのprivate nameを持つコードだけがアクセスできることです。
+```mermaid
+flowchart LR
+    A[空のshape] -->|xを追加| B[xを持つshape]
+    B -->|yを追加| C[x, yを持つshape]
+    D[first] --> C
+    E[second] --> C
+```
 
-## ここからV8実装層へ移る
+この図は理解用の概念図です。実際のV8内部表現はバージョンや最適化状況で変わり、ソース上の細部を恒久的な仕様として扱えません。
 
-ここまでの内容は、V8、SpiderMonkey、JavaScriptCoreなどが観測結果として満たすべきものです。ここから扱うMapやinline cacheはV8固有であり、他engineや将来versionが同じ表現を使う保証はありません。
+## プロパティの追加順を揃えると形状が安定しやすい
 
-| 層 | 用語の例 | 互換性上の位置付け |
-| --- | --- | --- |
-| ECMAScript仕様 | `[[Construct]]`、`NewTarget`、`InitializeInstanceElements`、`[[Prototype]]` | 準拠実装が観測可能な動作を守る |
-| V8実装 | Map、DescriptorArray、transition、inline cache、Ignition、TurboFan | V8が変更でき、他engineは別方式を選べる |
-| 標準API | `Object.getPrototypeOf`、property descriptor | portableな検証に使える |
-| V8内部debug機能 | `%DebugPrint`、内部flag | 非標準でversion依存 |
-
-仕様の角括弧付き内部slotは、同名propertyとして読めません。V8のC++ layoutやMap pointerも、ECMAScriptが要求する配置ではありません。
-
-## V8実装層：Map（Hidden Class）でshapeを表す
-
-公式資料では、V8の各heap objectはMapと呼ばれる内部構造への参照を持ちます。一般向けの説明ではHidden Classとも呼ばれますが、JavaScriptの `class` とは別物です。
-
-Mapは、objectのshapeに関する情報を表します。named propertyの情報、property数、prototypeへの参照などが関連し、同じshapeを持つobjectがMapやdescriptor情報を共有できるようにします。
+次のように条件によって追加順が変わると、同じ用途のオブジェクトでも異なる形状を持つ可能性があります。
 
 ```js
-function createPoint(x, y) {
-  return { x, y };
-}
+function createRecord(input) {
+  const record = {};
 
-const a = createPoint(1, 2);
-const b = createPoint(3, 4);
-```
+  if (input.includeName) record.name = input.name;
+  record.id = input.id;
 
-同じ順序で同じnamed propertyを持つ `a` と `b` は、V8内部で同じMapへ到達しやすくなります。空objectへ `x` を追加し、次に `y` を追加するようなshape変化は、Map間のtransitionとして管理されます。
-
-```text
-Map0（propertyなし）
-  └─ xを追加 → Map1（x）
-                 └─ yを追加 → Map2（x, y）
-```
-
-一方、追加順が異なれば別のtransition pathになり得ます。
-
-```js
-const first = {};
-first.x = 1;
-first.y = 2;
-
-const second = {};
-second.y = 2;
-second.x = 1;
-```
-
-最終的なown keyが同じでも、V8内部では異なるMapになる可能性があります。ただし、「このコードなら必ず同じMap」「propertyをこの順に書けば何ナノ秒速い」と仕様から断定はできません。V8のversion、実行feedback、propertyの種類、後続操作によって表現は変わります。
-
-## V8実装層：propertyの保存場所は一種類ではない
-
-V8では、named propertyとarray index相当のelementを別のstoreとして扱います。named propertyにも、object本体へ置くin-object property、別のproperties store、追加削除が多い場合のdictionary propertyなどがあります。
-
-```js
-const object = { name: "Taro" };
-console.log(object.name); // Taro
-```
-
-保存形式に関係なく同じ参照結果を返す必要があります。JavaScript objectをC言語の固定structのように描く図は概念説明に限定し、offsetやbyte数をportableな事実として扱いません。
-
-## V8実装層：field初期化とinline cache
-
-class fieldはdefine semanticsを持ち、単純代入とは異なります。V8公式記事によると、過去にはfield初期化へruntime callを多く使い、その後、field定義向けbytecodeとinline cacheを導入して高速化しました。
-
-inline cacheは、同じ操作箇所で過去に観測したMapなどのfeedbackを利用します。安定したshapeが繰り返されれば、field追加のtransitionを予測しやすくなります。
-
-setterを呼ばないことなど、仕様の結果は最適化後も同じでなければなりません。最適化できなければ遅い経路へ戻れます。bytecode名やopcodeはversion依存なので、引用時は「その時点のV8実装」と明記します。
-
-## constructorの書き方とshapeの安定性
-
-instanceごとにpropertyの有無や追加順が変わると、V8が複数のshapeを扱う可能性が高まります。
-
-```js
-class User {
-  constructor(name, isAdmin) {
-    this.name = name;
-    if (isAdmin) {
-      this.permissions = ["all"];
-    }
-  }
+  return record;
 }
 ```
 
-この例では、adminだけが `permissions` を持つため複数shapeになります。ただし、不在に意味があるならこの設計が正しいです。性能のために意味を変えてはいけません。
-
-意味上、全Userがpermissionsを持つなら、常に初期化する方がdomain modelもshapeも揃います。
+形状の安定だけを目的に、読みにくいコードへ変える必要はありません。ただし、同じ種類のオブジェクトなら `constructor` やFactoryで主要フィールドを同じ順序に初期化する設計は、読みやすさとエンジンの予測しやすさが一致します。
 
 ```js
-class User {
-  constructor(name, isAdmin) {
-    this.name = name;
-    this.permissions = isAdmin ? ["all"] : [];
-  }
+function createRecord(input) {
+  return {
+    id: input.id,
+    name: input.includeName ? input.name : undefined,
+  };
 }
 ```
 
-これはまず不変条件とAPIの改善で、shapeの安定は副次的な利点です。property順を調整する前に現実のworkloadをprofilerで測ります。生成後の大量な追加削除やprototype変更も、最適化以前にobjectの契約を途中で変えるため避けます。
+性能差はワークロードやV8のバージョンに依存します。頻繁に実行される経路で問題が観測されていないのに、`Map` を想像して一般コードを最適化するのは避けます。まずプロファイルを取り、実際のボトルネックを確認します。
 
-## allocationとGCを断定しない
+## プロパティの保存場所は1種類ではない
 
-ECMAScriptは、「`new` ごとに何byte確保する」「instanceをstackかheapのどちらへ置く」と定めません。V8ではobjectをgarbage-collected heapで管理しますが、JITが観測上不要なallocationを除去できる場合もあります。
+V8はプロパティの数や変更パターンに応じて、インスタンス内に保持する形、プロパティ用の補助ストレージ、辞書に近い形などを使い分けます。配列のインデックスに相当する要素も、通常の名前付きプロパティとは異なる経路で扱われます。
 
-したがって、「constructor一回で固定layoutの領域が必ず一個増える」「local変数なのでstackに置かれる」と断定しません。メモリ問題は、対象versionのDevToolsやNode.js inspectorでheap snapshot、allocation sampling、GCの状況を計測します。
+この分類は実装詳細です。JavaScriptから観測できるプロパティ探索や列挙順はECMAScript仕様に従いますが、メモリ上の置き場所をアプリケーションコードから前提にしてはいけません。
 
-## 標準APIとV8内部debug機能を使い分ける
+V8のデバッグ出力やブログで `in-object properties`、`properties`、`elements` という語を見たら、JavaScriptの意味の違いではなく、同じ仕様上のオブジェクトを効率よく表す内部配置の違いだと整理してください。
 
-仕様上の挙動を確認するだけなら、portableな標準APIで十分です。
+## インライン キャッシュは同じ形の繰り返しを速くする
+
+`account.id` のようなプロパティアクセスを毎回一から一般的に探索するのは高コストです。V8は実行中に観測したオブジェクトの形状とアクセス結果を記録し、同じ形が続く場合に速い経路を使います。この仕組みの一部がインラインキャッシュです。
+
+同じアクセス箇所へ多くの異なる形状が流れ込むと、単一形状向けの最適化を使いにくくなることがあります。ただし、何種類でどの状態へ変わるかは実装とバージョンに依存します。
+
+「プロパティ順を統一すれば必ず速い」「クラスなら常に最適化される」と断定できません。性能を論じるときは、次の順で確認します。
+
+1. 本番環境に近いワークロードでプロファイルを取る。
+2. ボトルネックがプロパティアクセスか確認する。
+3. オブジェクト形状の多様化が原因かエンジン ツールで調べる。
+4. 読みやすさを壊さない小さな変更でベンチマークする。
+
+## 割り当てとGCは `constructor` 構文だけでは決まらない
+
+`new` を使うとヒープ割り当てが必ず高コストになる、短命オブジェクトは必ずこの領域へ入る、といった説明も慎重に扱う必要があります。エンジンは逃避解析、世代別GC、オブジェクトレイアウトなどをバージョンごとに改善します。
+
+ECMAScript仕様が保証するのは、オブジェクトの同一性やプロパティ操作として観測できる結果です。実際のメモリ確保や回収の時点はエンジンが決めます。V8の特定バージョンを調査した結果は、そのバージョンと条件を明記して実装知識として扱います。
+
+## 標準APIとV8のデバッグ機能を使い分ける
+
+通常の挙動確認には標準APIを使います。
 
 ```js
-import assert from "node:assert/strict";
-
-class Account {
-  status = "active";
-
-  constructor(name) {
-    this.name = name;
-  }
-
-  close() {
-    this.status = "closed";
-  }
-}
-
-const account = new Account("Taro");
-
-assert.equal(Object.getPrototypeOf(account), Account.prototype);
-assert.deepEqual(Object.keys(account), ["status", "name"]);
-assert.equal(Object.hasOwn(account, "close"), false);
-
-const statusDescriptor = Object.getOwnPropertyDescriptor(
-  account,
-  "status",
-);
-assert.equal(statusDescriptor?.enumerable, true);
-assert.equal(statusDescriptor?.writable, true);
-assert.equal(statusDescriptor?.configurable, true);
+console.log(Object.getPrototypeOf(account) === Account.prototype);
+console.log(Object.getOwnPropertyDescriptors(account));
+console.log(Object.keys(account));
 ```
 
-Mapを観測するV8内部関数 `%DebugPrint` などは、d8や特定flag付き環境で使われる非標準debug機能です。構文自体が通常のJavaScriptとしてportableではありません。名称や出力も変更されます。production codeやlibraryの分岐条件に使いません。
+V8には内部状態を調べるデバッグ機能やフラグがありますが、通常のJavaScriptではなく、利用方法もバージョン依存です。本番コードへ組み込まず、エンジン調査用の隔離したスクリプトで使います。
 
-性能を調べるときも、一回のconsole計測や内部Mapの見た目だけで結論を出しません。warm-upを含む現実的なworkload、複数回の計測、CPU profile、heap profileを使い、変更前後の利用者向け指標を比較します。
+| 調べたいこと | 使う情報源 |
+| --- | --- |
+| クラスフィールドの観測可能な順序 | ECMAScript仕様、標準API |
+| `prototype` やプロパティ記述子 | `Object` API |
+| V8の形状や最適化状況 | V8のドキュメント、デバッグツール |
+| 実アプリのボトルネック | プロファイラー、ベンチマーク |
 
-## まとめ
+## 仕様が意味を定め、V8が速度を最適化する
 
-constructor内部は、ECMAScriptの保証を確認してからV8実装を重ねて読みます。
+`new Account()` の観測結果は、仕様上の順序から説明できます。オブジェクトを作り、インスタンス要素を初期化し、その後で基底 `constructor` 本体を実行するため、フィールド初期化子から `constructor` 代入前の `id` は見えません。
 
-### ECMAScript仕様が説明すること
+V8はその挙動を守りながら、`Map` で形状を表し、プロパティ配置やインラインキャッシュを使って高速化します。`Map` の遷移や保存場所はV8の選択であり、JavaScriptの意味そのものではありません。
 
-- class評価でconstructor function、prototype、method、field定義、static elementが準備される
-- `new` は `[[Construct]]` を呼び、`NewTarget` がprototype選択へ関わる
-- 基底fieldはconstructor body前、派生fieldは `super()` 後に初期化される
-- public fieldはdefine semanticsを持ち、継承setterを呼ばない
-- private elementなどの観測可能な規則も仕様が定める
-
-### V8実装が説明すること
-
-- MapやDescriptorArrayでshape情報を管理する
-- propertyの種類に応じて複数の保存形式を使い分ける
-- field定義やproperty accessをinline cacheなどで最適化する
-- layoutやbytecodeはversionと実行状況で変わる
-
-仕様用語は「何が起きるべきか」、V8用語は「一つのengineがどう実現するか」を答えます。この境界を保てば、実装詳細を言語保証として断定せずに内部最適化を学べます。
+内部構造を読むときは、用語に出会うたびに「これは仕様が保証する話か、特定エンジンが選ぶ話か」を分類してください。分類できれば、実装変更で古くなる知識と、JavaScriptコードの正しさを支える知識を混同せずに済みます。
 
 ## 参考資料
 
-- [ECMAScript仕様：Class Definitions](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-class-definitions)
-- [ECMAScript仕様：ECMAScript Function Objects [[Construct]]](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-ecmascript-function-objects-construct-argumentslist-newtarget)
-- [ECMAScript仕様：InitializeInstanceElements](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-initializeinstanceelements)
-- [ECMAScript仕様：DefineField](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-definefield)
-- [ECMAScript仕様：OrdinaryCreateFromConstructor](https://tc39.es/ecma262/multipage/ordinary-and-exotic-objects-behaviours.html#sec-ordinarycreatefromconstructor)
-- [V8公式：Fast properties in V8](https://v8.dev/blog/fast-properties)
-- [V8公式：Faster initialization of instances with new class features](https://v8.dev/blog/faster-class-features)
-- [V8公式：Maps (Hidden Classes) in V8](https://v8.dev/docs/hidden-classes)
+- [ECMAScript: Class Definitions](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-class-definitions)
+- [ECMAScript: InitializeInstanceElements](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-initializeinstanceelements)
+- [ECMAScript: OrdinaryConstruct](https://tc39.es/ecma262/multipage/ordinary-and-exotic-objects-behaviours.html#sec-ecmascript-function-objects-construct-argumentslist-newtarget)
+- [ECMAScript: PrivateElementFind](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-privateelementfind)
+- [V8: Fast properties](https://v8.dev/blog/fast-properties)
+- [V8: Maps (Hidden Classes)](https://v8.dev/docs/hidden-classes)
+- [V8: Elements kinds](https://v8.dev/blog/elements-kinds)
