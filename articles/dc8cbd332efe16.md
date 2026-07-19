@@ -1,390 +1,218 @@
 ---
-title: "JavaScriptで学ぶSingleton：共有範囲とライフサイクルを設計する"
-emoji: "🤖"
+title: "SingletonをTypeScriptで理解する：共有範囲と寿命を設計する"
+emoji: "1️⃣"
 type: "tech"
-topics: ["javascript", "typescript", "デザインパターン", "singleton", "tanstackquery"]
+topics: ["typescript", "デザインパターン", "singleton"]
 published: true
 ---
 
-設定、cache、connection pool、監視registryなど、同じ範囲で1つのinstanceを共有したいresourceがあります。そこで「どこからでも使えるglobal object」を作ると手軽ですが、共有範囲が曖昧なままでは、利用者間のdata混在、testの順序依存、破棄できない接続を生みます。
+Singletonは「インスタンスを1つだけ作るパターン」と説明されます。しかし、実務で難しいのは1つにする方法ではありません。誰の間で1つなのか、いつ作り、いつ破棄するのかを決めることです。
 
-Singleton（シングルトン）は、あるclassのinstanceを1つに制御し、そのinstanceへのglobalなaccess pointを提供する生成パターンです。しかし現代のJavaScriptで効くのは、古典的な `private constructor + getInstance()` の形より、「どの範囲で1つか」「誰が作り、いつ破棄するか」です。
+ブラウザーの1タブ、Node.jsの1プロセス、SSRの1リクエスト、テストの1ケースでは、「1つ」の範囲が違います。範囲を決めずに共有すると、グローバル状態と同じ問題が起きます。
 
-本記事ではES Modulesによる共有、遅延初期化、非同期生成、SSR、testを段階的に検討します。TanStack QueryのQueryClientとJotaiのdefault storeも公式資料に照らして読みますが、公式のGoF分類と教育的な類推は区別します。
+コード例は共有と破棄の仕組みへ焦点を当てた抜粋です。データベースドライバーなど、題意に直接関係しない型や接続処理は省略しています。
 
-## 無制限なglobal stateが起こす問題
+## まず「何の間で共有するか」を決める
 
-login中のユーザーをmodule変数へ置く例です。
+| スコープ | 1つを共有する範囲 | 例 |
+| --- | --- | --- |
+| アプリケーション | アプリケーション全体 | 設定、接続プール |
+| プロセス | Node.jsプロセス | ロガー、メトリクス クライアント |
+| ブラウザーのタブ | 1つのタブ | クライアント側キャッシュ |
+| リクエスト | 1回のHTTPリクエスト | 認証情報、トランザクション |
+| テスト | 1テスト | メモリ内リポジトリ |
 
-```ts
-type User = Readonly<{ id: string; name: string }>;
+Singletonを検討するときは、「この値の正しいスコープは何か」と問い直します。パターン名を当てるのは、その後です。
 
-let currentUser: User | undefined;
-
-export function setCurrentUser(user: User): void {
-  currentUser = user;
-}
-
-export function getCurrentUser(): User | undefined {
-  return currentUser;
-}
+```mermaid
+flowchart TD
+    A[プロセス] --> B[共有logger]
+    A --> C[request 1]
+    A --> D[request 2]
+    C --> E[request 1専用context]
+    D --> F[request 2専用context]
 ```
 
-browserの単一tabだけなら動いても、SSR serverでは複数requestが同じmodule instanceを共有し得ます。request Aが設定したユーザーを、同時実行のrequest Bが読むdata leakにつながります。testでも前のcaseが値を残すと、単独実行では通るのにsuiteでは落ちます。
+ロガーはプロセス共有でも、利用者情報はリクエストごとに分ける必要があります。同じ「よく使う値」でもスコープは異なります。
 
-問題の原因はinstance数そのものより、共有してはいけない状態を広すぎるscopeへ置いたことです。ユーザー、locale、request ID、transactionなどはrequest固有です。Singletonを検討する前に、その値を共有して安全かを問います。
+## ES Modulesはモジュール評価ごとに値を共有する
 
-```ts
-// request固有値は明示的なcontextで渡す
-type RequestContext = Readonly<{
-  user: User | undefined;
-  requestId: string;
-}>;
-
-async function handleRequest(context: RequestContext): Promise<Response> {
-  return Response.json({ userId: context.user?.id ?? null });
-}
-```
-
-## Singletonを正確に定義する
-
-GoFのSingletonは、classがinstanceを1つだけ持つことを保証し、そのinstanceへアクセスするpointを提供します。生成数の制御とglobal accessが組み合わさったパターンです。古典的なobject-oriented言語では、private constructor、static field、static `getInstance` がよく使われます。
-
-ただし「1つ」は宇宙全体で1つという意味ではありません。JavaScriptではbrowser tab、Realm、Worker、Node.js process、module loader、package copy、test sandboxなどの境界があります。同じソースがbundleへ複数回含まれれば、それぞれが別のmodule状態を持つ場合があります。processを複数起動すればmemoryは共有されません。
-
-また、1つに制限することと、どこからでも直接importできることは別に考えられます。composition rootで1instanceを作って依存として渡せば、利用数は1つでもglobal accessは避けられます。多くのアプリではこちらの方が依存関係とtestを明示できます。
-
-## ES Modulesで共有する最小形
-
-ES Modulesでは、同じmodule instanceのexportを複数箇所からimportすると、同じobject参照を利用できます。単純なclient側アプリでは、古典的なclass Singletonより小さく書けます。
+小さなアプリケーションでは、古典的なSingletonクラスを作らず、モジュールから1つのインスタンスを `export` するだけで足ります。
 
 ```ts
-// api-client.ts
-class ApiClient {
-  constructor(private readonly baseUrl: string) {}
-
-  async getUser(id: string): Promise<User> {
-    const response = await fetch(
-      new URL(`/users/${encodeURIComponent(id)}`, this.baseUrl),
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return (await response.json()) as User;
+// logger.ts
+export class Logger {
+  info(event: string, context: object = {}): void {
+    console.info(event, context);
   }
 }
 
-export const apiClient = new ApiClient("https://api.example.com");
+export const logger = new Logger();
 ```
 
-```ts
-import { apiClient } from "./api-client.js";
+同じモジュール インスタンスを `import` するコードは、通常同じ `logger` を参照します。生成方法が単純で、遅延初期化も不要なら最も読みやすい形です。
 
-const user = await apiClient.getUser("u_1");
+ただし、モジュールが常に世界で1つという意味ではありません。別のRealm、Worker、Node.jsプロセス、バンドル、モジュールキャッシュの分離などにより複数存在し得ます。Singletonは分散システム全体の一意性を保証しません。
+
+## コンポジションルートで1つ作り、必要な場所へ渡す
+
+共有する値でも、グローバル `import` にせず、アプリケーションの入口で1つ作る方法があります。
+
+```ts
+const logger = new Logger(config.logLevel);
+const queryClient = new QueryClient();
+const orderRepository = new HttpOrderRepository(config.apiUrl, logger);
+
+startApplication({
+  logger,
+  queryClient,
+  orderRepository,
+});
 ```
 
-この形はeagerに生成され、import時の副作用を持ちます。設定値をtestごとに変える、初期化失敗を扱う、connectionを破棄する、といった要件には弱い設計です。またmodule cacheの単位は実行環境とloaderに依存するため、「ESMだから絶対に全体で1つ」と説明してはいけません。
+この方法では、生成数はコンポジションルートが管理します。利用側は依存を明示的に受け取るため、テストで別実装を渡しやすくなります。
 
-## composition rootで1つだけ作る
+| モジュールから直接 `import` | コンポジションルートから注入 |
+| --- | --- |
+| 記述が短い | 依存関係が見える |
+| どこからでも同じ値へ到達 | スコープを組み立て時に決められる |
+| テストで差し替えに工夫が必要 | テスト ダブルを渡しやすい |
+| 小さな固定サービス向き | 成長するアプリ向き |
 
-多くの場合、Singleton classを強制せず、application entry pointで1回生成して依存へ渡す方が明快です。
+共有数を1にすることと、グローバル アクセスを許すことは別の判断です。
 
-```ts
-interface UserReader {
-  getUser(id: string): Promise<User>;
-}
+## 遅延初期化は同時呼び出しを考える
 
-class UserService {
-  constructor(private readonly users: UserReader) {}
-
-  async displayName(id: string): Promise<string> {
-    return (await this.users.getUser(id)).name;
-  }
-}
-
-const client = new ApiClient("https://api.example.com");
-const userService = new UserService(client);
-```
-
-実行中の `ApiClient` は1つでも、`UserService` はglobalな取得関数を呼びません。依存がconstructorへ現れ、testではfakeを渡せます。将来、tenantごとに別clientを使う場合もclassの制約を壊す必要がありません。
+高価なリソースを最初に必要になった時点で作る場合、Promise自体を共有します。
 
 ```ts
-const fakeUsers: UserReader = {
-  async getUser(id) {
-    return { id, name: "Test User" };
-  },
-};
+class DatabaseProvider {
+  private connectionPromise: Promise<Database> | undefined;
+  private closePromise: Promise<void> | undefined;
 
-const testService = new UserService(fakeUsers);
-```
+  get(): Promise<Database> {
+    if (this.closePromise) {
+      return Promise.reject(new Error("データベース接続を終了しています"));
+    }
 
-## 遅延初期化を安全にする
-
-使われない可能性がある高価なresourceは、最初の利用時に生成したくなります。同期生成ならmodule内の変数と取得関数で表せます。
-
-```ts
-class MetricsRegistry {
-  private readonly counters = new Map<string, number>();
-
-  increment(name: string): void {
-    this.counters.set(name, (this.counters.get(name) ?? 0) + 1);
-  }
-}
-
-let metrics: MetricsRegistry | undefined;
-
-export function getMetrics(): MetricsRegistry {
-  metrics ??= new MetricsRegistry();
-  return metrics;
-}
-```
-
-同期実行では途中に `await` がないため同じevent loop上で二重生成されません。ただし別Worker、別process、同じpackageの複製までは防げず、取得関数の乱用は依存も隠します。
-
-非同期生成では、完成instanceだけをcacheすると競合します。2つの呼び出しが最初の `await` 前に「未生成」と判断し、接続を2つ作る可能性があります。完成値ではなく初期化Promiseを直ちにcacheします。
-
-```ts
-type Database = {
-  query(sql: string): Promise<unknown>;
-  close(): Promise<void>;
-};
-
-type CreateDatabase = () => Promise<Database>;
-
-let databasePromise: Promise<Database> | undefined;
-
-export function getDatabase(createDatabase: CreateDatabase): Promise<Database> {
-  databasePromise ??= createDatabase();
-  return databasePromise;
-}
-```
-
-初期化が失敗したPromiseを永遠にcacheすると、設定を直した後も再試行できません。逆に毎回自動再試行すると障害時に接続stormを起こします。次の例は失敗時にcacheを消しますが、backoffや最大回数は呼び出し側または専用policyで制御します。
-
-```ts
-export function getRetryableDatabase(
-  createDatabase: CreateDatabase,
-): Promise<Database> {
-  if (!databasePromise) {
-    databasePromise = createDatabase().catch((error) => {
-      databasePromise = undefined;
+    this.connectionPromise ??= connectDatabase().catch((error) => {
+      this.connectionPromise = undefined;
       throw error;
     });
-  }
-  return databasePromise;
-}
-```
-
-## 破棄まで含めてライフサイクルを設計する
-
-connection、timer、subscription、file handleを持つSingletonは、作成だけでなく終了処理が必要です。`close` の所有者を決め、process終了、test終了、hot reloadなど適切な時点で呼びます。
-
-```ts
-export async function closeDatabase(): Promise<void> {
-  const pending = databasePromise;
-  databasePromise = undefined;
-  if (!pending) return;
-
-  const database = await pending;
-  await database.close();
-}
-```
-
-closeとqueryが同時に走る場合や、close後の再生成を許すかも契約です。moduleへ本番からも呼べる `resetForTest` を足すより、resource ownerとなるcontainerをtestごとに生成・破棄する方が安全です。
-
-```ts
-class AppResources {
-  readonly database: Promise<Database>;
-
-  constructor(createDatabase: CreateDatabase) {
-    this.database = createDatabase();
+    return this.connectionPromise;
   }
 
-  async close(): Promise<void> {
-    await (await this.database).close();
-  }
-}
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
 
-async function main(
-  createDatabase: CreateDatabase,
-  runApplication: (resources: AppResources) => Promise<void>,
-): Promise<void> {
-  const resources = new AppResources(createDatabase);
-  try {
-    await runApplication(resources);
-  } finally {
-    await resources.close();
+    const current = this.connectionPromise;
+    if (!current) return Promise.resolve();
+
+    this.closePromise = (async () => {
+      try {
+        const connection = await current;
+        await connection.close();
+      } finally {
+        if (this.connectionPromise === current) {
+          this.connectionPromise = undefined;
+        }
+        this.closePromise = undefined;
+      }
+    })();
+
+    return this.closePromise;
   }
 }
 ```
 
-このcontainerは複数作れますが、entry pointが1つだけ作るためapplication scopeでは1つです。所有権と破棄を明示でき、test suiteごとの隔離もしやすくなります。
+接続完了後の値だけを保存すると、完了前に2回 `get()` されたとき、接続処理が二重に始まる可能性があります。最初の呼び出しで作ったPromiseを保存すれば、進行中の初期化も共有できます。
 
-## SSRではrequest scopeを分ける
+一方、初期化に失敗したPromiseを残すと、以後の `get()` がすべて同じ失敗を返します。再試行を許すなら、失敗時にPromiseをクリアするか、backoffを含む状態機械を設計します。遅延初期化は単なる `if (!instance)` では終わりません。
 
-client側の1applicationで安全な共有状態も、長寿命serverでは利用者間に広がります。SSRでrequest固有dataを含むcache client、store、locale providerをmodule singletonにしてはいけません。
+## 生成だけでなく破棄まで所有する
 
-```ts
-import { QueryClient } from "@tanstack/react-query";
+接続、タイマー、購読を持つSingletonは、終了時に解放が必要です。
 
-type RequestServices = Readonly<{
-  queryClient: QueryClient;
-  user: User | undefined;
-}>;
-
-function createRequestServices(user: User | undefined): RequestServices {
-  return {
-    queryClient: new QueryClient(),
-    user,
-  };
-}
-
-async function renderRequest(
-  user: User | undefined,
-  renderApp: (services: RequestServices) => Promise<string>,
-): Promise<string> {
-  const services = createRequestServices(user);
-  return renderApp(services);
-}
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> initializing: get()
+    initializing --> ready: 成功
+    initializing --> idle: 失敗・再試行可能
+    ready --> closing: close()
+    closing --> idle: 解放完了
 ```
 
-「requestごとに1つ」はscoped singletonと呼ばれることがありますが、GoFのglobal access pointとは異なります。用語だけで判断せず、instanceの所有者と共有範囲を明示します。
+アプリケーション終了時、ホットリロード、テスト終了時に誰が `close()` を呼ぶかを決めます。生成場所と破棄場所を同じライフサイクルへ置くと、リソースリークを防ぎやすくなります。
 
-```text
-Node.js process
-  ├─ request A ─ QueryClient A / User A
-  └─ request B ─ QueryClient B / User B
-```
+## SSRで利用者状態をプロセス共有しない
 
-process共通にする候補は不変な設定、metrics registry、connection poolなどです。複数processを越えた一意性が必要な採番やlockは、DBや分散coordinationへ任せます。
-
-## testの順序依存を防ぐ
-
-共有instanceの可変状態はtest間に残り、実行順や並列化で壊れます。production singletonを直接使わず、生成可能なFactoryと小さなinterfaceを用意します。
+サーバー上のES Moduleは、複数リクエストから同じプロセス内で使われます。次のような共有ストアへ利用者情報を入れると、別のリクエストへ漏れる可能性があります。
 
 ```ts
-import assert from "node:assert/strict";
-import test from "node:test";
-
-test("UserService can be tested without the shared client", async () => {
-  const users: UserReader = {
-    async getUser(id) {
-      return { id, name: "Ada" };
-    },
-  };
-
-  const service = new UserService(users);
-  assert.equal(await service.displayName("u_1"), "Ada");
-});
+// 危険: process内で共有される可能性がある
+export const sessionStore = {
+  currentUser: undefined as User | undefined,
+};
 ```
 
-cache clientもcaseごとに新instanceを作ります。global instanceを `beforeEach` でclearすると並列testが競合します。
+リクエストごとにコンテキストやストアを作り、ハンドラーへ渡します。
 
 ```ts
-import { QueryClient } from "@tanstack/react-query";
-
-function createTestQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
+async function handleRequest(request: Request): Promise<Response> {
+  const context = createRequestContext({
+    user: await authenticate(request),
+    requestId: crypto.randomUUID(),
   });
-}
 
-test("isolated cache", async () => {
-  const queryClient = createTestQueryClient();
-  try {
-    queryClient.setQueryData(["user", "u_1"], { name: "Ada" });
-    assert.deepEqual(queryClient.getQueryData(["user", "u_1"]), { name: "Ada" });
-  } finally {
-    queryClient.clear();
-  }
+  return renderApplication({ request, context });
+}
+```
+
+アプリ全体で1つに見えるキャッシュ ライブラリでも、SSRではリクエストごとにクライアントを作るべき場合があります。利用しているフレームワークとライブラリのサーバー向けガイドを確認してください。
+
+## テストの順序依存を防ぐ
+
+変更可能なSingletonは、テスト間で状態が残ります。
+
+```ts
+beforeEach(() => {
+  featureFlags.reset();
 });
 ```
 
-## TanStack QueryのQueryClientをSingleton的に読む
+リセットAPIを用意する方法もありますが、本番コードへテスト都合の操作を増やします。より安全なのは、テストごとに新しいインスタンスを作って注入する設計です。
 
-TanStack Queryの公式quick startは `new QueryClient()` でclientを作り、`QueryClientProvider` へ渡す例を示します。QueryClientはquery cacheやmutation cacheと結び付き、default optionも保持します。React componentのrenderごとに新しくするとcacheが失われるため、client applicationのlifecycleでは安定した同一instanceを使います。
+並列テストでは、1つの共有インスタンスをリセットしても別テストと競合します。変更可能な状態は、リクエストやテストスコープへ狭められないか検討します。アプリケーションSingletonを選ぶのは、広い共有が本当に必要な場合です。
 
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+## 「1つで十分」と「1つしか許さない」は違う
 
-function App() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: { queries: { staleTime: 30_000 } },
-      }),
-  );
+ロガーやクエリ クライアントは、通常は1つで十分かもしれません。しかし、複数あっても論理的に壊れないなら、クラス自体で生成を禁止する必要はありません。コンポジションルートが1つだけ作れば目的を満たせます。
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <main>Application</main>
-    </QueryClientProvider>
-  );
-}
-```
+`constructor` を `private` にして `getInstance()` だけを公開するclassical Singletonは、複数インスタンスが存在してはいけない強い制約を型へ持ち込みます。テスト、複数tenant、段階的移行で2つ必要になったとき、設計変更が大きくなります。
 
-TanStack QueryのESLintルール `stable-query-client` も、QueryClientはapplication lifecycleで1つの安定instanceを持つべきと説明しつつ、serverではasync server componentが1requestに1回実行されるため例外を示しています。高度なSSR公式guideでは、requestごとにQueryClientを作る構成が案内されています。clientでの「1つ」をserverへそのまま広げない好例です。
+| 状況 | 選択 |
+| --- | --- |
+| 通常は1つで十分 | コンポジションルートで1つ作る |
+| モジュール内で固定の軽量値 | モジュールから `export` |
+| 生成コストが高い | 遅延プロバイダーを検討 |
+| リクエストごとに状態が違う | リクエストスコープ |
+| 分散環境で世界に1つ必要 | DB制約・lock・leader electionなど |
 
-ただしQueryClientのconstructorはpublicで、複数instanceも作れます。TanStack Query公式がGoF Singletonとして分類しているわけではありません。本記事では「定めたlifecycle内で安定した1instanceを共有する」というSingleton的な運用を学ぶ教育的な類推として扱っています。instance数を強制しているのではなく、Providerがscopeを決めています。
+## Singletonを選ぶ前の質問
 
-## Jotaiのdefault storeをSingleton的に読む
+1. 何の範囲で1つなのか。
+2. その範囲を越えて共有すると何が漏れるか。
+3. いつ初期化し、失敗時に再試行するか。
+4. 誰が破棄するか。
+5. テストや将来の要件で複数必要にならないか。
+6. 1つにする責任をクラスではなくコンポジションルートへ置けないか。
 
-Jotai公式のStore APIでは、`createStore()` が新しい空storeを作り、`getDefaultStore()` がprovider-less modeで使われるdefault storeを返すと説明されています。
-
-```ts
-import { createStore, getDefaultStore } from "jotai/vanilla";
-
-const sharedStore = getDefaultStore();
-const isolatedStore = createStore();
-```
-
-default storeを共有する点はmodule Singletonに近い一方、`createStore` やReactのProviderを使えばsubtree、test、requestごとに別storeを作れます。Jotai公式はこれをGoF Singletonとして分類していません。共有が便利なprovider-less modeと、隔離可能な明示storeを両方提供している実在設計として読むのが正確です。
-
-SSRでdefault storeへ利用者固有状態を置く場合は共有範囲を確認します。公式のNext.js guideも、server side renderingではrequestごとにstoreを保持する必要性を説明しています。libraryがdefault instanceを提供していても、すべての環境でそれを使うべきという意味ではありません。
-
-## より単純な代替案とトレードオフ
-
-不変な定数なら、object instanceを作らず通常の `export const` で十分です。stateを持たない純粋関数も共有instanceを必要としません。依存を1か所で組み立てたいだけならcomposition root、requestごとの値なら引数やcontext、階層ごとの状態ならProviderを使えます。
-
-Singletonは生成costを抑え、cacheやconnection poolを共有できます。一方、依存をimportの裏へ隠し、初期化順序とtest隔離を難しくします。lazy初期化でも設定タイミングが見えにくくなる場合があります。
-
-## 失敗しやすい設計
-
-- 「アプリで1つ」を、Realm、Worker、processを越えて1つと誤解する。
-- SSRのmodule scopeへユーザーやrequest固有cacheを置き、利用者間で共有する。
-- 非同期初期化の完成値だけをcacheし、同時呼び出しで二重生成する。
-- 失敗したPromiseを永遠にcacheする、または無制限に再接続する。
-- connectionやtimerを作るだけで、closeするownerと時点を決めない。
-- global accessorをあらゆるclassから呼び、依存関係を隠す。
-- testが共有instanceをclearし、並列testと競合する。
-- packageの複製やhot reload下でもinstanceが必ず1つだと仮定する。
-
-Singletonへ可変設定を持たせ、途中で書き換える設計にも注意します。あるrequestの途中で設定が変われば、処理前半と後半で異なる規則を使います。設定snapshotを不変objectとして生成し、変更は新しいscopeや明示的なreload手順で行う方が予測しやすくなります。
-
-## 使うかどうかの判断基準
-
-Singleton的な共有が向くのは、同じscope内で本当に1つの状態を共有する必要があり、複数生成がresource競合や一貫性低下を起こし、lifecycleを明確に所有できる場合です。client applicationのcache client、process単位のmetrics registry、connection poolなどが候補です。
-
-導入前には「1つとはtab、request、processのどれか」「共有する状態に利用者固有dataがないか」「複数processでも整合するか」「いつ初期化し、失敗時にどう再試行し、誰が破棄するか」「testごとに隔離できるか」「global accessを避けて依存注入できないか」を確認します。
-
-instanceを制限することが目的になっている、将来複数設定を使う可能性が高い、状態を独立testしたい、request固有である場合は避けます。必要なのが単なる共有よりscope管理なら、ProviderやDI containerのlifetime、明示的なresource containerの方が意図を表せます。
-
-## まとめ
-
-Singletonで最初に見るのは、static fieldの書き方ではありません。scopeとlifecycleです。ES Modulesは同一module instance内の共有を簡潔にしますが、Worker、process、bundle、SSR requestを越えた一意性までは保証しません。まずcomposition rootで1instanceを作って渡す方法を検討し、global accessが本当に必要な場合だけ取得APIを置きます。
-
-非同期生成ではPromiseをcacheし、初期化失敗と再試行を設計します。resourceにはcloseするownerを定め、request固有dataはrequest scopeへ隔離します。TanStack QueryとJotaiは安定した共有instanceと明示的な分離の両方を学べる例ですが、公式のGoF分類ではありません。実行環境の境界を踏まえて「どこで1つか」を説明できることが、安全な共有設計の出発点です。
+Singletonの本質は、共有範囲とライフサイクルを1つに定めることです。`getInstance()` は実装方法の1つにすぎません。特に変更可能な状態は、最も狭い正しいスコープへ置いてください。広い共有は便利でも、テスト順序やSSRの情報混在という代償を伴います。
 
 ## 参考資料
 
-- Erich Gammaほか『Design Patterns: Elements of Reusable Object-Oriented Software』Singleton章（Addison-Wesley, 1994）
-- [ECMAScript仕様：Modules](https://tc39.es/ecma262/multipage/ecmascript-language-scripts-and-modules.html#sec-modules)
-- [TanStack Query公式：Quick Start](https://tanstack.com/query/latest/docs/framework/react/quick-start)
-- [TanStack Query公式：Stable Query Client](https://tanstack.com/query/latest/docs/eslint/stable-query-client)
-- [TanStack Query公式：Advanced Server Rendering](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr)
-- [TanStack Query公式ソース：QueryClient](https://github.com/TanStack/query/blob/main/packages/query-core/src/queryClient.ts)
-- [Jotai公式：Store](https://jotai.org/docs/core/store)
-- [Jotai公式：Next.js](https://jotai.org/docs/guides/nextjs)
-- [Jotai公式ソース：store.ts](https://github.com/pmndrs/jotai/blob/main/src/vanilla/store.ts)
+- [Refactoring.Guru: Singleton](https://refactoring.guru/design-patterns/singleton)
+- [MDN: JavaScript modules](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Modules)
+- [Node.js: Modules caching](https://nodejs.org/api/modules.html#caching)
+- [TanStack Query: SSR](https://tanstack.com/query/latest/docs/framework/react/guides/ssr)
