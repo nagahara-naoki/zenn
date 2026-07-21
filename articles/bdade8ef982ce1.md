@@ -1,5 +1,5 @@
 ---
-title: "constructorの内部構造を読む：ECMAScript仕様とV8実装を分けて理解する"
+title: "constructorの内部構造を読む"
 emoji: "⚙️"
 type: "tech"
 topics: ["javascript", "ecmascript", "v8", "constructor"]
