@@ -1,5 +1,5 @@
 ---
-title: "JavaScriptのthisを図で理解する：値を決めるのは呼び出し方"
+title: "JavaScriptのthisを図で理解する"
 emoji: "🎯"
 type: "tech"
 topics: ["javascript", "this", "関数"]
