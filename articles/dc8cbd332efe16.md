@@ -1,5 +1,5 @@
 ---
-title: "SingletonをTypeScriptで理解する：共有範囲と寿命を設計する"
+title: "SingletonをTypeScriptで理解する"
 emoji: "1️⃣"
 type: "tech"
 topics: ["typescript", "デザインパターン", "singleton"]
