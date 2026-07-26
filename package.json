@@ -1,5 +1,16 @@
 {
-  "dependencies": {
-    "zenn-cli": "^0.5.2"
+  "name": "zenn-content",
+  "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "audit": "pnpm audit --audit-level=high",
+    "check": "pnpm audit --audit-level=high && zenn list:articles",
+    "preview": "zenn preview"
+  },
+  "devDependencies": {
+    "zenn-cli": "0.5.2"
   }
 }

@@ -1,3 +1,5 @@
 node_modules
 .DS_Store
 ARTICLE_REQUIREMENTS.md
+package-lock.json
+pnpm-debug.log*
