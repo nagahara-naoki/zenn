@@ -1,5 +1,5 @@
 ---
-title: "JavaScriptのthisを図で理解する"
+title: "JavaScriptのthisを理解する"
 emoji: "🎯"
 type: "tech"
 topics: ["javascript", "this", "関数"]
