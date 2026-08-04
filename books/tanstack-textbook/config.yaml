@@ -1,7 +1,7 @@
 title: "TanStackの教科書"
 summary: "型安全なReact開発を、状態の置き場所から設計する。TanStack Queryによるサーバー状態の管理から、RouterによるURL状態と型安全なルーティング、Table・Virtualによる大量データの表示、Formによるフォーム設計、Startによるフルスタック開発まで。状態を分類し、あるべき場所に置くという視点で体系的に学ぶ。"
 topics: ["react", "typescript", "tanstack", "tanstackquery", "frontend"]
-published: false
+published: true
 price: 0
 chapters:
   - 01-preface
