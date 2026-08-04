@@ -1,0 +1,38 @@
+title: "TanStackの教科書"
+summary: "型安全なReact開発を、状態の置き場所から設計する。TanStack Queryによるサーバー状態の管理から、RouterによるURL状態と型安全なルーティング、Table・Virtualによる大量データの表示、Formによるフォーム設計、Startによるフルスタック開発まで。状態を分類し、あるべき場所に置くという視点で体系的に学ぶ。"
+topics: ["react", "typescript", "tanstack", "tanstackquery", "frontend"]
+published: false
+price: 0
+chapters:
+  - 01-preface
+  - 02-what-is-tanstack
+  - 03-classifying-frontend-state
+  - 04-project-setup
+  - 05-query-setup
+  - 06-use-query-basics
+  - 07-cache-and-staleness
+  - 08-mutation-basics
+  - 09-optimistic-update
+  - 10-pagination-and-infinite-query
+  - 11-query-design-patterns
+  - 12-error-handling-and-suspense
+  - 13-router-setup
+  - 14-type-safe-routing-and-navigation
+  - 15-search-params-and-url-state
+  - 16-loader-data-fetching
+  - 17-query-and-router-integration
+  - 18-auth-and-access-control
+  - 19-table-setup
+  - 20-sorting-filtering-pagination
+  - 21-server-side-table
+  - 22-virtualization
+  - 23-form-setup
+  - 24-validation-and-submission
+  - 25-state-placement-design
+  - 26-testing-strategy
+  - 27-start-setup-and-ssr
+  - 28-server-functions
+  - 29-appendix-api-cheatsheet
+  - 30-appendix-migration
+  - 31-appendix-other-libraries
+  - 32-appendix-glossary
