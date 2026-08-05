@@ -6,11 +6,17 @@ topics: ["javascript", "ecmascript", "v8", "constructor"]
 published: true
 ---
 
-JavaScriptのクラスを深く調べると、ECMAScript仕様の `[[Construct]]`、`InitializeInstanceElements` と、V8の `Map`（Hidden Class、隠しクラス）、インラインキャッシュといった用語が同時に出てきます。ここで混乱しやすいのは、言語が保証する挙動と、特定エンジンの高速化手法を同じ説明へ混ぜることです。
+クラスの内部構造を調べようとして検索すると、記事が2種類ヒットします。
 
-ECMAScript仕様は「どの結果にならなければならないか」を定めます。V8実装は「その結果をどう高速に作るか」を選びます。この記事では、まず仕様上の生成順を追い、その後でV8がオブジェクトの形をどう扱うかを見ます。
+片方は `[[Construct]]` や `InitializeInstanceElements` の話。もう片方は Hidden Class やインラインキャッシュの話。どちらも「クラスの内部」を説明しているので、私は同じ話だと思って読んでいました。
 
-## 2つの層は答える質問が違う
+別の話でした。
+
+前者はECMAScript仕様、つまり**どういう結果にならなければいけないか**の取り決めです。後者はV8という特定エンジンが、**その結果をどう速く作るか**という実装の選択です。この2つを混ぜて覚えると、エンジンが更新された日に知識ごと崩れます。
+
+この記事では、まず仕様上の生成順を追います。そのあとで、V8がオブジェクトの形をどう扱っているかを見ます。
+
+## 混ぜてはいけない2つの層
 
 | 層 | 答える質問 | 代表的な用語 |
 | --- | --- | --- |
@@ -18,6 +24,7 @@ ECMAScript仕様は「どの結果にならなければならないか」を定�
 | エンジン実装 | 仕様どおりの挙動をどう高速化するか | V8 `Map`, 要素, インラインキャッシュ, GC |
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart TD
     A[JavaScript source] --> B[ECMAScript仕様が意味を定める]
     B --> C[V8が仕様を実装]
@@ -43,7 +50,7 @@ V8の `Map` やインオブジェクトプロパティはECMAScriptの語では�
 
 用語を完全に暗記してから進む必要はありません。コードの実行順を知りたいときは仕様側、速度やメモリ配置を知りたいときはV8側を見る、という分類だけ保って読み進めてください。
 
-## 観測対象のクラスを1つ決める
+## 題材を1つ決めます
 
 次のクラスを通して順序を追います。
 
@@ -66,17 +73,22 @@ class Account {
 const account = new Account("user-42", "secret");
 ```
 
-この例には、`public` フィールド、`private` フィールド、`constructor` 本体、`prototype` メソッドがあります。ソースに書かれた順序だけから結果を推測すると、初期化時点を誤ります。
+`public` フィールド、`private` フィールド、`constructor` 本体、`prototype` メソッド。ひととおり入っています。
 
-`label` の初期化時点では、`constructor` 本体の `this.id = id` がまだ実行されていません。そのため、生成直後の `label` は `"undefined:member"` になります。後で `id` を設定しても、`label` は自動再計算されません。
+ここで先に答えを言うと、生成直後の `label` は `"user-42:member"` ではありません。
 
-この小さな結果を、仕様上の順序から説明していきます。
+**`"undefined:member"` です。**
 
-## クラス定義の評価では、インスタンスはまだ作られない
+`label` を初期化している瞬間、`constructor` 本体の `this.id = id` はまだ走っていないからです。しかも後から `id` を入れても、`label` が計算し直されることはありません。
+
+書いてある順に読むと、確実に間違えます。この小さな結果を、仕様上の順序から説明していきます。
+
+## クラスを書いた時点では、まだ何も生まれていない
 
 JavaScriptエンジンが `class Account { ... }` を評価すると、クラスコンストラクターとして使う関数オブジェクトと、そのプロトタイプオブジェクトを作ります。メソッド定義は `prototype` 側へ配置され、`static` 要素はクラス側で処理されます。
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart LR
     A[Account class object] --> B[static member]
     A -->|prototype property| C[Account.prototype]
@@ -96,13 +108,14 @@ flowchart LR
 | `private` インスタンスフィールド | インスタンス生成ごとに `private` 要素として初期化 |
 | `static` フィールド | クラス評価時に初期化 |
 
-## `new` から `constructor` の `[[Construct]]` へ進む
+## `new` のあと、何が順に起きるか
 
 `new Account("user-42", "secret")` を評価すると、`Account` が `constructor` として呼べるかを確認し、引数とともに内部の構築処理へ進みます。
 
 基底クラスでは、概念上おおむね次の順です。
 
 ```mermaid
+%%{init: {'theme': 'base', 'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'actorBkg': '#eaeafd', 'actorBorder': '#5b5bd6', 'actorTextColor': '#1f2430', 'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 sequenceDiagram
     participant N as new式
     participant C as Account constructor
@@ -127,7 +140,7 @@ console.log(account.describe()); // "undefined:member"
 
 フィールド初期化子から `constructor` 引数を直接参照できない理由も同じです。引数は `constructor` 本体の環境で利用できますが、フィールド初期化子へ同名のローカル変数として渡されるわけではありません。
 
-## `NewTarget` が作るオブジェクトの `prototype` を決める
+## 誰の `prototype` を持つかは、別で決まる
 
 通常の `new Account()` では、実行する `constructor` と `NewTarget` はどちらも `Account` です。継承や `Reflect.construct` では異なる場合があります。
 
@@ -151,7 +164,7 @@ console.log(value.describe()); // "item-1"
 
 `Target` は実行する `constructor`、`NewTarget` は主に生成するオブジェクトの `prototype` と、`constructor` 内の `new.target` に影響します。この分離は、派生クラスの生成規則を理解するうえで重要です。
 
-## 派生クラスでは `super()` が `this` を用意する
+## `super()` より前に `this` を使えない、本当の理由
 
 派生クラスは、基底クラスと初期化順が違います。
 
@@ -169,6 +182,7 @@ class AdminAccount extends Account {
 派生 `constructor` は、自分で最初のオブジェクトを作りません。`super()` を通じて基底 `constructor` の構築処理を実行し、返された `this` を受け取ります。その後、派生クラスのインスタンスフィールドを初期化し、`super()` より後の `constructor` 本体を続けます。
 
 ```mermaid
+%%{init: {'theme': 'base', 'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'actorBkg': '#eaeafd', 'actorBorder': '#5b5bd6', 'actorTextColor': '#1f2430', 'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 sequenceDiagram
     participant D as AdminAccount constructor
     participant B as Account constructor
@@ -180,9 +194,11 @@ sequenceDiagram
     D->>D: push(write)
 ```
 
-`super()` より前に `this` を使えないのは、まだ派生 `constructor` の `this` が初期化されていないためです。単に「親を先に呼ぶ決まり」と覚えるより、誰がオブジェクトを作るかを見ると理解しやすくなります。
+`super()` より前に `this` を触れないのは、その時点で `this` がまだ存在しないからです。
 
-## `public` フィールドは通常の代入と同じとは限らない
+「親を先に呼ぶルール」と暗記するより、**誰がオブジェクトを作っているのか**を見たほうが早い。派生クラスは自分では作りません。だから借りに行くまで、手元に何もないんです。
+
+## フィールド初期化は、代入ではない
 
 クラスフィールドの初期化は、概念上プロパティを定義する処理です。`constructor` 本体の `this.x = value` は通常、代入の規則に従います。この違いは、`prototype` 連鎖上にセッターがある場合に観測できます。
 
@@ -210,7 +226,7 @@ new WithAssignment(); // Baseのsetterを呼ぶ
 
 フィールド初期化子を「`constructor` の先頭へ代入文を移した構文糖」と説明すると、この差を表せません。普段のコードでは同じ結果に見えることが多いものの、プロパティ定義と代入は別の抽象操作です。
 
-## `private` フィールドは文字列キーのプロパティではない
+## `#token` は、プロパティですらない
 
 `#token` は、`account["#token"]` で読めるプロパティではありません。`private` 名に対応する内部要素として扱われ、宣言したクラスのコードからだけアクセスできます。
 
@@ -225,7 +241,7 @@ console.log(account["#token"]); // undefined
 
 これはTypeScriptの `private` キーワードとも違います。TypeScriptの通常の `private` は主にコンパイル時のアクセス制御で、出力先や設定によっては通常プロパティとして実行されます。JavaScriptの `#private` はランタイムで強制されます。
 
-## ここからV8実装：`Map` はオブジェクトの形状を表す
+## ここから先はV8の話です
 
 ECMAScript仕様は、プロパティをどのメモリレイアウトで保存するかを定めません。V8では、オブジェクトの構造を表すために `Map` と呼ばれる内部オブジェクトを使います。一般的な解説ではHidden Classとも呼ばれますが、JavaScriptの `Map` オブジェクトとは別物です。
 
@@ -242,6 +258,7 @@ const second = new Point(3, 4);
 ```
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart LR
     A[空のshape] -->|xを追加| B[xを持つshape]
     B -->|yを追加| C[x, yを持つshape]
@@ -251,7 +268,7 @@ flowchart LR
 
 この図は理解用の概念図です。実際のV8内部表現はバージョンや最適化状況で変わり、ソース上の細部を恒久的な仕様として扱えません。
 
-## プロパティの追加順を揃えると形状が安定しやすい
+## 追加順を揃える。ただし、そのためだけに歪めない
 
 次のように条件によって追加順が変わると、同じ用途のオブジェクトでも異なる形状を持つ可能性があります。
 
@@ -279,7 +296,7 @@ function createRecord(input) {
 
 性能差はワークロードやV8のバージョンに依存します。頻繁に実行される経路で問題が観測されていないのに、`Map` を想像して一般コードを最適化するのは避けます。まずプロファイルを取り、実際のボトルネックを確認します。
 
-## プロパティの保存場所は1種類ではない
+## 置き場所は1種類ではない
 
 V8はプロパティの数や変更パターンに応じて、インスタンス内に保持する形、プロパティ用の補助ストレージ、辞書に近い形などを使い分けます。配列のインデックスに相当する要素も、通常の名前付きプロパティとは異なる経路で扱われます。
 
@@ -287,7 +304,7 @@ V8はプロパティの数や変更パターンに応じて、インスタンス
 
 V8のデバッグ出力やブログで `in-object properties`、`properties`、`elements` という語を見たら、JavaScriptの意味の違いではなく、同じ仕様上のオブジェクトを効率よく表す内部配置の違いだと整理してください。
 
-## インライン キャッシュは同じ形の繰り返しを速くする
+## 同じ形が続くと、速くなる
 
 `account.id` のようなプロパティアクセスを毎回一から一般的に探索するのは高コストです。V8は実行中に観測したオブジェクトの形状とアクセス結果を記録し、同じ形が続く場合に速い経路を使います。この仕組みの一部がインラインキャッシュです。
 
@@ -300,13 +317,13 @@ V8のデバッグ出力やブログで `in-object properties`、`properties`、`
 3. オブジェクト形状の多様化が原因かエンジン ツールで調べる。
 4. 読みやすさを壊さない小さな変更でベンチマークする。
 
-## 割り当てとGCは `constructor` 構文だけでは決まらない
+## 「`new` は重い」も、鵜呑みにしない
 
 `new` を使うとヒープ割り当てが必ず高コストになる、短命オブジェクトは必ずこの領域へ入る、といった説明も慎重に扱う必要があります。エンジンは逃避解析、世代別GC、オブジェクトレイアウトなどをバージョンごとに改善します。
 
 ECMAScript仕様が保証するのは、オブジェクトの同一性やプロパティ操作として観測できる結果です。実際のメモリ確保や回収の時点はエンジンが決めます。V8の特定バージョンを調査した結果は、そのバージョンと条件を明記して実装知識として扱います。
 
-## 標準APIとV8のデバッグ機能を使い分ける
+## 何で調べるか
 
 通常の挙動確認には標準APIを使います。
 
@@ -325,13 +342,19 @@ V8には内部状態を調べるデバッグ機能やフラグがありますが
 | V8の形状や最適化状況 | V8のドキュメント、デバッグツール |
 | 実アプリのボトルネック | プロファイラー、ベンチマーク |
 
-## 仕様が意味を定め、V8が速度を最適化する
+## 仕様が意味を決め、V8が速さを作る
 
-`new Account()` の観測結果は、仕様上の順序から説明できます。オブジェクトを作り、インスタンス要素を初期化し、その後で基底 `constructor` 本体を実行するため、フィールド初期化子から `constructor` 代入前の `id` は見えません。
+最初の `"undefined:member"` に戻ります。
 
-V8はその挙動を守りながら、`Map` で形状を表し、プロパティ配置やインラインキャッシュを使って高速化します。`Map` の遷移や保存場所はV8の選択であり、JavaScriptの意味そのものではありません。
+あれは仕様上の順序だけで全部説明がつきました。オブジェクトを作る。インスタンス要素を初期化する。そのあとで `constructor` 本体を実行する。この順番なので、フィールド初期化子からは代入前の `id` が見えない。V8もSpiderMonkeyもJavaScriptCoreも、ここは同じ答えを返します。
 
-内部構造を読むときは、用語に出会うたびに「これは仕様が保証する話か、特定エンジンが選ぶ話か」を分類してください。分類できれば、実装変更で古くなる知識と、JavaScriptコードの正しさを支える知識を混同せずに済みます。
+V8がやっているのは、その答えを守ったまま速くすることです。`Map` で形状を表し、プロパティの置き場所を選び、インラインキャッシュを効かせる。**`Map` の遷移も保存場所も、V8の選択であってJavaScriptの意味ではありません。**
+
+だから、新しい用語に出会うたびに1回だけ自問してください。
+
+**これは仕様が保証する話か、特定のエンジンが選んでいる話か。**
+
+ここを分けられれば、エンジンの更新で賞味期限が切れる知識と、自分のコードの正しさを支える知識が、混ざらずに済みます。
 
 ## 参考資料
 
