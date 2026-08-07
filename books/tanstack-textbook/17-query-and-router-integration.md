@@ -73,17 +73,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+async function enableMocking() {
+  if (!import.meta.env.DEV) return;
+  const { worker } = await import('./mocks/browser');
+  return worker.start({ onUnhandledRequest: 'bypass' });
+}
+
+enableMocking().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+});
 ```
 
+これが`main.tsx`の完成形です。APIモックの起動、QueryClient、Router、Devtoolsがそろいました。以降の章で`main.tsx`を触るのは、TanStack Startへ移る最終部だけです。
+
 同じ`queryClient`を、`context`とProviderの両方に渡しています。Loaderからは`context`経由で、コンポーネントからはProvider経由で、同じキャッシュを触ることになります。
+
+モックの起動を`enableMocking`で待ってから描画しているのには理由があります。Service Workerの登録が終わる前にRouterが動き出すと、最初のLoaderが本物のネットワークへ抜けてしまいます。
 
 :::message alert
 `defaultPreloadStaleTime: 0`を忘れないでください。

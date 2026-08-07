@@ -254,6 +254,7 @@ export const Route = createFileRoute('/login')({
 流れを図で追います。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant R as Router
@@ -275,6 +276,7 @@ sequenceDiagram
 
 ```tsx
 const { redirect } = Route.useSearch();
+const router = useRouter();
 const navigate = Route.useNavigate();
 const queryClient = useQueryClient();
 
@@ -283,22 +285,29 @@ const { mutate, isPending, isError, error } = useMutation({
   onSuccess: async (user) => {
     // 取得済みの認証情報を、ログイン結果で置き換える
     queryClient.setQueryData(authKeys.me, user);
-    // 元いた場所へ戻す。無ければ一覧へ
-    await navigate({ to: redirect ?? '/tasks', replace: true });
+
+    if (redirect) {
+      // 実行時に決まる文字列なので、履歴を直接操作する
+      router.history.replace(redirect);
+    } else {
+      await navigate({ to: '/tasks', replace: true });
+    }
   },
 });
 ```
 
 `setQueryData`で認証情報のキャッシュを直接埋めています。ログインの応答にユーザー情報が含まれているので、`/api/me`をもう一度呼ぶ必要はありません。この1回を省くと、ログイン直後の待ち時間が短くなります。
 
-`replace: true`を付けているのは、ログイン画面を履歴に残さないためです。遷移後に戻るボタンを押しても、ログイン画面には帰りません。
+戻り先が2通りに分かれているのには理由があります。`navigate`の`to`は、アプリに定義されたルートのパスだけを受け付ける型です。`redirect`はURLから実行時に届く`string`なので、そのまま`to`へ渡すと型エラーになります。こうした「実行時に決まるパス」へ移動したいときは、`router.history.replace()`で履歴を直接操作します。
+
+どちらの経路も履歴を積まずに置き換えています。ログイン画面を履歴に残さないためです。遷移後に戻るボタンを押しても、ログイン画面には帰りません。
 
 :::message alert
 `redirect`の値をそのまま遷移先にするのは、注意が必要な操作です。URLに`?redirect=https://evil.example.com`と書かれていたら、ログイン後に外部サイトへ送ってしまいます。オープンリダイレクトと呼ばれる脆弱性です。
 
 先ほどのスキーマで`refine`を入れているのは、この防御です。「`/`で始まり、`//`で始まらない」ものだけを通し、それ以外は`undefined`に倒します。検証をスキーマに寄せておけば、受け取る場所が増えても守りが漏れません。
 
-なお、遷移先が実行時に決まる文字列である以上、ここは型検査が届きません。「型安全なルーティングとナビゲーション」の章で触れた、型が守れない境界のひとつです。
+`router.history.replace()`には型検査が効きません。渡した文字列がそのまま行き先になります。だからこそ、その手前の`validateSearch`で絞り込んでおくことが防御の要になります。「型安全なルーティングとナビゲーション」の章で触れた、型が守れない境界のひとつです。
 :::
 
 ## ログアウトでキャッシュを捨てる
@@ -393,6 +402,7 @@ flowchart TD
 - `redirect`は`throw`します。以降の処理が確実に止まります。
 - `beforeLoad`の戻り値は子ルートのContextに合流します。認証済みの画面では`user`が必ずある型になります。
 - 行き先は`location.href`をSearch Paramsに載せて引き継ぎます。受け取った値は`validateSearch`の`refine`でアプリ内のパスに絞り、オープンリダイレクトを防ぎます。
+- 実行時に決まるパスへの移動は`navigate({ to })`では型が通りません。`router.history.replace()`で履歴を直接操作します。
 - ログイン成功時は`setQueryData`でキャッシュを埋め、余分な問い合わせを省きます。
 - ログアウト時は`queryClient.clear()`でキャッシュを全部捨てます。
 - ルートの制御は`beforeLoad`、表示の制御はコンポーネント内の分岐です。本当の防御はサーバー側で行います。

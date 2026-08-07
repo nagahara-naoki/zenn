@@ -185,9 +185,9 @@ const form = useForm({
 送信でMutationを呼び、成功したらキャッシュを無効化します。輪が閉じます。
 
 ```tsx
-onSubmit: async ({ value }) => {
+onSubmit: async ({ value, formApi }) => {
   await mutateAsync(value); // onSuccessでinvalidateQueries
-  form.reset();
+  formApi.reset();
 },
 ```
 
@@ -221,7 +221,8 @@ src/
 │       ├── queries.ts           … キーとQueryの定義
 │       ├── formOptions.ts       … フォームの共通定義
 │       └── components/          … 画面の部品
-└── mocks/                       … 開発用のAPIモック
+├── mocks/                       … 開発用のAPIモック
+└── test/                        … テストの共通設定（次章で追加）
 ```
 
 2つの軸で分かれています。`routes/`はURLの形、`features/`は機能の形です。

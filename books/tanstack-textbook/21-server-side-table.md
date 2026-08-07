@@ -74,7 +74,7 @@ const taskSearchSchema = z.object({
   page: z.number().int().min(1).default(1).catch(1),
   perPage: z.number().int().min(1).max(100).default(20).catch(20),
   status: z.enum(['all', 'todo', 'doing', 'done']).default('all').catch('all'),
-  q: z.string().optional(),
+  q: z.string().optional().catch(undefined),
   sort: z.enum(sortKeys).default('dueDate').catch('dueDate'),
   order: z.enum(['asc', 'desc']).default('asc').catch('asc'),
 });
@@ -89,11 +89,15 @@ const taskSearchSchema = z.object({
 ```tsx
 const search = Route.useSearch();
 
-const sorting: SortingState = [{ id: search.sort, desc: search.order === 'desc' }];
-const pagination: PaginationState = {
-  pageIndex: search.page - 1,
-  pageSize: search.perPage,
-};
+const sorting = useMemo<SortingState>(
+  () => [{ id: search.sort, desc: search.order === 'desc' }],
+  [search.sort, search.order],
+);
+
+const pagination = useMemo<PaginationState>(
+  () => ({ pageIndex: search.page - 1, pageSize: search.perPage }),
+  [search.page, search.perPage],
+);
 
 const table = useReactTable({
   // ...
@@ -102,6 +106,8 @@ const table = useReactTable({
 ```
 
 `page`は1から、`pageIndex`は0から始まります。境界で`- 1`を入れるのは、この差を吸収するためです。URLは人が読むものなので1始まり、内部は0始まり。両方の都合を、この1行で橋渡ししています。
+
+`useMemo`で包んでいるのは、`state`に渡す値の参照を安定させるためです。包まずに書くと、レンダリングのたびに新しい配列とオブジェクトが生まれます。URLが1文字も変わっていないのに、テーブルから見れば毎回「状態が差し替わった」ことになります。行数が多い画面では、これが目に見える重さになります。
 
 ## 操作をURLの変更に変える
 
@@ -114,7 +120,8 @@ onSortingChange: (updater) => {
   navigate({
     search: (prev) => ({
       ...prev,
-      sort: (first?.id as (typeof sortKeys)[number]) ?? 'dueDate',
+      // 列IDはstringなので、スキーマと同じ候補から選び直す
+      sort: sortKeys.find((key) => key === first?.id) ?? 'dueDate',
       order: first?.desc ? 'desc' : 'asc',
       page: 1,
     }),
@@ -123,6 +130,8 @@ onSortingChange: (updater) => {
 ```
 
 `updater`が関数か値のどちらかで来る点に注意してください。Reactの`setState`と同じ形です。関数なら現在の値を渡して呼び出します。この判定を書き忘れると、関数がそのまま状態に入って壊れます。
+
+`sort`に`first.id`をそのまま入れていないのも意図があります。テーブルが返す列IDは`string`で、スキーマで絞った4つとは別の型です。「Search ParamsとURL状態」の章の`<select>`と同じで、`as`でごまかさず`find`で候補から選び直します。こうしておけば、並び替え可能な列を増減したときに、直し忘れた箇所が型エラーとして出ます。
 
 `page: 1`を混ぜているのは、並び順が変わったら先頭ページへ戻すためです。前章では`autoResetPageIndex`が自動でやってくれましたが、状態を自分で持つ形では自分で書きます。
 
@@ -215,9 +224,20 @@ Loaderとコンポーネントが同じ引数で同じ定義を呼ぶので、�
 
 ## ページ切り替えを滑らかにする
 
-サーバーサイド処理では、ページを変えるたびに通信が発生します。`useSuspenseQuery`を使っていると、新しい条件のデータが無い間はコンポーネントが中断し、読み込み表示に切り替わります。
+サーバーサイド処理では、ページを変えるたびに通信が発生します。その待ち時間をどう見せるかは、Loaderの書き方とセットで決まります。
 
-`useQuery`に戻して`placeholderData`を使えば、前のページを表示し続けられます。
+いまの`loader`は`ensureQueryData`の結果を返しているので、Routerがそれを待ちます。「次へ」を押しても画面はすぐには変わらず、前のページが表示されたまま止まります。`pendingMs`の既定は1秒なので、400ミリ秒で返る本書のモックでは読み込み表示すら出ません。この時点で、すでにちらつきは起きていません。
+
+では`placeholderData`は要らないのかというと、そうではありません。`await`をやめて画面を先に切り替える設計にすると、事情が変わります。
+
+```tsx
+// 遷移を待たせず、先に画面を出す
+loader: ({ context, deps }) => {
+  context.queryClient.prefetchQuery(taskQueries.list(deps));
+},
+```
+
+こうすると画面はすぐ切り替わり、データがまだ無いので`useSuspenseQuery`が中断します。表全体が読み込み表示に置き換わるため、ページを送るたびに枠ごと消えます。ここで`useQuery`へ切り替えて`placeholderData`を使うと、前のページを見せたまま中身だけを差し替えられます。
 
 ```tsx
 const { data, isPlaceholderData } = useQuery({
@@ -228,7 +248,15 @@ const { data, isPlaceholderData } = useQuery({
 
 `isPlaceholderData`が`true`の間は表を薄く表示し、「次へ」を無効にします。ページネーションの章で扱った手法が、そのまま使えます。
 
-`useSuspenseQuery`と`useQuery`のどちらを選ぶかは、体験の設計です。表全体が読み込み表示に切り替わるのを許容するなら前者、前のページを見せ続けたいなら後者です。表の行数が多い画面では、後者のほうが落ち着いて見えます。
+3つの組み合わせを並べます。
+
+| Loader + フック | クリック直後の見え方 |
+|---|---|
+| `await ensureQueryData` + `useSuspenseQuery` | 前の画面のまま待つ。遅ければ`pendingComponent` |
+| `prefetchQuery` + `useSuspenseQuery` | 画面は切り替わり、表が読み込み表示になる |
+| `prefetchQuery` + `useQuery` + `placeholderData` | 画面は切り替わり、前のページが薄く残る |
+
+取得が数百ミリ秒で終わるなら1つめで足ります。1秒を超えるようなら、枠だけ先に見せる2つめか3つめが向きます。表の行数が多い画面では、レイアウトが跳ねない3つめがもっとも落ち着いて見えます。
 
 ## サーバー側は何を受け取るか
 
@@ -291,6 +319,7 @@ return HttpResponse.json({
 - 並び替え可能な列と`perPage`の上限を、スキーマで縛ります。URLからの不正な値を防げます。
 - `page`は1始まり、`pageIndex`は0始まりです。境界で変換します。
 - `onSortingChange`と`onPaginationChange`で操作を受け取り、`navigate`でURLを変えます。`updater`が関数の場合を忘れないでください。
+- ページ切り替えの見せ方は、Loaderで`await`するかどうかとセットで決まります。前のページを残したいなら`prefetchQuery`＋`useQuery`＋`placeholderData`です。
 - キーワード入力は`replace: true`で履歴を積まないようにし、実務ではデバウンスを入れます。
 - `undefined`を渡すと、その条件はURLから消えます。
 - 共有・リロード・戻る・キャッシュ・先読みが、設計の結果として付いてきます。

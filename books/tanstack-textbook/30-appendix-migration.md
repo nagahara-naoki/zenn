@@ -159,7 +159,7 @@ react-windowはコンポーネントを提供しますが、TanStack Virtualは�
 
 ## TanStack Table v7以前の記事を読むとき
 
-| v7以前 | v8（現行） |
+| v7以前 | v8（本書の基準） |
 |---|---|
 | `react-table` | `@tanstack/react-table` |
 | `useTable(...)` | `useReactTable({ ... })` |
@@ -170,6 +170,8 @@ react-windowはコンポーネントを提供しますが、TanStack Virtualは�
 | `Header` | `header` |
 
 v8はTypeScriptで書き直されており、v7とは別のライブラリに近い変化です。v7向けの記事のコードは、ほぼそのまま使えません。
+
+なお、2026年8月にv9の安定版が公開されました。状態管理がTanStack Storeに載り、機能ごとにコードを取り込む形（tree-shakable）になっています。`createColumnHelper`や`flexRender`といった中心の概念は残るため、v8の知識はそのまま活きます。v8からv9へ移る際は、公式の移行ガイドを参照してください。本書はv8を基準に解説しています。
 
 ## TanStack Start の古い記事を読むとき
 

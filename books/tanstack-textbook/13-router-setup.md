@@ -197,12 +197,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
+async function enableMocking() {
+  if (!import.meta.env.DEV) return;
+  const { worker } = await import('./mocks/browser');
+  return worker.start({ onUnhandledRequest: 'bypass' });
+}
+
+enableMocking().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  );
+});
 ```
+
+`enableMocking`は「開発環境の準備」の章から引き続き必要です。これを落とすと、APIのモックが起動せず、すべてのリクエストが404になります。
+
+`QueryClientProvider`が消えている点は意図的です。この章はRouter単体の導入に集中します。両方をそろえた形は「QueryとRouterの連携」の章で組み立てます。
 
 `declare module`の部分が、型安全の要です。ここで作ったRouterの型をライブラリに登録しています。この宣言があるおかげで、アプリのどこで`<Link to="...">`と書いても、そのプロジェクトのルート一覧から候補が出て、存在しないパスが弾かれます。
 

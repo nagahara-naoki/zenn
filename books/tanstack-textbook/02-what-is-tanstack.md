@@ -24,6 +24,7 @@ TanStackは、Tanner Linsleyという開発者が中心となって作ってい�
 | 2023年12月 | TanStack Router v1、TanStack Virtual v3 |
 | 2025年3月 | TanStack Form v1 |
 | 2025年9月 | TanStack Start v1 リリース候補 |
+| 2026年8月 | TanStack Table v9（内部を全面的に書き直し） |
 
 データ取得と表から始まり、ルーティング、フォーム、そしてフルスタック開発へと領域を広げてきました。歴史の浅いライブラリもありますが、土台にあるQueryとTableは何年も実務で使われ続けています。
 

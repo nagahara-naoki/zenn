@@ -118,7 +118,7 @@ APIはモックを用意します。バックエンドの準備は不要で、�
 :::message
 6つのうち、TanStack Startだけが正式な安定版の宣言前です。リリース候補（Release Candidate）として、機能は揃いAPIも固まった状態が公式にアナウンスされています。バージョン番号が1系なのは、土台であるTanStack Routerと番号を揃えているためです。本書では最終部で扱い、実務に投入する判断材料もあわせて示します。
 
-TanStack Tableについては、次期メジャーバージョンであるv9のベータ版が進行中です。内部の作りが大きく変わり、メモリ使用量や再描画の制御が改善されています。本書は安定版のv8で解説し、v9で何が変わるのかは該当の章で補足します。
+TanStack Tableについては、2026年8月にv9の安定版が公開されました。内部の作りが大きく変わり、メモリ使用量や再描画の制御が改善されています。ただし出たばかりで、実務のコードもネット上の記事も、まだv8が大半です。本書は普及しているv8で解説し、v9で何が変わるのかは該当の章で補足します。
 :::
 
 TanStack Queryは、v4以前は「React Query」という名前でした。ネット上の記事にはv4時代のコードが多く残っており、`isLoading`や`cacheTime`のように名前が変わったオプションもあります。読み替えられるように、移行の詳細は付録にまとめました。
@@ -137,6 +137,7 @@ flowchart LR
 もう1つは、**時間の流れを表す図**です。何が先に起き、何が後に起きるのか。キャッシュの動きやデータ取得の順番は、時間軸で見ないとつかめません。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant C as コンポーネント
   participant Q as TanStack Query

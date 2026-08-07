@@ -118,6 +118,7 @@ APIのエンドポイントを、次の6本用意します。
 MSWは、ブラウザのService Workerとしてネットワーク通信を横取りし、用意した応答を返すライブラリです。`fetch`関数そのものを差し替える方式ではないので、アプリのコードは本物のAPIを呼ぶときと1文字も変わりません。開発者ツールのNetworkタブにもリクエストが並びます。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant A as アプリのコード
   participant SW as Service Worker（MSW）

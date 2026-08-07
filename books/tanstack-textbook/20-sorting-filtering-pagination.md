@@ -225,9 +225,12 @@ columnHelper.display({
   header: ({ table }) => (
     <input
       type="checkbox"
-      aria-label="すべて選択"
-      checked={table.getIsAllRowsSelected()}
-      onChange={table.getToggleAllRowsSelectedHandler()}
+      aria-label="このページをすべて選択"
+      checked={table.getIsAllPageRowsSelected()}
+      ref={(element) => {
+        if (element) element.indeterminate = table.getIsSomePageRowsSelected();
+      }}
+      onChange={table.getToggleAllPageRowsSelectedHandler()}
     />
   ),
   cell: ({ row }) => (
@@ -242,6 +245,10 @@ columnHelper.display({
 ```
 
 `header`に渡した関数は`table`を受け取り、`cell`に渡した関数は`row`を受け取ります。どちらも`flexRender`が呼び出してくれます。
+
+ヘッダー側で`Page`の付いたメソッドを使っている点に注目してください。`getToggleAllRowsSelectedHandler()`という似た名前もありますが、こちらは絞り込み後の全行、つまり見えていない他のページの行まで選択します。「すべて選択」を押しただけで50件が選ばれるのは、たいていユーザーの期待とずれます。ページ内に限定する`Page`付きを既定にしてください。
+
+`ref`で`indeterminate`を設定しているのは、一部だけ選ばれている状態を表すためです。HTMLのチェックボックスには「オン」と「オフ」しかなく、中間状態はJSXの属性では書けません。DOMのプロパティに直接代入する必要があります。これが無いと、20件中3件を選んだときにヘッダーが未選択のまま見えます。
 
 選択状態も、他と同じくControlledにできます。
 
@@ -329,6 +336,7 @@ getRowId: (row) => row.id,
 - 絞り込みは、全体を1つのキーワードで絞るものと、列ごとに条件を当てるものがあります。
 - `pageIndex`は0から始まります。表示では`+ 1`します。
 - 行選択では`getRowId`を必ず指定します。添字のままだと並び替えで選択がずれます。
+- 全選択のチェックボックスは`getToggleAllPageRowsSelectedHandler()`でページ内に限定し、`indeterminate`で中間状態を示します。
 - クライアントサイド処理は全件が手元にある前提です。1万件を超えるあたりから成り立たなくなります。
 
 次章では、この表をサーバーサイド処理へ切り替えます。Query・Router・Tableの3つが噛み合う、本書でもっとも実務的な構成です。

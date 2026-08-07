@@ -31,6 +31,7 @@ const task = await getTask({ data: { id: '3' } }); // 型は Task
 裏側では通信が発生しています。ビルド時に、この関数呼び出しがサーバーへのリクエストに変換されるからです。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant C as クライアントのコード
   participant B as ビルド時の変換
@@ -296,7 +297,7 @@ URLの検索条件が`queryKey`になり、Loaderがキャッシュを温め、�
 
 Headlessという思想も、同じ根から来ています。ロジックだけを提供し、見た目を開発者に委ねる。手間はかかりますが、自分のプロジェクトの要件に合わせる自由が残ります。
 
-TanStackの開発は活発で、これからも変わり続けます。TanStack DBはクライアント側のデータ層を、TanStack AIはAIとの連携を扱おうとしています。Table v9では内部が大きく書き換わります。
+TanStackの開発は活発で、これからも変わり続けます。TanStack DBはクライアント側のデータ層を、TanStack AIはAIとの連携を扱おうとしています。Tableは、内部を全面的に書き直したv9が登場しました。
 
 そうした変化の中でも、この本で扱った問いは変わりません。**この状態は誰のものか。どこに置くべきか。**新しいライブラリを前にしたときも、この問いから始めてください。
 

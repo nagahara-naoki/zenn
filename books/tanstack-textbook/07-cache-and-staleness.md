@@ -58,6 +58,8 @@ stateDiagram-v2
   inactive --> [*]: gcTime経過で破棄
 ```
 
+1つ補足します。`inactive`だけは、他と性質が違います。`fresh`と`stale`はデータの鮮度、`fetching`は通信の有無を表しますが、`inactive`は「見ている人がいるかどうか」です。軸が別なので、実際には「inactiveでありながらstale」という状態もあります。図では並べて描いていますが、Devtoolsで`inactive`と表示されているデータにも、裏では鮮度の判定が付いていると考えてください。
+
 ## stale-while-revalidateという戦略
 
 `stale`なデータに再取得のトリガーが来たとき、TanStack Queryは2つのことを同時に行います。
@@ -68,6 +70,7 @@ stateDiagram-v2
 この戦略をstale-while-revalidate（古いものを見せながら、検証する）と呼びます。HTTPのキャッシュ制御にも同じ名前の仕組みがあり、考え方は共通です。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant C as コンポーネント

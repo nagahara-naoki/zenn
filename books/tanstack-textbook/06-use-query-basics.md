@@ -109,7 +109,7 @@ useQuery({
 
 すべてのIDが同じ住所を共有します。ID:3を開いたあとID:7を開くと、キャッシュにはすでに`['tasks']`のデータ（ID:3の中身）があるため、それが表示されます。IDが変わっても再取得が起きません。
 
-これは、初学者がもっともよくはまる落とし穴です。前章で紹介したESLintプラグインの`exhaustive-deps`ルールは、まさにこれを検出します。`queryFn`の中で使っている値が`queryKey`に入っていないと警告してくれます。
+これは、初学者がもっともよくはまる落とし穴です。「開発環境の準備」の章で紹介したESLintプラグインの`exhaustive-deps`ルールは、まさにこれを検出します。`queryFn`の中で使っている値が`queryKey`に入っていないと警告してくれます。
 
 覚え方は単純です。**`queryFn`の結果を左右する値は、すべて`queryKey`に入れる**。`useEffect`の依存配列と同じ発想です。
 
@@ -159,6 +159,7 @@ export function FirstTaskDetail() {
 ```
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant C as コンポーネント
   participant Q as QueryClient

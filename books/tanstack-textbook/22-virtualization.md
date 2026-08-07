@@ -186,41 +186,67 @@ const virtualizer = useVirtualizer({
 ```
 
 ```tsx
-<tbody style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-  {virtualizer.getVirtualItems().map((virtualRow) => {
-    const row = rows[virtualRow.index];
-    return (
-      <tr
-        key={row.id}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: virtualRow.size,
-          transform: `translateY(${virtualRow.start}px)`,
-          display: 'flex',
-        }}
-      >
-        {row.getVisibleCells().map((cell) => (
-          <td key={cell.id} style={{ flex: 1 }}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </td>
-        ))}
-      </tr>
-    );
-  })}
-</tbody>
+<div ref={scrollRef} style={{ height: 480, overflowY: 'auto' }}>
+  <table style={{ display: 'grid' }}>
+    <thead style={{ display: 'grid', position: 'sticky', top: 0, zIndex: 1 }}>
+      {table.getHeaderGroups().map((headerGroup) => (
+        <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
+          {headerGroup.headers.map((header) => (
+            <th key={header.id} scope="col" style={{ flex: 1 }}>
+              {flexRender(header.column.columnDef.header, header.getContext())}
+            </th>
+          ))}
+        </tr>
+      ))}
+    </thead>
+
+    <tbody
+      style={{
+        display: 'grid',
+        height: virtualizer.getTotalSize(),
+        position: 'relative',
+      }}
+    >
+      {virtualizer.getVirtualItems().map((virtualRow) => {
+        const row = rows[virtualRow.index];
+        return (
+          <tr
+            key={row.id}
+            style={{
+              display: 'flex',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: virtualRow.size,
+              transform: `translateY(${virtualRow.start}px)`,
+            }}
+          >
+            {row.getVisibleCells().map((cell) => (
+              <td key={cell.id} style={{ flex: 1 }}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
 ```
 
 `table.getRowModel().rows`を直接`map`するのをやめ、`getVirtualItems()`の`index`で行を取り出しています。この置き換えが仮想化の本体です。
 
 :::message alert
-`<table>`の仮想化には、CSSの制約が付いてきます。`<tr>`を絶対配置すると、`<table>`本来のレイアウト（列幅の自動調整）が働かなくなります。
+見慣れない`display: grid`が並んでいるのには、理由があります。
 
-上のコードで`display: flex`と`flex: 1`を使っているのは、その埋め合わせです。列幅を自動で揃える機能を捨て、自分で配分しています。
+`<tbody>`の既定の表示形式は`table-row-group`です。この状態では、`height`も`position: relative`も効きません。全行分の高さを確保する器として使えないのです。同じように、`<tr>`を絶対配置しても、テーブルのレイアウト計算からは抜けられません。
 
-列幅を厳密に制御したい場合は、`<table>`をやめて`<div>`のグリッドで組む選択もあります。TanStack Tableは`<table>`要素に依存しないので、そのまま使えます。仮想化と`<table>`の相性は、あらかじめ知っておくと設計を誤りません。
+そこで、`<table>`・`<thead>`・`<tbody>`に`display: grid`、`<tr>`に`display: flex`を指定して、テーブル本来のレイアウトから抜けています。ここを省くと、行がすべて同じ位置に重なるか、スクロールバーが出ない画面になります。仮想化した`<table>`が動かないという相談は、たいていここが原因です。
+
+代償として、列幅の自動調整が働かなくなります。`flex: 1`を使っているのはその埋め合わせで、幅は自分で配分しています。厳密に制御したい場合は、TanStack Tableの`column.getSize()`が返す値を`width`に当てます。
+
+ここまでするなら`<table>`をやめて`<div>`のグリッドで組む、という選択もあります。TanStack Tableは`<table>`要素に依存しないので、そのまま使えます。仮想化と`<table>`の相性は、あらかじめ知っておくと設計を誤りません。
 :::
 
 ## 無限スクロールと組み合わせる
@@ -317,7 +343,7 @@ Performanceパネルで記録しながらスクロールすると、フレーム
 - `getTotalSize()`で全体の高さ、`getVirtualItems()`で描画対象を取得します。位置は`transform`で指定します。
 - `overscan`で前後に余分に描画し、スクロール時の空白を防ぎます。
 - 高さが一定でない場合は`measureElement`と`data-index`で実測します。`height`の指定は外します。
-- テーブルの行を仮想化すると、`<table>`のレイアウト機能が使えなくなります。列幅は自分で配分します。
+- テーブルの行を仮想化するときは、`<table>`・`<thead>`・`<tbody>`に`display: grid`、`<tr>`に`display: flex`を指定します。既定の`table-row-group`では`height`が効きません。列幅は自分で配分します。
 - `useInfiniteQuery`と組み合わせるときは、描画中の最後の行の位置で次ページを取得します。
 - まずページネーションで件数を減らし、それでも足りないときに導入します。
 

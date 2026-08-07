@@ -151,7 +151,7 @@ queryFn: async ({ queryKey, signal }) => {
 | `isError` | 取得に失敗した状態 |
 | `error` | 失敗したときの例外 |
 
-この3つの状態は同時にひとつだけ成立します。だから`isPending`と`isError`を先に返してしまえば、残った場所では`data`が必ず存在します。
+Queryは常に「データがまだ無い」「取得に失敗した」「データがある」の3つのうち、どれか1つの状態にいます。同時に2つは成立しません。だから`isPending`と`isError`を先に返してしまえば、残った場所では`data`が必ず存在します。
 
 TypeScriptもそう理解します。`if (isPending) return ...`と`if (isError) return ...`を通過したあとの`data`は、型から`undefined`が外れます。だから`data.items`と直接書けます。`data?.items`のような書き方は要りません。
 
@@ -193,6 +193,7 @@ export function TaskCount() {
 `TaskList`と`TaskCount`を並べて置きます。それぞれが`useQuery`を呼んでいるので、リクエストは2回飛びそうに見えます。実際には1回です。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant L as TaskList
   participant C as TaskCount

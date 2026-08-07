@@ -44,7 +44,7 @@ import { z } from 'zod';
 const taskSearchSchema = z.object({
   page: z.number().int().min(1).default(1).catch(1),
   status: z.enum(['all', 'todo', 'doing', 'done']).default('all').catch('all'),
-  q: z.string().optional(),
+  q: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/tasks/')({
@@ -120,7 +120,9 @@ Property 'search' is missing in type '{ children: string; to: "/tasks"; }'
 URL状態には、いちばん下の形を使ってください。
 
 :::message
-`z.string().optional()`のように、そもそも省略可能な条件は`.optional()`で足ります。「未指定」と「既定値」を区別したい場合に使います。本書の`q`（キーワード）は、未指定なら絞り込みをしないので`.optional()`にしています。
+「未指定」と「既定値」を区別したい条件には、`.default()`ではなく`.optional()`を使います。本書の`q`（キーワード）は、未指定なら絞り込みをしないので`.optional()`です。
+
+ただし、`.catch()`のほうは省けません。先ほど見たとおり、検索条件の値はJSONとして解釈されます。`?q=2026`と入力されると数値の`2026`になり、`z.string()`を通りません。`.catch(undefined)`まで書いて、はじめて壊れた入力に耐えられます。「省略できるか」と「壊れた値に耐えるか」は別の話だと覚えてください。
 :::
 
 ## 条件を変更する
@@ -232,6 +234,7 @@ URLを手で書き換えて、検証が働くところを見てください。
 | `/tasks?page=abc` | `.catch(1)`が働き、1ページ目になる |
 | `/tasks?page=-5` | `min(1)`を満たさないため、1ページ目になる |
 | `/tasks?status=deleted` | 知らない値なので`all`になる |
+| `/tasks?q=2026` | 数値として解釈されるが、`.catch(undefined)`で絞り込みなしになる |
 | `/tasks` | 既定値（1ページ目・すべて）で表示される |
 
 どれもエラー画面になりません。壊れた入力を既定値へ倒すことで、URLをいじられても動き続けます。
@@ -284,6 +287,7 @@ URLは履歴に残り、ログにも記録され、リファラとして外部�
 - `validateSearch`にZodなどのスキーマを渡すと、検索条件が検証され型がつきます。
 - 値はJSONとして解釈されるため、数値・真偽値・配列がそのままの型で受け取れます。`z.coerce`は不要です。
 - `.catch()`は壊れた値の受け皿、`.default()`はパラメータの省略を許す指定です。URL状態には両方を書きます。
+- `.optional()`にした条件にも`.catch()`は要ります。`?q=2026`は数値として解釈され、`z.string()`を通らないためです。
 - `.default()`が無いと、そのルートへのリンクで全条件の指定が必須になります。
 - `navigate({ search: (prev) => ... })`で、現在の条件を元に一部だけ変更できます。
 - DOMのイベントが返す値は`string`です。スキーマで絞った型に選び直してから渡します。

@@ -152,6 +152,8 @@ const scheduleSchema = z
 </form.Field>
 ```
 
+エラーの表示が`String(error)`になっているのは、前章のスキーマ検証と事情が違うからです。スキーマが返すエラーは`{ message: string }`という形ですが、ここで返しているのは文字列そのものです。自分で書いた検証関数のエラーは、返した値がそのまま入ります。同じフォームで両方を使う場合は、表示側を`typeof error === 'string' ? error : error?.message`のように寄せておくと迷いません。
+
 `onChangeAsyncDebounceMs`が要点です。これを指定しないと、1文字打つたびにリクエストが飛びます。500ミリ秒に設定すると、入力が止まってから問い合わせます。
 
 `isValidating`で「確認中」を表示すると、ユーザーは待っていることがわかります。この表示がないと、エラーが出るまでの間、検証を通ったように見えてしまいます。
@@ -256,16 +258,16 @@ const { mutateAsync } = useMutation({
 
 const form = useForm({
   // ...
-  onSubmit: async ({ value }) => {
+  onSubmit: async ({ value, formApi }) => {
     await mutateAsync(value);
-    form.reset();
+    formApi.reset();
   },
 });
 ```
 
 役割が分かれています。フォームは入力の検証と状態管理、Mutationは通信とキャッシュの最新化です。`onSubmit`の中で`await`しているので、通信が終わるまで`isSubmitting`が`true`のままになります。
 
-送信後に`form.reset()`で初期値に戻しています。同じフォームで続けて登録する画面では、この1行が効きます。
+送信後に`formApi.reset()`で初期値に戻しています。同じフォームで続けて登録する画面では、この1行が効きます。前章で触れたとおり、ここで`form`変数を参照すると型推論が循環するので、引数の`formApi`を使います。
 
 ## サーバーからのエラー
 

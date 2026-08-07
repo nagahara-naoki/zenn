@@ -17,6 +17,7 @@ TanStack Startは、本書の執筆時点でリリース候補（Release Candida
 ここまで作ったアプリは、SPA（Single Page Application）です。ブラウザがHTMLを受け取り、JavaScriptを読み込み、それからデータを取りにいきます。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ブラウザ
   participant S as サーバー
@@ -191,6 +192,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 サーバー側で何が起きているのかを追います。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ブラウザ
   participant S as サーバー

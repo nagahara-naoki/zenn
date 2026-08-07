@@ -98,6 +98,7 @@ title: "付録A 目的別API早見表"
 | ちょうど一致のときだけ | `activeOptions={{ exact: true }}` |
 | プログラムから移動する | `useNavigate()` / `Route.useNavigate()` |
 | 1つ前へ戻る | `useRouter().history.back()` |
+| 実行時に決まるパスへ移動する | `useRouter().history.push(パス)`（型検査は効かない） |
 | 別のルートへ送る（Loader内） | `throw redirect({ to, search })` |
 
 ### 値を受け取る
@@ -161,7 +162,9 @@ title: "付録A 目的別API早見表"
 | 現在の並び順 | `column.getIsSorted()` |
 | 列の表示を切り替える | `column.getToggleVisibilityHandler()` |
 | 行を選択する | `row.getToggleSelectedHandler()` |
-| すべて選択する | `table.getToggleAllRowsSelectedHandler()` |
+| ページ内をすべて選択する | `table.getToggleAllPageRowsSelectedHandler()` |
+| 中間状態を判定する | `table.getIsSomePageRowsSelected()` |
+| 絞り込み後の全行を選択する | `table.getToggleAllRowsSelectedHandler()` |
 
 ## TanStack Form
 
@@ -178,7 +181,7 @@ title: "付録A 目的別API早見表"
 | 送信できるか | `state.canSubmit` |
 | 送信中か | `state.isSubmitting` |
 | 送信する | `form.handleSubmit()` |
-| 初期値に戻す | `form.reset()` |
+| 初期値に戻す | `form.reset()`（`onSubmit`の中では`formApi.reset()`） |
 | スキーマで検証する | `validators: { onChange: スキーマ }` |
 | 表示直後に検証する | `validators: { onMount: スキーマ }` |
 | 非同期の検証 | `validators: { onChangeAsync, onChangeAsyncDebounceMs }` |
@@ -199,6 +202,8 @@ title: "付録A 目的別API早見表"
 | 位置を指定して移動する | `virtualizer.scrollToOffset(px)` |
 
 ## TanStack Start
+
+この節だけは、リクエストやセッションを扱うものなど本編で触れていないAPIも含めています。本編に出てこないものは、公式ドキュメントを参照してください。
 
 | 目的 | API・オプション |
 |---|---|

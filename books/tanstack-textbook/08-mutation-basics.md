@@ -20,6 +20,51 @@ title: "Mutationによるデータ更新"
 
 違いの根っこは、副作用の有無です。取得は何度実行しても結果が変わりません。だから自動でも安全です。更新はそうではありません。2回実行すればタスクが2つ作られます。だから、明示的に呼んだときだけ動き、勝手に再試行もしません。
 
+## 更新系のAPI関数を用意する
+
+`api.ts`には、まだ取得の関数しかありません。この章から使う3本を足します。
+
+```ts:src/features/tasks/api.ts
+import type { Task, TaskInput } from './types';
+
+export async function createTask(input: TaskInput): Promise<Task> {
+  const response = await fetch('/api/tasks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error('タスクの作成に失敗しました');
+  }
+  return response.json();
+}
+
+export async function updateTask(id: string, patch: Partial<TaskInput>): Promise<Task> {
+  const response = await fetch(`/api/tasks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    throw new Error('タスクの更新に失敗しました');
+  }
+  return response.json();
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  const response = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error('タスクの削除に失敗しました');
+  }
+}
+```
+
+作成は`TaskInput`、更新は`Partial<TaskInput>`を受け取ります。作成では`title`が必須で、更新では触った項目だけを送るからです。モックのハンドラと同じ約束にしてあります。
+
+削除だけ`response.json()`を呼んでいません。応答が本文の無い204だからです。ここで`json()`を呼ぶと、解析に失敗して例外になります。
+
+3本とも同じ`response.ok`の確認を書いています。この重複は「エラー処理とSuspense」の章で共通処理にまとめるので、いまはこのままで進めます。
+
 ## useMutationの基本
 
 タスクを作成するフォームを書きます。
@@ -102,6 +147,7 @@ export function CreateTaskForm() {
 `useQueryClient`で、Providerに渡したQueryClientを取り出します。`invalidateQueries`は、指定したキーのキャッシュを`stale`（古い）に印付けし、いま表示されているものはその場で再取得します。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant F as フォーム
   participant M as useMutation
@@ -303,6 +349,7 @@ mutate(
 
 この章では、データの更新とキャッシュの最新化を扱いました。
 
+- 更新系のAPI関数（`createTask`・`updateTask`・`deleteTask`）を`api.ts`に足しました。削除は204を返すので`response.json()`を呼びません。
 - `useMutation`は明示的に呼んだときだけ動きます。キャッシュもせず、既定では再試行もしません。
 - 渡すのは`mutationFn`だけです。`mutate`の引数がそのまま渡ります。
 - `isPending`でボタンを無効化して、二重送信を防ぎます。この対策は自分で書きます。

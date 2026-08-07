@@ -13,6 +13,7 @@ title: "Optimistic Update"
 サーバーへのリクエストは投げますが、応答は待ちません。ユーザーがチェックを入れた瞬間にチェックが付き、失敗したときだけ元に戻します。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant C as 画面
@@ -199,7 +200,7 @@ queryClient.setQueryData<TaskListResult>(['tasks'], (old) =>
 
 ```ts
 // 検証用。PATCHを必ず500で失敗させる
-export async function updateTask(id: string, patch: Partial<Task>): Promise<Task> {
+export async function updateTask(id: string, patch: Partial<TaskInput>): Promise<Task> {
   const response = await fetch(`/api/tasks/${id}?__fail=500`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

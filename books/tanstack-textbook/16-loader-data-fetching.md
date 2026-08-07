@@ -13,6 +13,7 @@ title: "Loaderによるデータ取得"
 `useQuery`で取得する場合、処理の順番はこうなります。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant R as Router
@@ -64,6 +65,7 @@ function TaskDetailPage() {
 順番が変わったところが要点です。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant R as Router

@@ -80,9 +80,9 @@ const form = useForm({
     assignee: '',
     dueDate: '',
   },
-  onSubmit: async ({ value }) => {
+  onSubmit: async ({ value, formApi }) => {
     await mutateAsync(value);
-    form.reset();
+    formApi.reset();
   },
 });
 ```
@@ -92,6 +92,8 @@ const form = useForm({
 `defaultValues`には特別な意味があります。**このオブジェクトの形が、フォームの型になります**。項目名と値の型が、ここから推論されます。別に型を宣言する必要はありません。
 
 `onSubmit`が受け取る`value`には、検証を通った値が入っています。`await`できるので、Mutationをそのまま呼べます。
+
+`formApi`は、いま送信しているフォーム自身です。`form`という変数を使わず`formApi`から`reset()`を呼んでいるのは、意味があります。`const form = useForm({ ... })`の中で`form`を参照すると、自分自身を定義しながら自分を使う形になり、TypeScriptの型推論が循環してしまいます。フォーム自身を触りたいときは`formApi`を使ってください。
 
 ### 入力欄をつなぐ
 
@@ -308,6 +310,7 @@ const form = useForm({
 - フォームは、値・エラー・触ったか・変更されたか・送信中が絡み合うため、`useState`では項目数の何倍もの状態が生まれます。
 - TanStack Formはフォーム全体を1つの状態として持ち、各項目は必要な部分だけを購読します。
 - `defaultValues`の形がフォームの型になります。項目名と値の型が推論されます。
+- `onSubmit`の中からフォーム自身を触るときは、`form`変数ではなく引数の`formApi`を使います。型推論の循環を避けるためです。
 - `form.Field`はRender Propsで`field`を渡します。この形が、項目単位の再レンダリングを可能にしています。
 - `field.handleBlur`を`onBlur`に渡さないと、`isTouched`が記録されません。
 - `errors`の要素は`undefined`を含む型なので、`error?.message`と書きます。

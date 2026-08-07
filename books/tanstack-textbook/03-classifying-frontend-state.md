@@ -88,6 +88,7 @@ function TaskList({ status }: { status: string }) {
 1つめは、リクエストの**追い越し**です。ユーザーが絞り込みを「未完了」にしてすぐ「完了」に変えたとき、2本のリクエストが飛びます。この2本のどちらが先に返ってくるかは、誰も保証してくれません。
 
 ```mermaid
+%%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
 sequenceDiagram
   participant U as ユーザー
   participant C as コンポーネント
