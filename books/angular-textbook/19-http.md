@@ -19,11 +19,11 @@ title: "HTTP通信（HttpClient・resource・Interceptor）"
 
 アプリケーションの多くは、サーバーとデータをやり取りします。商品一覧をサーバーから取得する、入力されたデータをサーバーへ保存する。こうした通信を担うのが、AngularのHttpClientです。この節では、HttpClientの基本的な使い方を学びます。
 
-HttpClientは、サーバーへの要求の結果を、Observableで返します。『RxJSの基礎』の章で学んだRxJSが、ここで実際に活きてきます。通信は非同期処理の代表例であり、いつ応答が返るかわからない、失敗するかもしれない、という性質を持ちます。Observableは、まさにこうした処理を扱うためのものでした。この節で、通信とRxJS、そしてSignalが、どう結びつくのかを見ていきます。
+HttpClientは、サーバーへの要求の結果を、Observableで返します。[『RxJSの基礎』の章](./16-rxjs-basics)で学んだRxJSが、ここで実際に活きてきます。通信は非同期処理の代表例であり、いつ応答が返るかわからない、失敗するかもしれない、という性質を持ちます。Observableは、まさにこうした処理を扱うためのものでした。この節で、通信とRxJS、そしてSignalが、どう結びつくのかを見ていきます。
 
 ### HttpClientを準備する
 
-HttpClientを使うには、アプリケーションに登録する必要があります。『開発環境・CLIとプロジェクト構成』の章で見た`app.config.ts`の`providers`に、`provideHttpClient()`を加えます。v22世代では、通信の実装にブラウザ標準のFetch APIを使う`withFetch()`を添えるのが基本です。
+HttpClientを使うには、アプリケーションに登録する必要があります。[『開発環境・CLIとプロジェクト構成』の章](./03-setup-and-structure)で見た`app.config.ts`の`providers`に、`provideHttpClient()`を加えます。v22世代では、通信の実装にブラウザ標準のFetch APIを使う`withFetch()`を添えるのが基本です。
 
 ```ts:src/app/app.config.ts
 import { ApplicationConfig } from '@angular/core';
@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-この一行で、アプリのどこからでもHttpClientを注入できるようになります。これは、『TypeScriptとComponentの基本』の章で触れた「モジュールから関数へ」の流れの一例です。かつては`HttpClientModule`をimportしていましたが、現在は`provideHttpClient()`という関数を使います。
+この一行で、アプリのどこからでもHttpClientを注入できるようになります。これは、[『TypeScriptとComponentの基本』の章](./04-component-basics)で触れた「モジュールから関数へ」の流れの一例です。かつては`HttpClientModule`をimportしていましたが、現在は`provideHttpClient()`という関数を使います。
 
 `withFetch()`を付けると、通信の内部実装がブラウザ標準のFetch APIになります。付けない場合は従来の`XMLHttpRequest`が使われますが、Fetch APIはSSR（サーバーサイドレンダリング）との相性がよく、実装も現在の標準です。新規プロジェクトでは`withFetch()`を付けておくとよいでしょう。同じように、後述するInterceptorは`withInterceptors()`、XSRF対策は`withXsrfConfiguration()`といった関数を、`provideHttpClient()`に渡して機能を足していきます。
 
@@ -79,7 +79,7 @@ export class ProductList {
 }
 ```
 
-`toSignal()`を使えば、通信結果をSignalとして受け取れ、購読の解除も自動です。テンプレートでは`products()`と、ふつうのSignalとして扱えます。『SubjectとSignal連携・実践』の章で学んだ、RxJSとSignalの橋渡しが、通信で実際に役立つ場面です。
+`toSignal()`を使えば、通信結果をSignalとして受け取れ、購読の解除も自動です。テンプレートでは`products()`と、ふつうのSignalとして扱えます。[『SubjectとSignal連携・実践』の章](./17-subject-and-signals)で学んだ、RxJSとSignalの橋渡しが、通信で実際に役立つ場面です。
 
 なお、HttpClientの通信は、購読を解除すると中断されます。`toSignal()`や`async`パイプを使うと、Componentが破棄されたときに購読が自動で解除され、進行中の通信もそこで打ち切られます。画面を離れたあとに古い応答が届いて状態を書き換える、といった問題を防げるのは、この仕組みのおかげです。
 
@@ -121,9 +121,11 @@ this.http.get<Product[]>('/api/products', {
 
 ### 通信をServiceにまとめる
 
-通信は、Componentに直接書くのではなく、Serviceにまとめるのが定石です。『ServiceとDependency Injection』の章で学んだ責務の分離が、ここでも当てはまります。「商品に関する通信は`ProductService`に集約する」という形です。
+通信は、Componentに直接書くのではなく、Serviceにまとめるのが定石です。[『ServiceとDependency Injection』の章](./10-service-and-di)で学んだ責務の分離が、ここでも当てはまります。「商品に関する通信は`ProductService`に集約する」という形です。
 
 こうすると、通信の詳細（URLやオプション）が一か所にまとまり、複数のComponentから同じ通信を使い回せます。Componentは、Serviceのメソッドを呼ぶだけで、通信の中身を気にせずにデータを得られます。URLの変更やエラー処理の追加も、Service側の修正で済みます。通信をServiceに閉じ込めることは、保守性の高いアプリケーションの基本です。
+
+## 通信エラーと表示状態を扱う
 
 ### エラーへの備え
 
@@ -212,9 +214,9 @@ describe('ProductService', () => {
 });
 ```
 
-`expectOne()`で「その要求が一度だけ送られたか」を検証し、`flush()`で疑似的な応答を返します。実際のサーバーがなくても、成功・失敗・特定のステータスコードといった状況を再現でき、通信を含むコードを安定してテストできます。テストの詳しい進め方は、『アーキテクチャとテスト』の章で扱います。
+`expectOne()`で「その要求が一度だけ送られたか」を検証し、`flush()`で疑似的な応答を返します。実際のサーバーがなくても、成功・失敗・特定のステータスコードといった状況を再現でき、通信を含むコードを安定してテストできます。テストの詳しい進め方は、[『アーキテクチャとテスト』の章](./23-architecture-and-testing)で扱います。
 
-### よくあるつまずき
+### HttpClientとAPI通信でよくあるつまずき
 
 - **通信が起きない**: HttpClientのメソッドは、`subscribe`されるまで通信しません。`toSignal()`や`async`パイプ、あるいは購読をしているかを確認します。呼び出しただけでは通信は始まりません。
 - **エラーでアプリが止まる**: エラー処理を書かないと、通信の失敗がそのまま伝播します。`catchError`やInterceptorで、失敗に備えます。
@@ -349,7 +351,7 @@ userResource = resource({
 - **データの送信（POST・PUT・DELETE）**: これらは`httpResource()`ではなく、従来どおりHttpClientのメソッドを使います。`httpResource()`は、主に取得（GET）のための仕組みです。
 - **複雑な非同期の制御**: `debounceTime`や込み入った合成が必要なら、RxJSと`toSignal()`の組み合わせが依然として有力です。
 
-### よくあるつまずき
+### HttpClientからresource()・httpResource()への移行でよくあるつまずき
 
 - **`httpResource()`で送信しようとする**: `httpResource()`は主にデータ取得（GET）のための仕組みです。データの作成・更新・削除は、従来どおりHttpClientの`post`・`put`・`delete`を使います。
 - **URLの関数内でSignalを読まない**: 再取得は、URLを返す関数の中でSignalを読むことで働きます。Signalを外で固定値として展開してしまうと、変化に反応しなくなります。
@@ -366,7 +368,7 @@ userResource = resource({
 
 Interceptorは、アプリケーションが送るすべてのHTTP通信の途中に割り込む仕組みです。要求がサーバーへ送られる前、あるいは応答が返ってきた後に、共通の処理を差し込めます。「通信の関所」のようなものだと考えてください。すべての通信が、この関所を通ります。
 
-モダンAngularのInterceptorは、関数として書きます。『inject()とProvider・Injectorの階層』の章で学んだ`inject()`があるおかげで、関数の中で依存を受け取れます。`HttpInterceptorFn`という型の関数を定義します。
+モダンAngularのInterceptorは、関数として書きます。[『inject()とProvider・Injectorの階層』の章](./11-inject-and-providers)で学んだ`inject()`があるおかげで、関数の中で依存を受け取れます。`HttpInterceptorFn`という型の関数を定義します。
 
 ```ts:src/app/logging-interceptor.ts
 import { HttpInterceptorFn } from '@angular/common/http';
@@ -506,7 +508,7 @@ export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
 
 これらをそれぞれ独立したInterceptorとして書き、`withInterceptors([...])`に並べて登録します。各Interceptorが単一の関心事に集中するため、見通しがよく、テストもしやすくなります。『ServiceとDependency Injection』の章で学んだ責務の分離が、通信の設計にも貫かれているのがわかります。個々の通信コードは本来の目的だけに集中でき、共通処理はInterceptorが引き受ける。この分業が、保守しやすい通信層を作ります。
 
-### よくあるつまずき
+### Interceptor・認証・エラー・ローディング設計でよくあるつまずき
 
 - **`next(req)`の呼び忘れ**: Interceptorの中で`next(req)`を呼ばないと、要求が次へ進まず、通信が止まります。処理の最後に、必ず`next`の結果を返します。
 - **要求を直接書き換えようとする**: 要求（`req`）は変更できません。ヘッダーなどを足すときは、`req.clone()`で新しい要求を作ります。
