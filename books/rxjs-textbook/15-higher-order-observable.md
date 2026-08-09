@@ -26,7 +26,7 @@ const result$ = keyword$.pipe(
 );
 ```
 
-ここで、`searchApi(keyword)`はObservableを返します。ということは、`map`が流すのは「検索結果」そのものではなく、「検索結果を流すObservable」です。つまり`result$`は、値としてObservableを流すObservable、になってしまいます。Observableの中に、Observableが入れ子になった状態です。箱を開けたら、また箱が入っていた、というイメージです。
+ここで、`searchApi(keyword)`はObservableを返します。ということは、`map`が流すのは「検索結果」そのものではなく、「検索結果を流すObservable」です。つまり`result$`は、値としてObservableを流すObservableになってしまいます。Observableの中に、Observableが入れ子になった状態です。箱を開けたら、また箱が入っていた、というイメージです。
 
 ## Higher-order ObservableとInner・Outer
 
