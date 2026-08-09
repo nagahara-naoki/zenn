@@ -74,7 +74,7 @@ count.subscribe((value) => console.log('現在値:', value)); // 5
 console.log(count.value); // 5
 ```
 
-BehaviorSubjectは「現在の値を持つストリーム」なので、状態の保持にうってつけです。『ServiceとDependency Injection』の章で触れた「状態を持つService」の実装として、長らくこのBehaviorSubjectが使われてきました。Serviceの中でBehaviorSubjectに状態を保持し、Componentがそれを購読する、という形です。
+BehaviorSubjectは「現在の値を持つストリーム」なので、状態の保持にうってつけです。[『ServiceとDependency Injection』の章](./10-service-and-di)で触れた「状態を持つService」の実装として、長らくこのBehaviorSubjectが使われてきました。Serviceの中でBehaviorSubjectに状態を保持し、Componentがそれを購読する、という形です。
 
 ### ReplaySubjectとAsyncSubject
 
@@ -108,9 +108,9 @@ BehaviorSubjectが「現在の1つ」を渡すのに対し、ReplaySubjectは「
 
 Subjectは、おもに2つの用途で使われてきました。
 
-ひとつは、**Component間のイベント伝達**です。『データフローとinput()・output()』の章で、親子を越えた通信にはServiceが要ると述べました。Serviceの中にSubjectを持ち、あるComponentが`next`でイベントを流し、別のComponentがそれを購読する、という形で、離れたComponent間の連絡ができます。「通知」を配る用途です。
+ひとつは、**Component間のイベント伝達**です。[『データフローとinput()・output()』の章](./08-data-flow-io)で、親子を越えた通信にはServiceが要ると述べました。Serviceの中にSubjectを持ち、あるComponentが`next`でイベントを流し、別のComponentがそれを購読する、という形で、離れたComponent間の連絡ができます。「通知」を配る用途です。
 
-もうひとつは、**状態の共有**です。BehaviorSubjectに状態を保持し、複数のComponentがその状態を購読して、同じ値を共有します。これが、『状態管理の基礎』の章で扱うStore Serviceの、古典的な実装でした。具体的には、次のような形です。
+もうひとつは、**状態の共有**です。BehaviorSubjectに状態を保持し、複数のComponentがその状態を購読して、同じ値を共有します。これが、[『状態管理の基礎』の章](./20-state-management-basics)で扱うStore Serviceの、古典的な実装でした。具体的には、次のような形です。
 
 ```ts:src/app/cart.ts（BehaviorSubjectによるStore Service）
 @Injectable({ providedIn: 'root' })
@@ -130,7 +130,7 @@ export class CartService {
 
 ### SignalとBehaviorSubjectの関係
 
-ここで、『SignalsとZoneless』の章で学んだSignalを思い出してください。「現在の値を持ち、変化を購読者に伝える」というBehaviorSubjectの役割は、Signalの役割とよく似ています。実際、モダンAngularでは、状態の保持という用途において、BehaviorSubjectをSignalで置き換えられる場面が多くあります。
+ここで、[『SignalsとZoneless』の章](./13-signals-and-zoneless)で学んだSignalを思い出してください。「現在の値を持ち、変化を購読者に伝える」というBehaviorSubjectの役割は、Signalの役割とよく似ています。実際、モダンAngularでは、状態の保持という用途において、BehaviorSubjectをSignalで置き換えられる場面が多くあります。
 
 ```ts:BehaviorSubjectによる状態（旧）
 private readonly count$ = new BehaviorSubject(0);
@@ -144,7 +144,7 @@ private readonly count = signal(0);
 
 ただし、RxJSが不要になるわけではありません。`debounceTime`や`switchMap`のような、時間的な制御や非同期の合成は、依然としてRxJSの得意分野です。「現在の値の保持」はSignal、「複雑な非同期の流れ」はRxJS、という役割分担が、モダンAngularの姿です。この共存については、この章の次の節で詳しく扱います。
 
-### よくあるつまずき
+### Subject・BehaviorSubject・ReplaySubjectでよくあるつまずき
 
 - **通常のSubjectで現在値を期待する**: 通常の`Subject`は、購読前に流れた値を渡しません。現在の値が必要なら`BehaviorSubject`を使います。
 - **Subjectを無闇に公開する**: Serviceの外へSubjectをそのまま公開すると、どこからでも`next`で値を流せてしまい、流れの出どころが追えなくなります。外へは`asObservable()`で読み取り専用にして渡すのが安全です。
@@ -153,7 +153,7 @@ private readonly count = signal(0);
 
 ## RxJSとSignalsの共存
 
-ここまで、RxJSのObservableと、『SignalsとZoneless』の章で学んだSignalという、2つのリアクティブな仕組みを学んできました。どちらも「値の変化に反応する」という点で似ていますが、得意分野が異なります。モダンAngularでは、この2つを対立するものとしてどちらか一方を選ぶのではなく、それぞれの強みを活かして共存させます。
+ここまで、RxJSのObservableと、『SignalsとZoneless』の章で学んだSignalという2つのリアクティブな仕組みを学んできました。どちらも「値の変化に反応する」という点で似ていますが、得意分野が異なります。モダンAngularでは、この2つを対立するものとしてどちらか一方を選ぶのではなく、それぞれの強みを活かして共存させます。
 
 この節では、RxJSとSignalをつなぐ橋渡しの仕組みと、どちらをどの場面で使うべきかの指針を学びます。橋渡しには、Angularがrxjs-interopとして提供する`toSignal()`と`toObservable()`を使います。この2つを理解すれば、既存のRxJSベースのコードと、新しいSignalベースのコードを、無理なく組み合わせられるようになります。
 
@@ -209,7 +209,7 @@ export class Clock {
 
 `toSignal(interval(1000))`で、1秒ごとに値を流すObservableを、Signalに変えています。テンプレートでは`seconds()`と、ふつうのSignalとして読めます。`toSignal()`の利点は2つあります。ひとつは、テンプレートで`async`パイプを使わずに、Signalとして直接読めること。もうひとつは、購読の解除を自動でやってくれることです。Componentが破棄されると、内部の購読も解除されます。`initialValue`は、Observableが最初の値を流す前の値を指定するオプションです。
 
-HTTP通信の結果を`toSignal()`でSignalにすれば、RxJSベースの通信と、Signalベースの画面を、きれいにつなげます。『HTTP通信』の章でも、この組み合わせが登場します。
+HTTP通信の結果を`toSignal()`でSignalにすれば、RxJSベースの通信と、Signalベースの画面を、きれいにつなげます。[『HTTP通信』の章](./19-http)でも、この組み合わせが登場します。
 
 `toSignal()`には、いくつかのオプションがあります。`initialValue`のほかに、`requireSync`は、`BehaviorSubject`のように購読と同時に値を流すObservableに対して、初期値なしでも同期的に値を得られるようにするものです。同期的に必ず値があるとわかっているなら、これを使うと`undefined`を扱わずに済みます。これらのオプションは、変換元のObservableの性質に応じて選びます。多くの場合は`initialValue`を指定しておけば十分です。
 
@@ -282,9 +282,9 @@ count.set(3);
 
 Signalが状態管理の主役になると、「RxJSはもう不要では」と思うかもしれません。しかし、そうではありません。RxJSは、Signalには置き換えられない領域を持っています。
 
-複数の非同期処理を合成する、値の流れを時間的に制御する、キャンセルや再試行を扱う。こうした「イベントの流れ」を宣言的に組み立てる力は、依然としてRxJSにしかありません。また、HttpClientやRouter、Formsといったフレームワークの機能が、Observableを返す以上、RxJSの理解は欠かせません。Signalとの共存を前提に、RxJSは今後もAngular開発の重要な柱であり続けます。『Angularとは何か』の章で述べた「新旧を対立させない」姿勢は、ここでも当てはまります。新しいSignalと既存のRxJSは、競合ではなく分担の関係にあるのです。
+複数の非同期処理を合成する、値の流れを時間的に制御する、キャンセルや再試行を扱う。こうした「イベントの流れ」を宣言的に組み立てる力は、依然としてRxJSにしかありません。また、HttpClientやRouter、Formsといったフレームワークの機能が、Observableを返す以上、RxJSの理解は欠かせません。Signalとの共存を前提に、RxJSは今後もAngular開発の重要な柱であり続けます。[『Angularとは何か』の章](./02-angular-intro)で述べた「新旧を対立させない」姿勢は、ここでも当てはまります。新しいSignalと既存のRxJSは、競合ではなく分担の関係にあるのです。
 
-### よくあるつまずき
+### RxJSとSignalsの共存でよくあるつまずき
 
 - **何でもRxJSで書こうとする**: 単純な状態の保持までObservableで書くと、購読管理が増え、コードが複雑になります。状態はSignalに寄せ、RxJSは非同期の流れに絞ります。
 - **何でもSignalで書こうとする**: 逆に、`debounceTime`や`switchMap`が必要な処理を、Signalと`effect()`で無理に書こうとすると、かえって煩雑になります。時間的な制御は、素直にRxJSを使います。
@@ -305,7 +305,7 @@ Signalが状態管理の主役になると、「RxJSはもう不要では」と�
 2. その`id`をもとに、サーバーへデータを要求する（RxJS・HttpClient）
 3. 取得したデータを、画面に表示する（Signal）
 
-『Routerの基礎』の章で、`withComponentInputBinding()`により、`:id`が`input()`に結びつくことを学びました。ここに、RxJSとSignalを組み合わせると、URLの変化に追従してデータを取得する流れを、宣言的に書けます。
+[『Routerの基礎』の章](./14-router-basics)で、`withComponentInputBinding()`により、`:id`が`input()`に結びつくことを学びました。ここに、RxJSとSignalを組み合わせると、URLの変化に追従してデータを取得する流れを、宣言的に書けます。
 
 ### Signal入力を起点に組み立てる
 
@@ -441,7 +441,7 @@ export class ProductStore {
 
 ひとつ補足すると、`computed()`が再計算されるのは、その中で読んでいるSignalが変わったときだけです。この例では`selectedId()`を読んでいるので、`select()`でIDを変えれば`selected`も更新されます。一方、`findByIdSync()`が返すデータそのものが後から変わっても、それがSignalでない限り`selected`は追従しません。`computed()`の中で頼れるのは、同期的に取得できてSignalとして保持しているデータに限られる、と考えてください。サーバーから非同期に取得するデータを扱うなら、前の節の`toSignal()`のように、非同期の結果そのものをSignalにしておく必要があります。
 
-### よくあるつまずき
+### RouterとRxJS・Signals・状態管理でよくあるつまずき
 
 - **Component間の共有を`input`／`output`で無理につなぐ**: 離れたページ間の状態共有を、バケツリレーで実現しようとすると破綻します。共有したい状態は、Serviceに置くのが基本です。
 - **URLに表すべき状態をComponentに閉じ込める**: 「どの商品を見ているか」のような、共有・復元したい状態は、Componentの内部ではなくURLで表すと、ブックマークや戻る操作と自然に噛み合います。
