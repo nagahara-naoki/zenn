@@ -224,7 +224,7 @@ ng update
 
 引数なしで実行すると、更新可能なパッケージの一覧が表示されます。Angular本体を更新する場合は、対象を指定して実行します。`ng update`は、単にバージョンを上げるだけでなく、古い書き方を新しい書き方へ自動で変換する移行処理も行ってくれます。この仕組みがあるため、長期にわたって運用するアプリケーションでも、少しずつ最新の形へ追従していけます。
 
-### よくあるつまずき
+### 開発環境とAngular CLIでよくあるつまずき
 
 環境構築やCLIの実行でつまずきやすい点を、いくつか挙げておきます。
 
@@ -329,7 +329,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-`provideRouter(routes)`はルーティングを、`provideZonelessChangeDetection()`はZonelessの変更検知を有効にしています。かつてはこうした設定を`NgModule`に記述していましたが、モダンAngularでは、このように`provide〜`という関数を並べて設定します。ルーティングの詳細は『Routerの基礎』の章、Zonelessの変更検知については『SignalsとZoneless』の章で扱います。
+`provideRouter(routes)`はルーティングを、`provideZonelessChangeDetection()`はZonelessの変更検知を有効にしています。かつてはこうした設定を`NgModule`に記述していましたが、モダンAngularでは、このように`provide〜`という関数を並べて設定します。ルーティングの詳細は[『Routerの基礎』の章](./14-router-basics)、Zonelessの変更検知については[『SignalsとZoneless』の章](./13-signals-and-zoneless)で扱います。
 
 **App — ルートComponent**
 
