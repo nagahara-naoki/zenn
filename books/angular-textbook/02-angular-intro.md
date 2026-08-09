@@ -101,15 +101,15 @@ export class Counter {
 }
 ```
 
-いまはコードの細部を理解する必要はありません。「テンプレートと振る舞いが、ひとつのクラスにまとまっている」という感覚だけつかめれば十分です。Componentの詳細は、『TypeScriptとComponentの基本』の章から順に解説します。
+いまはコードの細部を理解する必要はありません。「テンプレートと振る舞いが、ひとつのクラスにまとまっている」という感覚だけつかめれば十分です。Componentの詳細は、[『TypeScriptとComponentの基本』の章](./04-component-basics)から順に解説します。
 
 **依存性の注入（DI）**
 
-DIは、ある部品が必要とする別の部品を、外側から渡す仕組みです。部品どうしが直接お互いを作り合うのではなく、フレームワークが依存関係を解決して渡します。これにより、部品を差し替えやすくなり、テストも書きやすくなります。DIはAngularの中核をなす仕組みで、『ServiceとDependency Injection』の章で詳しく扱います。
+DIは、ある部品が必要とする別の部品を、外側から渡す仕組みです。部品どうしが直接お互いを作り合うのではなく、フレームワークが依存関係を解決して渡します。これにより、部品を差し替えやすくなり、テストも書きやすくなります。DIはAngularの中核をなす仕組みで、[『ServiceとDependency Injection』の章](./10-service-and-di)で詳しく扱います。
 
 **リアクティブな状態管理**
 
-Angularには、状態の変化を扱うための仕組みが2つあります。ひとつは、Angular自身が備えるSignalsです。もうひとつは、非同期の値の流れを扱うRxJSというライブラリです。先ほどのコード例で使った`signal()`が、Signalsの基本のAPIです。Signalsは『SignalsとZoneless』の章で、RxJSは『RxJSの基礎』の章で本格的に解説します。
+Angularには、状態の変化を扱うための仕組みが2つあります。ひとつは、Angular自身が備えるSignalsです。もうひとつは、非同期の値の流れを扱うRxJSというライブラリです。先ほどのコード例で使った`signal()`が、Signalsの基本のAPIです。Signalsは[『SignalsとZoneless』の章](./13-signals-and-zoneless)で、RxJSは[『RxJSの基礎』の章](./16-rxjs-basics)で本格的に解説します。
 
 **Angular CLIによる開発体験**
 
@@ -190,7 +190,7 @@ Angularは、Angular 2以降、セマンティックバージョニングとい�
 各メジャーバージョンには、およそ18か月のサポート期間が設けられています。リリース直後の約6か月は、新機能や不具合修正が届くアクティブサポート期間です。続く約12か月は、重大な不具合とセキュリティの修正のみが提供されるLTS（Long-Term Support、長期サポート）期間になります。実務では、この期間を目安に更新の計画を立てます。つねに最新へ追従する必要はありませんが、サポートが切れたバージョンを使い続けると、セキュリティ修正を受け取れなくなります。サポート期間が終わる前に次のメジャーへ上げることを目標にすると、一度に飛び越える差分が小さくなり、更新の負担を抑えられます。この移行作業は、公式が提供する`ng update`コマンドが支援します。
 
 :::message
-バージョンがAngular 2から4へ飛んでいるのは、当時のRouterパッケージがすでにバージョン3であり、全体のバージョンを揃えるためにAngular 3が飛ばされたためです。
+バージョンがAngular 2から4へ飛んでいるのは、当時のRouterパッケージがすでにバージョン3だったからです。全体のバージョンを揃えるため、Angular 3は採番されませんでした。
 :::
 
 この定期リリースにあわせて、Angularは新機能を段階的に導入します。多くの機能は、次のような段階を踏んで成熟していきます。
@@ -219,7 +219,7 @@ Angularは、Angular 2以降、セマンティックバージョニングとい�
 
 Signalsは、状態の変化をきめ細かく追跡するための、Angular自身が備える仕組みです。値が変わったときに、その値に依存している箇所だけを効率よく更新できます。Angular 16（2023年5月）でプレビューとして登場し、Angular 20（2025年5月）で関連APIが軒並み安定版になりました。
 
-Signalsは単なる状態管理の道具ではなく、後述するZonelessや変更検知の仕組みと深く結びついています。この関係は、『変更検知の仕組み』の章や『SignalsとZoneless』の章で詳しく解説します。
+Signalsは単なる状態管理の道具ではなく、後述するZonelessや変更検知の仕組みと深く結びついています。この関係は、[『変更検知の仕組み』の章](./12-change-detection)や『SignalsとZoneless』の章で詳しく解説します。
 
 **Zoneless**
 
@@ -277,10 +277,10 @@ flowchart TD
 | 旧来の書き方 | モダンAngularの書き方 | 解説する章 |
 |---|---|---|
 | NgModule | Standalone Component | 『TypeScriptとComponentの基本』の章 |
-| `*ngIf` / `*ngFor` | `@if` / `@for` | 『テンプレートの記法とDirective概論』の章 |
-| `@Input()` | `input()` | 『データフローとinput()・output()』の章 |
+| `*ngIf` / `*ngFor` | `@if` / `@for` | [『テンプレートの記法とDirective概論』の章](./06-template-and-directive-intro) |
+| `@Input()` | `input()` | [『データフローとinput()・output()』の章](./08-data-flow-io) |
 | `@Output()` | `output()` | 『データフローとinput()・output()』の章 |
-| コンストラクタによる注入 | `inject()` | 『inject()とProvider・Injectorの階層』の章 |
+| コンストラクターによる注入 | `inject()` | [『inject()とProvider・Injectorの階層』の章](./11-inject-and-providers) |
 | `Zone.js`による変更検知 | Zoneless・Signals | 『SignalsとZoneless』の章 |
 
 本書は、このように新旧を対比しながら解説していきます。古い書き方を知ることは、既存コードを読み解き、移行を進めるうえで欠かせない力になります。
