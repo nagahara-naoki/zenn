@@ -18,7 +18,7 @@ createAction('[Tasks] Set Tasks', props<{ tasks: Task[] }>());
 createAction('[Tasks] Set Loading', props<{ loading: boolean }>());
 ```
 
-`Set Tasks`や`Set Loading`という名前は、「状態をどう書き換えるか」をそのまま表しています。これのどこが問題なのでしょうか。こう設計すると、1つの出来事に対して、いくつものActionを発行することになりがちです。「読み込みが成功した」という1つの出来事のために、`Set Tasks`と`Set Loading`を別々にdispatchする、といった具合です。すると、Devtoolsの履歴を見ても、機械的な操作が並ぶだけで、何が起きたのかが読み取れません。
+`Set Tasks`や`Set Loading`という名前は、「状態をどう書き換えるか」をそのまま表しています。これのどこが問題なのでしょうか。こう設計すると、1つの出来事に対して、いくつものActionを発行することになりがちです。「読み込みが成功した」という1つの出来事のために、`Set Tasks`と`Set Loading`を別々にdispatchする、といった具合です。すると、DevToolsの履歴を見ても、機械的な操作が並ぶだけで、何が起きたのかが読み取れません。
 
 直し方は、Action設計の章で見たとおりです。Actionは出来事として設計します。「読み込みが成功した」という`loadTasksSuccess`を1つ発行し、`tasks`の更新と`loading`の解除は、それを受けたReducerがまとめて行います。1つの出来事は、1つのActionで表します。
 
