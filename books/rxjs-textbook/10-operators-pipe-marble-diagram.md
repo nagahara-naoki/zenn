@@ -65,7 +65,7 @@ const evens$ = numbers$.pipe(filter((n) => n % 2 === 0));
 // numbers$ 自身は変わらない。doubled$ と evens$ は別々のObservable
 ```
 
-`numbers$`から、2倍する`doubled$`と、偶数だけを通す`evens$`という、2つの別のObservableを作りました。それでも`numbers$`自体は、まったく変わっていません。これは、配列の`map`や`filter`が元の配列を変えないのと、同じ発想です。この性質のおかげで、Observableを安心して使い回せます。
+`numbers$`から、2倍する`doubled$`と、偶数だけを通す`evens$`という2つのObservableを作りました。それでも`numbers$`自体は、まったく変わっていません。これは、配列の`map`や`filter`が元の配列を変えないのと、同じ発想です。この性質のおかげで、Observableを安心して使い回せます。
 
 ## Operator Chain
 
