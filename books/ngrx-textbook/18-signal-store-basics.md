@@ -4,7 +4,7 @@ title: "SignalStoreの基本"
 
 ここからは、Signalsをベースにした状態管理、SignalStoreに入ります。
 
-ここまで学んできたClassic Store（Action・Reducer・Selector・Effects）は、大規模で、予測可能性が重要なアプリに向いています。変更がすべてActionとして記録され、Devtoolsで追える、という強みがありました。しかし、その仕組みは記述量が多く、小さな状態にはやや重く感じられます。Actionを定義し、Reducerを書き、Selectorを作り……という手順は、ちょっとした状態を扱うには大げさなことがあります。
+ここまで学んできたClassic Store（Action・Reducer・Selector・Effects）は、大規模で、予測可能性が重要なアプリに向いています。変更がすべてActionとして記録され、DevToolsで追える、という強みがありました。しかし、その仕組みは記述量が多く、小さな状態にはやや重く感じられます。Actionを定義し、Reducerを書き、Selectorを作り……という手順は、ちょっとした状態を扱うには大げさなことがあります。
 
 SignalStoreは、AngularのSignalsを土台に、ずっと少ない記述で状態管理を実現する仕組みです。この章では、`signalStore`の基本、状態がSignalになること、派生値と更新メソッドの書き方を見ていきます。これまでのタスク管理の状態を、SignalStoreで組み立て直してみましょう。
 
@@ -176,7 +176,7 @@ export class TaskListComponent {
 | 派生値 | Selector（メモ化） | `withComputed`（`computed`） |
 | 更新 | Action → Reducer | メソッド＋`patchState` |
 | 記述量 | 多い | 少ない |
-| 変更の追跡 | Devtoolsで詳細に追える | 直接更新のため追いにくい |
+| 変更の追跡 | DevToolsで詳細に追える | 直接更新のため追いにくい |
 
 表を見ると、SignalStoreの手軽さがよくわかります。ただし、良いことばかりではありません。SignalStoreは更新が直接的なぶん、Classic StoreのようにはActionの履歴で追えません。「いつ、何がきっかけで状態が変わったか」を厳密に追いたい大規模アプリでは、Classic Storeの予測可能性が生きます。どちらを選ぶかは、アプリの規模と、予測可能性への要求で決まります。この使い分けは、本書の最終章で詳しく扱います。
 
