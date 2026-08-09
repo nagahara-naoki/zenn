@@ -34,7 +34,7 @@ flowchart LR
 
 ### signal() — 状態の基本単位
 
-`signal()`は、値を保持する、もっとも基本的なSignalです。『TypeScriptとComponentの基本』の章以降で使ってきたとおり、値を関数呼び出しの形で読み取り、`set()`や`update()`で書き換えます。
+`signal()`は、値を保持する、もっとも基本的なSignalです。[『TypeScriptとComponentの基本』の章](./04-component-basics)以降で使ってきたとおり、値を関数呼び出しの形で読み取り、`set()`や`update()`で書き換えます。
 
 ```ts:src/app/counter.ts
 import { Component, signal } from '@angular/core';
@@ -70,7 +70,7 @@ const user = signal({ id: 1, name: 'Alice' }, { equal: (a, b) => a.id === b.id }
 
 ### computed() — 派生する状態
 
-`computed()`は、ほかのSignalから計算して求まる、派生的なSignalを作ります。『データフローとinput()・output()』の章で入力から派生値を作るのに使ったものです。
+`computed()`は、ほかのSignalから計算して求まる、派生的なSignalを作ります。[『データフローとinput()・output()』の章](./08-data-flow-io)で入力から派生値を作るのに使ったものです。
 
 ```ts:src/app/cart.ts
 import { Component, computed, signal } from '@angular/core';
@@ -127,6 +127,8 @@ effect((onCleanup) => {
 強力な`effect()`ですが、多用は禁物です。値から値を導くだけなら、`effect()`ではなく`computed()`を使うべきです。`effect()`は、あくまで「Angularの外の世界」に作用させるための最終手段と考えます。
 
 たとえば、「`price`から`total`を求めたい」なら`computed()`です。これを`effect()`の中で`this.total.set(...)`と書くのは、遠回りで、間違いのもとになります。`effect()`が向くのは、`computed()`では表せない、ログ出力や外部APIの呼び出し、DOMの直接操作といった副作用に限られます。「値の派生は`computed()`、外界への作用は`effect()`」という切り分けを、原則にしてください。
+
+## 派生状態と依存関係を細かく制御する
 
 ### linkedSignal() — 書き込み可能な派生状態
 
@@ -199,7 +201,7 @@ effect(() => {
 
 この「Signalの変化が変更検知の起点になる」性質は、決定的な意味を持ちます。これまで変更検知の起点はZone.jsでしたが、Signalがあれば、Zone.jsに頼らずとも「いつ・どこを更新すべきか」がわかります。前章で見たZone.jsの課題を、Signalが根本から解消する道筋が、ここに見えてきます。それが、本章の次の節で扱うZonelessです。
 
-### よくあるつまずき
+### signal()・computed()・effect()による状態管理でよくあるつまずき
 
 - **`computed()`で済むのに`effect()`を使う**: 値から値を導くだけなら`computed()`です。`effect()`の中で別のSignalを`set()`すると、値の流れが追いにくくなり、無限ループの危険もあります。派生は`computed()`に任せます。
 - **`()`を付けずにSignalを比較する**: `if (count)`と書くと、値ではなくSignal（関数）そのものを評価してしまい、常に真になります。値を使うときは必ず`count()`と呼び出します。
@@ -208,7 +210,7 @@ effect(() => {
 
 ### Signalとテンプレートの相性
 
-最後に、Signalがテンプレートといかに自然になじむかを確認します。テンプレートでは、Signalを`count()`と読むだけで、その値の変化が自動的に表示へ反映されます。『Directiveの実装とPipe』の章で触れたPipeやAsyncPipeと違い、Signalの読み取りには特別な記法も購読の管理も要りません。`computed()`で導いた値も、同じように`total()`と読むだけです。状態をSignalで組み立てておけば、テンプレートは「必要な値を読む」だけで済み、更新の仕組みを意識せずに書けます。この素直さが、Signalファーストで設計する大きな動機になります。
+最後に、Signalがテンプレートといかに自然になじむかを確認します。テンプレートでは、Signalを`count()`と読むだけで、その値の変化が自動的に表示へ反映されます。[『Directiveの実装とPipe』の章](./07-directive-and-pipe)で触れたPipeやAsyncPipeと違い、Signalの読み取りには特別な記法も購読の管理も要りません。`computed()`で導いた値も、同じように`total()`と読むだけです。状態をSignalで組み立てておけば、テンプレートは「必要な値を読む」だけで済み、更新の仕組みを意識せずに書けます。この素直さが、Signalファーストで設計する大きな動機になります。
 
 ## NgZoneからSignals・Zonelessへ
 
@@ -248,7 +250,7 @@ Zone.jsがいないと、Angularはどうやって「状態が変わった」こ
 
 ### Zonelessを有効にする
 
-Zonelessは、アプリケーションの起動設定で有効にします。『開発環境・CLIとプロジェクト構成』の章で見た`app.config.ts`に、`provideZonelessChangeDetection()`を加えます。
+Zonelessは、アプリケーションの起動設定で有効にします。[『開発環境・CLIとプロジェクト構成』の章](./03-setup-and-structure)で見た`app.config.ts`に、`provideZonelessChangeDetection()`を加えます。
 
 ```ts:src/app/app.config.ts
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
