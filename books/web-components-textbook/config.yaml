@@ -1,0 +1,32 @@
+title: "Web Componentsの教科書"
+summary: "Custom Elements、Shadow DOM、Template、Slotの基礎から、公開API、アクセシビリティ、フォーム、テスト、配布、SSR、Litまで。ブラウザ標準で再利用可能なUIコンポーネントを設計する。"
+topics: ["webcomponents", "javascript", "typescript", "frontend", "html"]
+published: true
+price: 0
+chapters:
+  - 01-preface
+  - 02-web-components-overview
+  - 03-first-custom-element
+  - 04-definition-and-upgrade
+  - 05-lifecycle
+  - 06-attributes-and-properties
+  - 07-state-and-rendering
+  - 08-shadow-dom
+  - 09-template-and-slot
+  - 10-events-across-shadow-dom
+  - 11-shadow-dom-styling
+  - 12-theming-and-stylesheets
+  - 13-component-api-design
+  - 14-accessibility-and-focus
+  - 15-form-associated-custom-elements
+  - 16-security
+  - 17-performance
+  - 18-typescript
+  - 19-testing
+  - 20-package-and-documentation
+  - 21-framework-integration
+  - 22-declarative-shadow-dom-ssr
+  - 23-custom-states-scoped-registries
+  - 24-lit
+  - 25-complete-task-ui
+  - 26-glossary
