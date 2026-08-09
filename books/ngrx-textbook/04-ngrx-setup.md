@@ -140,9 +140,9 @@ export class TaskListComponent {
 
 なお、ここでは状態を`(state: any) => state.tasks.tasks`と、少し不格好に読み出しています。`any`を使っているのも、型の安全が効いていない印です。実務では、この読み出しをSelectorという専用の仕組みで、型安全に書きます。Selectorは、この先の章で導入します。
 
-## Devtoolsを導入する
+## DevToolsを導入する
 
-NgRxを使う大きな利点の1つが、Devtoolsによるデバッグです。前章で触れた「誰がいつ状態を変えたのか」を、実際に目で見られるようにします。
+NgRxを使う大きな利点の1つが、DevToolsによるデバッグです。前章で触れた「誰がいつ状態を変えたのか」を、実際に目で見られるようにします。
 
 `provideStoreDevtools`をプロバイダーに加えます。
 
@@ -170,7 +170,7 @@ export const appConfig: ApplicationConfig = {
 
 ```mermaid
 flowchart LR
-  D["dispatch(addTask)"] --> DT["Devtools に記録"]
+  D["dispatch(addTask)"] --> DT["DevTools に記録"]
   DT --> V["Action名と状態の変化を表示"]
 ```
 
