@@ -71,7 +71,7 @@ export class ProductListPage {
 
 **継承が楽になる**。クラスを継承するとき、Constructor Injectionでは、親が受け取っている依存を子のコンストラクターでも書き、`super()`へ渡す必要がありました。`inject()`なら、親クラスの中で`inject()`しているため、子はコンストラクターに手を加えなくて済みます。
 
-**関数の中でも使える**。これが特に大きな違いです。`inject()`は、クラスだけでなく、Angularが提供する関数の中でも呼べます。『ルーティング応用』の章で学ぶ関数型のRoute Guardや、『HTTP通信』の章で学ぶ関数型のInterceptorは、この性質の上に成り立っています。たとえば、Guardを次のように関数として書き、その中で依存を注入できます。
+**関数の中でも使える**。これが特に大きな違いです。`inject()`は、クラスだけでなく、Angularが提供する関数の中でも呼べます。[『ルーティング応用』の章](./15-router-advanced)で学ぶ関数型のRoute Guardや、[『HTTP通信』の章](./19-http)で学ぶ関数型のInterceptorは、この性質の上に成り立っています。たとえば、Guardを次のように関数として書き、その中で依存を注入できます。
 
 ```ts:src/app/auth-guard.ts
 import { inject } from '@angular/core';
@@ -130,7 +130,7 @@ private readonly config = inject(AppConfig, { optional: true });
 
 これらは、本章の次の節で学ぶInjectorの階層と関わります。ふだんは`inject(ProductService)`と書くだけで十分ですが、こうした細かな制御ができることも知っておくと、複雑な場面で役立ちます。旧来は、`@Optional()`・`@Self()`・`@SkipSelf()`といったデコレーターをコンストラクター引数に添えて、同じことを実現していました。`inject()`では、これらをオプションのオブジェクトとして渡せます。
 
-### よくあるつまずき
+### Constructor Injectionからinject()への移行でよくあるつまずき
 
 - **注入コンテキストの外で`inject()`を呼ぶ**: `inject()`は、クラスの初期化時（フィールド初期化子やコンストラクター）に呼びます。ボタンクリックのハンドラーなど、初期化が終わった後の処理の中で呼ぶと、エラーになります。依存は初期化時に受け取り、フィールドに保持しておきます。
 - **Constructor Injectionと混在させて混乱する**: 1つのクラスで両方を使うこともできますが、統一したほうが読みやすくなります。新規のコードは`inject()`に揃えるのがよいでしょう。
@@ -242,6 +242,8 @@ export class SectionOutline {
 ```
 
 `self`はこの逆で、探索を自身のElementInjectorだけに限り、親をたどりません。入れ子になった同名Serviceのうち、どの階層のものを使うかを、これらのオプションで意図して選べます。
+
+## Providerを用途に応じて定義する
 
 ### Providerの種類
 
@@ -359,7 +361,7 @@ private readonly validators = inject(VALIDATORS); // Validator[]
 
 同じトークンに対して、`multi: true`を付けたProviderと付けないProviderを混在させることはできません。どちらかに統一します。
 
-### よくあるつまずき
+### ProviderとInjectorの階層でよくあるつまずき
 
 - **どこに提供すべきか迷う**: まずは`providedIn: 'root'`を基本と考えます。Componentごとに独立したインスタンスが必要な、明確な理由があるときだけ、Componentの`providers`を使います。
 - **意図せず複数インスタンスができる**: `providedIn: 'root'`のServiceを、さらにComponentの`providers`にも登録すると、そのComponent配下では別インスタンスになります。共有したいServiceを二重に登録していないか、確認します。
