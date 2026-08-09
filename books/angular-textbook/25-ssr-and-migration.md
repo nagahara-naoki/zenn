@@ -15,7 +15,7 @@ title: "SSRとモダンAngularへの移行"
 
 ## SSRとHydration
 
-『Routerの基礎』の章で、SPAには「初期表示」と「検索対応」という弱点があると述べ、その対処がSSRだと予告しました。この節で、そのSSR（サーバーサイドレンダリング）と、それを支えるHydration（ハイドレーション）を学びます。
+[『Routerの基礎』の章](./14-router-basics)で、SPAには「初期表示」と「検索対応」という弱点があると述べ、その対処がSSRだと予告しました。この節で、そのSSR（サーバーサイドレンダリング）と、それを支えるHydration（ハイドレーション）を学びます。
 
 SSRは、サーバー側であらかじめHTMLを組み立ててから、ブラウザへ送る仕組みです。これにより、SPAの利点を保ちながら、初期表示を速くし、検索エンジンにも内容を伝えられます。近年のAngularは、SSRのセットアップを大きく簡素化し、`ng new`のオプションで手軽に始められるようになりました。この節では、SSRが何を解決するのか、そしてHydrationがどう働くのかを理解します。やや高度なテーマですが、実務で本格的なアプリを作るなら、知っておくべき内容です。
 
@@ -104,6 +104,8 @@ export const serverRoutes: ServerRoute[] = [
 
 同じアプリの中でも、ページの性質に応じて方式を混在させられます。「SSRか、SPAか」という二択ではなく、「このページはSSG、このページはSSR、この画面はCSR」と、ルート単位で最適な方式を割り当てられるのが、モダンAngularの描画の考え方です。
 
+## Hydrationでサーバー描画を引き継ぐ
+
 ### Hydrationとは何か
 
 ここで、ひとつ問題が生じます。サーバーが作ったHTMLが、すでにブラウザに表示されているところへ、JavaScriptのアプリが動き始めると、どうなるでしょうか。素朴に実装すると、アプリはブラウザ上で画面を最初から作り直し、サーバーが作ったHTMLを、いったん捨てて置き換えてしまいます。これでは、画面が一瞬ちらつき、無駄も生じます。
@@ -129,7 +131,7 @@ Hydrationには、明確な利点があります。DOMを作り直さないた�
 
 一方、注意点もあります。Hydrationは、「サーバーが作ったDOMと、ブラウザで作られるはずのDOMが、一致していること」を前提とします。もし両者が食い違うと、Hydrationがうまくいきません。食い違いの主な原因は、次のようなものです。
 
-- **DOMの直接操作**: `nativeElement`を通じてDOMを直接いじると、サーバーとブラウザで差が出ます。『Directiveの実装とPipe』の章や『セキュリティ・アクセシビリティ・パフォーマンス』の章でDOMの直接操作を避けるべきと述べたのは、ここにも関わります。
+- **DOMの直接操作**: `nativeElement`を通じてDOMを直接いじると、サーバーとブラウザで差が出ます。[『Directiveの実装とPipe』の章](./07-directive-and-pipe)や[『セキュリティ・アクセシビリティ・パフォーマンス』の章](./24-security-a11y-performance)でDOMの直接操作を避けるべきと述べたのは、ここにも関わります。
 - **不正なHTML構造**: 仕様に反したHTMLの入れ子は、ブラウザが自動補正するため、サーバーとの差を生みます。
 - **一部の外部ライブラリ**: DOMを激しく操作するライブラリは、Hydrationと相性が悪いことがあります。
 
@@ -166,9 +168,15 @@ export const appConfig: ApplicationConfig = {
 }
 ```
 
-この例では、カートのComponentは、画面内に入ってくるまでHydrationされません。それまでは、サーバーが返した静的なHTMLがそのまま表示され、ブラウザはこの部分のJavaScriptを実行しません。`hydrate`トリガーには、`on viewport`のほかに、`on idle`（ブラウザが手すきになったら）、`on interaction`（クリックやキー操作があったら）、`on hover`、`on immediate`、`on timer(500ms)`、条件式で制御する`when`、そして永続的に静的なままにする`never`があります。前章で学んだ`@defer`の遅延読み込みトリガーと、考え方は同じです。
+この例では、カートのComponentは、画面内に入ってくるまでHydrationされません。それまでは、サーバーが返した静的なHTMLがそのまま表示され、ブラウザはこの部分のJavaScriptを実行しません。
 
-これにより、最初にブラウザで動かすJavaScriptの量を、さらに減らせます。ページの大部分は静的なHTMLのまま表示し、操作が必要になった部分だけを、順にアプリとして動かす、という最適化です。インクリメンタルHydrationは、Angular 19（2024年）で`withIncrementalHydration()`として導入され、v22では`provideClientHydration()`を使うだけで既定で有効になりました。インクリメンタルHydrationを使うと、先ほどのイベントリプレイは自動で有効になります。段階的にHydrationする以上、まだHydrationされていない部分への操作を記録し、あとから再生する必要があるためです。大規模なアプリで、初期表示をぎりぎりまで速くしたい場面で、力を発揮します。
+`hydrate`トリガーには、`on viewport`のほかに、`on idle`（ブラウザが手すきになったら）、`on interaction`（クリックやキー操作があったら）、`on hover`、`on immediate`、`on timer(500ms)`、条件式で制御する`when`、そして永続的に静的なままにする`never`があります。前章で学んだ`@defer`の遅延読み込みトリガーと、考え方は同じです。
+
+これにより、最初にブラウザで動かすJavaScriptの量をさらに減らせます。ページの大部分は静的なHTMLのまま表示し、操作が必要になった部分だけを順にアプリとして動かす最適化です。
+
+インクリメンタルHydrationは、Angular 19（2024年）で`withIncrementalHydration()`として導入され、v22では`provideClientHydration()`を使うだけで既定で有効になりました。この機能を使うと、先ほどのイベントリプレイも自動で有効になります。まだHydrationされていない部分への操作を記録し、あとから再生する必要があるためです。大規模なアプリで、初期表示をぎりぎりまで速くしたい場面で力を発揮します。
+
+## SSRを採用するか判断する
 
 ### SSRを使うべきか
 
@@ -184,7 +192,7 @@ SSRで気をつけたいのが、データ取得の重複です。素朴に実�
 
 この重複を防ぐのが、TransferState（トランスファーステート）という仕組みです。サーバー側で取得したデータを、HTMLに埋め込んでブラウザへ渡し、ブラウザ側では、その埋め込まれたデータを再利用します。同じデータの二度目の取得を避けられます。
 
-ここで知っておきたいのは、この仕組みが自動で働くことです。`provideClientHydration()`を有効にしていれば、HttpClientによるGETリクエストの結果は、自動でキャッシュされ、サーバーからブラウザへ転送されます。『HTTP通信（HttpClient・resource・Interceptor）』の章で学んだHttpClientや`httpResource()`を使っていれば、TransferStateを自分で書かなくても、この重複はほとんど避けられます。かつては手作業だった転送が、Hydrationの標準機能になったのです。
+ここで知っておきたいのは、この仕組みが自動で働くことです。`provideClientHydration()`を有効にしていれば、HttpClientによるGETリクエストの結果は、自動でキャッシュされ、サーバーからブラウザへ転送されます。[『HTTP通信（HttpClient・resource・Interceptor）』の章](./19-http)で学んだHttpClientや`httpResource()`を使っていれば、TransferStateを自分で書かなくても、この重複はほとんど避けられます。かつては手作業だった転送が、Hydrationの標準機能になったのです。
 
 挙動を細かく調整したいときは、`withHttpTransferCacheOptions()`を渡します。認証付きのリクエストは既定では転送されないため、必要ならここで明示します。
 
@@ -257,7 +265,7 @@ Hydrationがうまくいかないとき、その多くは、サーバーが作�
 
 警告を見つけたら、先に挙げた原因を疑います。DOMを直接操作していないか、`window`や`document`をサーバーでも呼んでいないか、HTMLの入れ子が仕様どおりかを確認します。原因のComponentが特定できたら、DOM操作を`afterNextRender()`へ移すなど、根本を直します。応急処置として`ngSkipHydration`で対象外にもできますが、警告は「設計を見直すサイン」と捉えるのが健全です。この警告は本番ビルドでは出ないため、開発中に気づいて直しておくことが大切です。
 
-### よくあるつまずき
+### SSRとHydrationでよくあるつまずき
 
 - **DOMを直接操作する**: `nativeElement`でDOMを直接いじると、サーバーとブラウザでDOMが食い違い、Hydrationが崩れます。テンプレートとバインディングで表現します。
 - **ブラウザ専用のAPIを無防備に使う**: `window`や`document`は、サーバー側には存在しません。SSR環境では、これらを直接使うとエラーになります。実行環境を確認するか、ブラウザでのみ動く仕組み（`afterNextRender`など）を使います。
@@ -274,11 +282,11 @@ Hydrationがうまくいかないとき、その多くは、サーバーが作�
 
 まず、移行にあたっての心構えです。既存のアプリを、一度にすべて新しい形へ書き換えるのは、危険で、現実的でもありません。大量の変更は、思わぬ不具合を招き、レビューも困難になります。
 
-Angularの移行は、段階的に進めるのが基本です。幸い、Angularは新旧の書き方が共存できます。NgModuleとStandaloneは混在でき、`@Input`と`input()`も、`*ngIf`と`@if`も、同じアプリの中に併存できます。ですから、「新しく書く部分はモダンな書き方で、既存の部分は、機能ごとに少しずつ移行する」という進め方が可能です。『Angularとは何か』の章で「新旧を否定的に語らない」と述べたのは、この段階的移行を支える姿勢でもあります。旧APIは、移行を待つ有効なコードであり、一気に敵視して消し去るべきものではありません。
+Angularの移行は、段階的に進めるのが基本です。幸い、Angularは新旧の書き方が共存できます。NgModuleとStandaloneは混在でき、`@Input`と`input()`も、`*ngIf`と`@if`も、同じアプリの中に併存できます。ですから、「新しく書く部分はモダンな書き方で、既存の部分は、機能ごとに少しずつ移行する」という進め方が可能です。[『Angularとは何か』の章](./02-angular-intro)で「新旧を否定的に語らない」と述べたのは、この段階的移行を支える姿勢でもあります。旧APIは、移行を待つ有効なコードであり、一気に敵視して消し去るべきものではありません。
 
 ### バージョンを上げる
 
-移行の出発点は、Angular自体のバージョンを上げることです。『開発環境・CLIとプロジェクト構成』の章で学んだ`ng update`を使います。
+移行の出発点は、Angular自体のバージョンを上げることです。[『開発環境・CLIとプロジェクト構成』の章](./03-setup-and-structure)で学んだ`ng update`を使います。
 
 ```bash
 ng update @angular/core @angular/cli
@@ -294,18 +302,18 @@ ng update @angular/core @angular/cli
 
 | 移行対象 | コマンド | 扱った章 |
 |---|---|---|
-| Standaloneへ | `ng generate @angular/core:standalone` | 『TypeScriptとComponentの基本』の章 |
-| 制御フローへ | `ng generate @angular/core:control-flow` | 『テンプレートの記法とDirective概論』の章 |
-| `input()`へ | `ng generate @angular/core:signal-input-migration` | 『データフローとinput()・output()』の章 |
-| `inject()`へ | `ng generate @angular/core:inject` | 『inject()とProvider・Injectorの階層』の章 |
+| Standaloneへ | `ng generate @angular/core:standalone` | [『TypeScriptとComponentの基本』の章](./04-component-basics) |
+| 制御フローへ | `ng generate @angular/core:control-flow` | [『テンプレートの記法とDirective概論』の章](./06-template-and-directive-intro) |
+| `input()`へ | `ng generate @angular/core:signal-input-migration` | [『データフローとinput()・output()』の章](./08-data-flow-io) |
+| `inject()`へ | `ng generate @angular/core:inject` | [『inject()とProvider・Injectorの階層』の章](./11-inject-and-providers) |
 
-これらの移行ツールは、対象を自動で検出し、変換します。自動で判断できない箇所には印（TODOコメント）が残されるため、そこは手作業で確認します。移行の前には変更をコミットしておき、差分を確認しながら進めるのが安全です。すべてを一度に適用するのではなく、ツールごとに、機能ごとに、段階的に進めるとよいでしょう。移行ツールを実行した後は、アプリが正しく動くことを、テスト（『アーキテクチャとテスト』の章）で確認します。テストが整備されていれば、移行による意図しない変化を、すぐに検出できます。移行とテストは、車の両輪です。
+これらの移行ツールは、対象を自動で検出し、変換します。自動で判断できない箇所には印（TODOコメント）が残されるため、そこは手作業で確認します。移行の前には変更をコミットしておき、差分を確認しながら進めるのが安全です。すべてを一度に適用するのではなく、ツールごとに、機能ごとに、段階的に進めるとよいでしょう。移行ツールを実行した後は、アプリが正しく動くことを、テスト（[『アーキテクチャとテスト』の章](./23-architecture-and-testing)）で確認します。テストが整備されていれば、移行による意図しない変化を、すぐに検出できます。移行とテストは、車の両輪です。
 
 ### 移行の順序
 
 複数の移行を行う場合、順序にも指針があります。一般には、土台となるものから進めます。
 
-まず、NgModuleからStandaloneへの移行が、多くの移行の前提になります。Standaloneが土台になって、遅延読み込みや、他のモダンな書き方が活きるためです。次に、制御フロー（`@if`・`@for`）への移行は、テンプレートを整理し、`CommonModule`への依存を減らします。そして、`input()`や`inject()`への移行で、Signalベースの書き方へ寄せていきます。状態管理をSignalsへ移すのは、これらの上に進める、より大きな取り組みです（`Signals`の考え方は『SignalsとZoneless』の章で扱いました）。
+まず、NgModuleからStandaloneへの移行が、多くの移行の前提になります。Standaloneが土台になって、遅延読み込みや、他のモダンな書き方が活きるためです。次に、制御フロー（`@if`・`@for`）への移行は、テンプレートを整理し、`CommonModule`への依存を減らします。そして、`input()`や`inject()`への移行で、Signalベースの書き方へ寄せていきます。状態管理をSignalsへ移すのは、これらの上に進める、より大きな取り組みです（`Signals`の考え方は[『SignalsとZoneless』の章](./13-signals-and-zoneless)で扱いました）。
 
 変更検知の土台をZone.jsからZonelessへ移すのも、大きな一歩です。Zonelessはv22の新規プロジェクトでは既定ですが、既存アプリでは起動設定に`provideZonelessChangeDetection()`を加えて切り替えます。
 

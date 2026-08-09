@@ -39,7 +39,7 @@ Honoの`c.req`は、Web標準の`Request`をそのまま渡すだけではなく
 
 ## パスパラメータを読む
 
-パスパラメータは、URLの一部を変数として受け取る仕組みです。
+ルートパターンに`:id`を書く方法は、第5章「RoutingとHandler」で扱いました。ここでは、マッチした値をHandler内で読み取る操作に絞ります。
 
 ```ts
 app.get('/tasks/:id', (c) => {
@@ -50,18 +50,7 @@ app.get('/tasks/:id', (c) => {
 ```
 
 `GET /tasks/task-1`にアクセスすると、`id`には`task-1`が入ります。
-
-複数のパスパラメータがある場合は、まとめて取得できます。
-
-```ts
-app.get('/users/:userId/tasks/:taskId', (c) => {
-  const { userId, taskId } = c.req.param();
-
-  return c.json({ userId, taskId });
-});
-```
-
-パスパラメータは、リソースを特定する値に向いています。タスクID、ユーザーID、コメントIDなどです。
+引数なしの`c.req.param()`なら、複数のパスパラメータをオブジェクトとしてまとめて取得できます。ルートの作り方は第5章、受け取った値の検証は第10章以降で扱います。
 
 ## クエリ文字列を読む
 

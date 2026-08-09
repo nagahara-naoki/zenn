@@ -1,0 +1,39 @@
+title: "API設計の教科書"
+summary: "変更に強く、利用者が迷わないWeb APIを設計する。HTTP、リソース設計、エラー、認証、冪等性、バージョニング、OpenAPIまでを、イベント予約APIの設計を通して体系的に学ぶ。"
+topics: ["api", "rest", "http", "openapi", "backend"]
+published: true
+price: 0
+chapters:
+  - 01-api-as-contract
+  - 02-predictable-api
+  - 03-from-requirements-to-api
+  - 04-http-request-response
+  - 05-resource-and-uri
+  - 06-http-methods
+  - 07-status-codes
+  - 08-domain-to-resource
+  - 09-resource-granularity
+  - 10-naming-and-data-types
+  - 11-actions-and-state-transitions
+  - 12-request-design
+  - 13-response-design
+  - 14-error-design
+  - 15-collection-api
+  - 16-pagination-and-large-data
+  - 17-authentication
+  - 18-authorization-and-tenancy
+  - 19-api-security
+  - 20-idempotency-concurrency-retry
+  - 21-cache-and-rate-limit
+  - 22-compatibility-and-versioning
+  - 23-webhook-and-async
+  - 24-openapi
+  - 25-testing-and-operations
+  - 26-complete-event-api
+  - appendix-a-http-reference
+  - appendix-b-design-checklist
+  - appendix-c-error-catalog
+  - appendix-d-openapi-example
+  - appendix-e-api-styles
+  - appendix-f-realtime-comparison
+  - appendix-g-glossary

@@ -1,8 +1,8 @@
 ---
-title: "Router Store・Devtools・Meta-Reducer"
+title: "Router Store・DevTools・Meta-Reducer"
 ---
 
-この章では、実務でNgRxをより強く支える、3つの仕組みを扱います。ルーティングの状態を連携させるRouter Store、開発を助けるDevtools、そしてReducer全体に横断的な処理を差し込むMeta-Reducerです。
+この章では、実務でNgRxをより強く支える、3つの仕組みを扱います。ルーティングの状態を連携させるRouter Store、開発を助けるDevTools、そしてReducer全体に横断的な処理を差し込むMeta-Reducerです。
 
 どれも、それ単体で1章になるほど大きなテーマではありません。しかし、知っておくと、アプリの設計とデバッグがぐっと楽になる道具です。1つずつ、何のためのものかから見ていきます。
 
@@ -53,11 +53,11 @@ export const selectTaskFromRoute = createSelector(
 
 こうすると、コンポーネントが自分でURLから値を取り出して、Serviceを呼んでタスクを探す、といった手作業が要らなくなります。「いまどの画面にいて、どのタスクを見ているか」が、すべて状態として一貫して扱えます。
 
-## Devtoolsで状態の変化を追う
+## DevToolsで状態の変化を追う
 
-セットアップの章で導入したDevtoolsは、実務でとても強力なデバッグ手段になります。あらためて、その使いどころを見ておきましょう。
+セットアップの章で導入したDevToolsは、実務でとても強力なデバッグ手段になります。あらためて、その使いどころを見ておきましょう。
 
-Devtoolsを使うと、次の操作が行えます。
+DevToolsを使うと、次の操作が行えます。
 
 - 発行されたActionの履歴を、時系列で一覧する
 - 各Actionの前後で、状態がどう変わったかを見比べる
@@ -65,12 +65,12 @@ Devtoolsを使うと、次の操作が行えます。
 
 ```mermaid
 flowchart LR
-  A["Actionの履歴"] --> D["Devtools"]
+  A["Actionの履歴"] --> D["DevTools"]
   S["状態の変化"] --> D
   D --> T["タイムトラベルで再現"]
 ```
 
-状態管理の章の冒頭で、「誰がいつ状態を変えたのか追えない」という問題を挙げました。Devtoolsは、この問題を完全に解決します。すべての変更がActionとして履歴に残り、それぞれの前後の状態も見られるからです。Action設計の章で、Action名を`[発生源] 出来事`の形にこだわったのは、まさにこの履歴を読みやすくするためでした。ここで、その工夫が報われます。
+状態管理の章の冒頭で、「誰がいつ状態を変えたのか追えない」という問題を挙げました。DevToolsは、この問題を完全に解決します。すべての変更がActionとして履歴に残り、それぞれの前後の状態も見られるからです。Action設計の章で、Action名を`[発生源] 出来事`の形にこだわったのは、まさにこの履歴を読みやすくするためでした。ここで、その工夫が報われます。
 
 ## Meta-Reducer — Reducerを横断する処理
 
@@ -127,11 +127,11 @@ export function resetOnLogoutMetaReducer(
 
 ## まとめ
 
-この章では、Router Store・Devtools・Meta-Reducerを確認しました。
+この章では、Router Store・DevTools・Meta-Reducerを確認しました。
 
 - `@ngrx/router-store`は、URLやパラメータを状態として取り込みます。
 - `getRouterSelectors`で、ルート情報をSelectorとして読み出し、ほかの状態と組み合わせられます。
-- Devtoolsは、Action履歴・状態変化・タイムトラベルで、状態管理を可視化します。
+- DevToolsは、Action履歴・状態変化・タイムトラベルで、状態管理を可視化します。
 - Meta-Reducerは、Reducerを包み、すべてのActionに横断的な処理を差し込みます。
 - ログ記録、状態の保存と復元、ログアウト時のリセットに向いています。
 

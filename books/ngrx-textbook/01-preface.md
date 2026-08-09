@@ -54,7 +54,7 @@ flowchart TD
 | 基本 | 「状態管理はなぜ複雑になるのか」「NgRxと単方向データフロー」「NgRxプロジェクトをセットアップする」 |
 | 状態の設計と読み書き | 「Stateを設計する」「Actionをイベントとして設計する」「Reducerとイミュータブルな状態更新」「Feature StoreとcreateFeature」「Selectorとメモ化」「Selectorを組み合わせてViewModelを作る」 |
 | Effects | 「Effectsの基本」「API通信とFlattening Operatorの選択」「Effectのエラー・キャンセル・状態参照」 |
-| 実務設計 | 「Entityによるコレクション管理」「Router Store・Devtools・Meta-Reducer」「Loading・Error・Cacheを設計する」「大規模アプリケーションの構成」 |
+| 実務設計 | 「Entityによるコレクション管理」「Router Store・DevTools・Meta-Reducer」「Loading・Error・Cacheを設計する」「大規模アプリケーションの構成」 |
 | SignalStore | 「SignalStoreの基本」「SignalStoreの非同期処理と拡張」「ComponentStoreとSignalStoreへの移行」 |
 | テスト | 「ReducerとSelectorをテストする」「Effects・Component・SignalStoreをテストする」 |
 | アンチパターンと使い分け | 「NgRxのアンチパターン」「状態管理手法の使い分けと導入戦略」 |

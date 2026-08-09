@@ -567,12 +567,12 @@ RxJSの教科書
         ↓
 Angularの教科書
         ↓
-NgRxによる状態管理
+NgRxの教科書
 ```
 
 『RxJSの教科書』は、フロントエンド開発に向かうシリーズの土台に位置付けます。RxJSはAngular開発の多くの場面で登場し、NgRxではさらに深く使われます。
 
-AngularでのRxJS実践（HttpClient、購読の管理、Signalsとの連携）は『Angularの教科書』で、NgRx EffectsでのOperator選択は『NgRxによる状態管理』で扱います。
+AngularでのRxJS実践（HttpClient、購読の管理、Signalsとの連携）は『Angularの教科書』で、NgRx EffectsでのOperator選択は『NgRxの教科書』で扱います。
 
 本書の目標は、RxJSのOperatorを覚えることではありません。
 

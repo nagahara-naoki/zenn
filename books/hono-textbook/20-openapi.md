@@ -36,8 +36,8 @@ OpenAPIには、次のような情報を書けます。
 
 - パス
 - HTTPメソッド
-- クエリパラメーター
-- パスパラメーター
+- クエリパラメータ
+- パスパラメータ
 - リクエストボディ
 - レスポンス
 - エラーレスポンス
@@ -129,7 +129,7 @@ npm install @scalar/hono-api-reference
 
 ## OpenAPIHonoを使う
 
-通常のHonoではなく、`OpenAPIHono` を使います。
+通常のHonoに代えて、`OpenAPIHono`を使います。
 
 ```ts
 import { OpenAPIHono } from '@hono/zod-openapi'
@@ -154,7 +154,7 @@ export default app
 import { z } from '@hono/zod-openapi'
 ```
 
-通常の `zod` ではなく、`@hono/zod-openapi` からimportするのがポイントです。
+ここでのimport元には、`@hono/zod-openapi`を指定します。通常の`zod`からimportすると、OpenAPI用の拡張を利用できません。
 
 タスクのスキーマを定義します。
 
@@ -207,7 +207,7 @@ export const CreateTaskSchema = z
   .openapi('CreateTask')
 ```
 
-パスパラメーターもスキーマとして定義できます。
+パスパラメータもスキーマとして定義できます。
 
 ```ts
 export const TaskParamsSchema = z.object({
@@ -221,7 +221,7 @@ export const TaskParamsSchema = z.object({
 })
 ```
 
-クエリパラメーターも同じです。
+クエリパラメータも同じです。
 
 ```ts
 export const ListTasksQuerySchema = z.object({
@@ -292,7 +292,7 @@ API利用者が知りたいのは、失敗したときに何が返るかでも�
 
 この定義は、API利用者に見せる契約書のようなものです。
 Handlerの中身を知らなくても、どんなクエリを渡せるか、どんなステータスコードが返るかを読み取れるようにします。
-そのため、成功レスポンスだけでなく、認証エラーなどもここに含めます。
+そのため、成功レスポンスに加え、認証エラーなどもここに含めます。
 
 ```ts
 // src/routes/openapi/tasks.ts
@@ -640,7 +640,7 @@ const app = new OpenAPIHono()
 
 ## 非推奨機能と移行期間
 
-古いAPIをやめる場合は、いきなり消すのではなく、非推奨期間を設けます。
+古いAPIをやめる場合は、停止日までの非推奨期間を設けます。
 
 ```txt
 2026-08-01: v2公開
@@ -710,7 +710,7 @@ flowchart TB
 - API仕様と実装のずれを防ぐ必要がある
 - 破壊的変更、バージョニング、非推奨期間を意識する
 
-これで、タスク管理APIは「実装する」だけでなく、「使ってもらう」ための形に近づきました。
+これで、タスク管理APIは実装から一歩進み、「使ってもらう」ための形に近づきました。
 
 次章からは、テストに入ります。
 Honoの `app.request()` と `testClient()` を使って、APIを安全に育てるための土台を作ります。

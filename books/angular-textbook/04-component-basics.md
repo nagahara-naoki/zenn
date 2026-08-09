@@ -141,7 +141,7 @@ class Counter {
 }
 ```
 
-クラスには、インスタンスを生成するときに呼ばれる特別なメソッド、コンストラクタ（`constructor`）を定義できます。プロパティの初期化によく使われます。
+クラスには、インスタンスを生成するときに呼ばれる特別なメソッド、コンストラクター（`constructor`）を定義できます。プロパティの初期化によく使われます。
 
 ```ts
 class Counter {
@@ -155,7 +155,7 @@ class Counter {
 const counter = new Counter(10);
 ```
 
-TypeScriptには、コンストラクタの引数にアクセス修飾子を付けると、プロパティの宣言と代入を1行にまとめられる書き方があります。これをパラメータプロパティと呼びます。
+TypeScriptには、コンストラクターの引数にアクセス修飾子を付けると、プロパティの宣言と代入を1行にまとめられる書き方があります。これをパラメータプロパティと呼びます。
 
 ```ts
 class Counter {
@@ -163,7 +163,7 @@ class Counter {
 }
 ```
 
-この1行だけで、`private`な`count`プロパティが宣言され、コンストラクタに渡された値がそのまま代入されます。プロパティ宣言と代入をそれぞれ書く先ほどの`Counter`と、できあがるものは同じです。
+この1行だけで、`private`な`count`プロパティが宣言され、コンストラクターに渡された値がそのまま代入されます。プロパティ宣言と代入をそれぞれ書く先ほどの`Counter`と、できあがるものは同じです。
 
 Angularでは、Serviceを注入する旧来のConstructor Injectionで、このパラメータプロパティが多用されてきました。
 
@@ -184,7 +184,7 @@ export class UserProfile {
 }
 ```
 
-`constructor(private userService: UserService) {}`という1行が、`userService`という`private`プロパティの宣言と、渡されたServiceインスタンスの代入を同時に行っています。以降のメソッドからは、`this.userService`としてそのServiceを使えます。現在の標準はDIを`inject()`関数で受け取る書き方ですが、これは『inject()とProvider・Injectorの階層』の章で扱います。パラメータプロパティの意味を知っておくと、こうした旧来のコードも迷わず読めます。
+`constructor(private userService: UserService) {}`という1行が、`userService`という`private`プロパティの宣言と、渡されたServiceインスタンスの代入を同時に行っています。以降のメソッドからは、`this.userService`としてそのServiceを使えます。現在の標準はDIを`inject()`関数で受け取る書き方ですが、これは[『inject()とProvider・Injectorの階層』の章](./11-inject-and-providers)で扱います。パラメータプロパティの意味を知っておくと、こうした旧来のコードも迷わず読めます。
 
 ### ジェネリクス
 
@@ -197,7 +197,7 @@ const count: Signal<number> = signal(0);
 const names: Array<string> = ['a', 'b'];
 ```
 
-いまはすべてを理解する必要はありません。「`<>`の中は、扱う値の型を表している」と読めれば十分です。Signalの詳細は『SignalsとZoneless』の章、Observableの`Observable<T>`は『RxJSの基礎（Observable・購読・Operator）』の章で扱います。
+いまはすべてを理解する必要はありません。「`<>`の中は、扱う値の型を表している」と読めれば十分です。Signalの詳細は[『SignalsとZoneless』の章](./13-signals-and-zoneless)、Observableの`Observable<T>`は[『RxJSの基礎（Observable・購読・Operator）』の章](./16-rxjs-basics)で扱います。
 
 サーバー通信でも、`http.get<User[]>(...)`のように、受け取るデータの型をジェネリクスで指定します。型を渡しておくと、返ってきた値がその型として扱われ、後続のコードで補完や型チェックが効くようになります。このように、ジェネリクスはAngularのAPIを使いこなすうえで避けて通れない記法です。最初は`<>`の中身が何を表すのかを読み取れれば十分で、自分で複雑なジェネリクスを書けるようになる必要は、当面ありません。
 
@@ -316,7 +316,7 @@ export class Greeting {}
 - **styleUrl / styles**: スタイルを指定します。こちらも別ファイルか直接記述かを選べます。
 - **imports**: このテンプレートで使う、ほかのComponentやDirective、Pipeを宣言します。
 
-このほかにも、`host`（ホスト要素の属性やイベントの扱い方）・`providers`（このComponent配下でDIに登録するService）・`changeDetection`（変更検知の方式）といった設定があります。それぞれ該当する章で扱います。なお、Angular v22で生成する新規Componentは、`changeDetection`が既定で`ChangeDetectionStrategy.OnPush`になります。この意味は『変更検知の仕組み（Default・OnPush・Zone.js）』の章で解説します。
+このほかにも、`host`（ホスト要素の属性やイベントの扱い方）・`providers`（このComponent配下でDIに登録するService）・`changeDetection`（変更検知の方式）といった設定があります。それぞれ該当する章で扱います。なお、Angular v22で生成する新規Componentは、`changeDetection`が既定で`ChangeDetectionStrategy.OnPush`になります。この意味は[『変更検知の仕組み（Default・OnPush・Zone.js）』の章](./12-change-detection)で解説します。
 
 テンプレートやスタイルを別ファイルに分ける場合は、次のように書きます。実務では、こちらの形が一般的です。
 
@@ -422,13 +422,13 @@ export class Greeting {
 }
 ```
 
-`{{ name() }}`は補間（interpolation）と呼ばれる記法で、クラスの値をテンプレートに埋め込みます。ここでは`name`がSignalなので、`name()`と呼び出して値を取り出しています。このようなテンプレートとクラスのやり取り、いわゆるデータバインディングは、『テンプレートの記法とDirective概論』の章で本格的に扱います。ここでは「クラスとテンプレートは連携する」という点だけ押さえておけば十分です。
+`{{ name() }}`は補間（interpolation）と呼ばれる記法で、クラスの値をテンプレートに埋め込みます。ここでは`name`がSignalなので、`name()`と呼び出して値を取り出しています。このようなテンプレートとクラスのやり取り、いわゆるデータバインディングは、[『テンプレートの記法とDirective概論』の章](./06-template-and-directive-intro)で本格的に扱います。ここでは「クラスとテンプレートは連携する」という点だけ押さえておけば十分です。
 
 ### Componentが生まれてから消えるまで
 
 Componentは、画面に表示されるときに生成され、不要になると破棄されます。生成・表示・破棄といった節目には、それぞれ処理を差し込むための仕組みが用意されています。これをライフサイクルと呼びます。
 
-たとえば「Componentが表示された直後にデータを読み込む」「破棄されるときに後始末をする」といった処理を、決められたタイミングで実行できます。ライフサイクルは、入力値の変化とあわせて『双方向バインディングとライフサイクル』の章で詳しく扱います。いまは「Componentには一生（ライフサイクル）がある」ということだけ知っておいてください。
+たとえば「Componentが表示された直後にデータを読み込む」「破棄されるときに後始末をする」といった処理を、決められたタイミングで実行できます。ライフサイクルは、入力値の変化とあわせて[『双方向バインディングとライフサイクル』の章](./09-two-way-and-lifecycle)で詳しく扱います。いまは「Componentには一生（ライフサイクル）がある」ということだけ知っておいてください。
 
 たとえば、`ngOnInit`は生成直後の初期化処理に、`ngOnDestroy`は破棄されるときの後始末に使われます。データの読み込みを`ngOnInit`で行う、といった使い方が代表例です。これらの名前だけ頭の片隅に置いておくと、その章での理解がスムーズになります。なお、モダンAngularでは、こうした初期化の一部を、SignalやDIの仕組みで置き換えられる場面も増えています。その話題は、該当する章で改めて触れます。
 
@@ -501,7 +501,7 @@ Standalone Componentは、Angular 14（2022年）でプレビューとして登�
 少し前のプロジェクトでは、`@Component`に`standalone: true`と明記されていることがあります。これはStandaloneであることを示す当時の書き方で、Angular 19以降では省略できます。逆に`standalone: false`と書かれている場合は、NgModuleに登録して使う従来のComponentを表します。
 :::
 
-Standaloneには、見通しのよさ以外の利点もあります。各Componentが自分の依存を把握しているため、必要になったときにだけ読み込む「遅延読み込み」がしやすくなります。結果として、最初に読み込むコードの量を減らし、アプリの初期表示を速くしやすくなります。遅延読み込みは、『ルーティング応用（ネスト・Lazy Loading・Guard）』の章で詳しく扱います。
+Standaloneには、見通しのよさ以外の利点もあります。各Componentが自分の依存を把握しているため、必要になったときにだけ読み込む「遅延読み込み」がしやすくなります。結果として、最初に読み込むコードの量を減らし、アプリの初期表示を速くしやすくなります。遅延読み込みは、[『ルーティング応用（ネスト・Lazy Loading・Guard）』の章](./15-router-advanced)で詳しく扱います。
 
 ### 新旧のコードを比べる
 

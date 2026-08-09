@@ -41,7 +41,7 @@ of<ApiTask>({ id: 't1', title: 'RxJSを学ぶ', done: 0 })
 // { id: 't1', title: 'RxJSを学ぶ', completed: false }
 ```
 
-サーバーが`done: 0 | 1`という形で返してきたものを、`completed: boolean`という、アプリで使いやすい形に変換しています。
+サーバーが`done: 0 | 1`という形で返してきたものを、アプリで使いやすい`completed: boolean`へ変換しています。
 
 ## mapの中で副作用を起こさない
 

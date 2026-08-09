@@ -272,7 +272,7 @@ if (res.ok) {
 }
 ```
 
-クエリパラメーターはURLに乗るため、文字列として送るのが自然です。
+クエリパラメータはURLに乗るため、文字列として送るのが自然です。
 
 サーバー側では、Zodの `z.coerce.number()` などを使って数値へ変換します。
 
@@ -311,7 +311,7 @@ Hono Clientは、この入力をサーバー側のValidatorから推論します
 
 ## PATCHとDELETEを呼び出す
 
-パスパラメーターがあるルートは、`param` に値を渡します。
+パスパラメータがあるルートは、`param` に値を渡します。
 
 ```ts
 const updateRes = await client.tasks[':id'].$patch({

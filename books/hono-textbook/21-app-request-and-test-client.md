@@ -417,7 +417,7 @@ const listRes = await client.tasks.$get({
 })
 ```
 
-パスパラメーターは `param` です。
+パスパラメータは `param` です。
 
 ```ts
 const detailRes = await client.tasks[':id'].$get({

@@ -111,6 +111,8 @@ export const selectProductCount = createSelector(selectProductState, selectTotal
 
 これらを`createFeatureSelector`と組み合わせれば、状態のスライスから一覧・件数・特定IDのエンティティを、一貫した形で取り出せます。
 
+## FacadeとRouter Storeで利用側を簡素化する
+
 ### Facadeパターンによる簡素化
 
 NgRxをそのまま使うと、Componentは`Store`を注入し、Selectorで読み取り、Actionをdispatchする、という一連を自分で書きます。これは、NgRxの詳細（どんなActionやSelectorがあるか）を、Componentが知っていることを意味します。Componentが多いと、この知識があちこちに散らばります。
@@ -142,7 +144,7 @@ Componentは、`ProductFacade`を注入し、`facade.products()`で状態を読�
 
 ### Router Storeによるルーティング状態
 
-『Routerの基礎』の章で、現在のページや検索条件はURLで表す、と学びました。`@ngrx/router-store`は、そのルーティングの状態を、NgRxのStoreと結びつける仕組みです。これを使うと、現在のURLやルートパラメーターを、Selectorで読み取れるようになります。
+[『Routerの基礎』の章](./14-router-basics)で、現在のページや検索条件はURLで表す、と学びました。`@ngrx/router-store`は、そのルーティングの状態を、NgRxのStoreと結びつける仕組みです。これを使うと、現在のURLやルートパラメーターを、Selectorで読み取れるようになります。
 
 ```ts:src/app/app.config.ts
 import { ApplicationConfig } from '@angular/core';
@@ -167,7 +169,7 @@ export const appConfig: ApplicationConfig = {
 - **Facade**: Componentが多く、NgRxの詳細を隠したいときに有用です。小規模では過剰になりえます。
 - **Router Store**: ルーティング状態を他の状態と密に組み合わせる、特定の要件があるときに使います。
 
-『状態管理の基礎』の章の「小さく始め、必要に応じて育てる」という原則は、NgRxの内部でも当てはまります。基本のAction・Reducer・Selectorから始め、コレクションが増えたらEntityを、利用が煩雑になったらFacadeを、と段階的に採り入れるのが、健全な進め方です。パターンは、複雑さに対処するための道具であって、複雑さを増やすために使うものではありません。
+[『状態管理の基礎』の章](./20-state-management-basics)の「小さく始め、必要に応じて育てる」という原則は、NgRxの内部でも当てはまります。基本のAction・Reducer・Selectorから始め、コレクションが増えたらEntityを、利用が煩雑になったらFacadeを、と段階的に採り入れるのが、健全な進め方です。パターンは、複雑さに対処するための道具であって、複雑さを増やすために使うものではありません。
 
 ### ファイル構成の指針
 
@@ -182,9 +184,9 @@ src/app/product/
 └── product.facade.ts
 ```
 
-このように、`product`という機能に関するNgRxのファイルを、ひとつのフォルダに集めます。『ルーティング応用』の章で学んだFeature単位の分割と、同じ発想です。機能ごとにまとまっていれば、その機能の状態管理の全体を、一か所で把握できます。遅延読み込みする機能なら、その機能の状態を`provideState`で、機能のルート定義とともに登録します。状態管理のコードも、アプリケーションのFeature構造に沿って整理するのが、大規模開発では重要です。
+このように、`product`という機能に関するNgRxのファイルを、ひとつのフォルダに集めます。[『ルーティング応用』の章](./15-router-advanced)で学んだFeature単位の分割と、同じ発想です。機能ごとにまとまっていれば、その機能の状態管理の全体を、一か所で把握できます。遅延読み込みする機能なら、その機能の状態を`provideState`で、機能のルート定義とともに登録します。状態管理のコードも、アプリケーションのFeature構造に沿って整理するのが、大規模開発では重要です。
 
-### よくあるつまずき
+### Entity・Facade・Router Storeによる実務設計でよくあるつまずき
 
 - **コレクションを素の配列で持つ**: 同種のデータの集まりを配列で持って手作業で更新すると、間違いが増えます。`@ngrx/entity`を使い、定型操作を任せます。
 - **最初からFacadeを作る**: 小規模なうちからFacadeを挟むと、層が増えるだけで利点が薄いことがあります。Componentが増え、NgRxの詳細を隠したくなってから導入します。
@@ -296,7 +298,7 @@ export const CounterStore = signalStore(
 
 要素を順に見ましょう。`withState`が状態を定義します。`withComputed`が派生状態を、`computed()`で定義します。`withMethods`が、状態を更新するメソッドを定義します。状態の更新は、`patchState`で行います。`patchState(store, { count: ... })`は、指定した部分だけを新しい値に差し替えます。
 
-`{ providedIn: 'root' }`により、このStoreはServiceとして、アプリ全体で共有されます。Componentごとに独立させたい場合は、Componentの`providers`に登録することもできます。『inject()とProvider・Injectorの階層』の章で学んだ提供の仕組みが、そのまま使えます。
+`{ providedIn: 'root' }`により、このStoreはServiceとして、アプリ全体で共有されます。Componentごとに独立させたい場合は、Componentの`providers`に登録することもできます。[『inject()とProvider・Injectorの階層』の章](./11-inject-and-providers)で学んだ提供の仕組みが、そのまま使えます。
 
 ### Componentから使う
 
@@ -373,7 +375,7 @@ export const ProductStore = signalStore(
 );
 ```
 
-`rxMethod`には、『RxJSの基礎』の章で学んだ`switchMap`などのOperatorを、そのまま渡せます。NgRx Storeでは、この非同期処理をEffectsという別の仕組みに切り出す必要がありましたが、SignalStoreでは、Storeの中にメソッドとして書けます。ActionもReducerも介さず、状態と非同期処理が、ひとつのStoreにまとまるのです。この簡潔さが、SignalStoreの大きな魅力です。
+`rxMethod`には、[『RxJSの基礎』の章](./16-rxjs-basics)で学んだ`switchMap`などのOperatorを、そのまま渡せます。NgRx Storeでは、この非同期処理をEffectsという別の仕組みに切り出す必要がありましたが、SignalStoreでは、Storeの中にメソッドとして書けます。ActionもReducerも介さず、状態と非同期処理が、ひとつのStoreにまとまるのです。この簡潔さが、SignalStoreの大きな魅力です。
 
 末尾の`withHooks`は、Storeのライフサイクルに処理を差し込む部品です。`onInit`はStoreが生成された直後に一度だけ呼ばれ、`onDestroy`は破棄時に呼ばれます。初期データのロードを起動する定番の置き場所が、この`onInit`です。`onInit(store) { store.load(); }`と書けば、Storeを使い始めた時点で一覧が自動的に読み込まれます。フックの中はinjection contextのため、`inject()`で追加の依存を取得することもできます。
 
@@ -441,7 +443,7 @@ SignalStoreは、Signalを直接扱う簡潔さが魅力です。記述量が少
 
 大切なのは、規模と要件に応じて選ぶことです。小さなアプリに大掛かりな仕組みを持ち込めば、複雑さだけが増します。逆に、大規模なアプリを自前のStoreで押し通せば、管理が破綻します。状態を分類し（『状態管理の基礎』の章）、その性質と規模に見合った手段を選ぶ。この判断こそ、状態管理の設計の核心です。
 
-### よくあるつまずき
+### NgRx SignalStoreとNgRx Storeの使い分けでよくあるつまずき
 
 - **SignalStoreとNgRx Storeを混在させる**: ひとつのアプリで両方を使うと、状態管理の方針がぶれます。原則、どちらかに寄せます。
 - **SignalStoreの状態を外から直接変える**: 状態の変更は、`withMethods`で定義したメソッドと`patchState`を通します。Storeの外から勝手に変えると、変更経路が追えなくなります。

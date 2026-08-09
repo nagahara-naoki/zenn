@@ -147,4 +147,4 @@ export const tasksFeature = createFeature({
 - `getSelectors`で、`selectAll`・`selectTotal`などのSelectorが手に入ります。
 - 追加・更新・削除が頻繁なコレクションに使い、単一の値には使いません。
 
-次章では、ルーティングの状態をNgRxと連携させるRouter Store、開発を助けるDevtools、そしてMeta-Reducerを扱います。
+次章では、ルーティングの状態をNgRxと連携させるRouter Store、開発を助けるDevTools、そしてMeta-Reducerを扱います。

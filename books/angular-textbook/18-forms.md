@@ -30,7 +30,7 @@ Angularには、伝統的に2つのフォーム方式があります。
 
 ### Template-driven Forms
 
-Template-driven Formsは、手軽にフォームを作れる方式です。使うには、`FormsModule`をimportします。中心となるのが、`ngModel`です。「双方向バインディングとライフサイクル」の章で双方向バインディングに触れましたが、`ngModel`はその代表例で、入力欄とデータを双方向に結びつけます。
+Template-driven Formsは、手軽にフォームを作れる方式です。使うには、`FormsModule`をimportします。中心となるのが、`ngModel`です。[「双方向バインディングとライフサイクル」の章](./09-two-way-and-lifecycle)で双方向バインディングに触れましたが、`ngModel`はその代表例で、入力欄とデータを双方向に結びつけます。
 
 ```ts:src/app/login-form.ts
 import { Component } from '@angular/core';
@@ -98,7 +98,7 @@ export class LoginForm {
 
 Reactive Formsは、複雑なフォームに向きます。項目が多い、動的に項目が増減する、複雑な検証がある、といった場合に、その堅牢さが活きます。実務の込み入ったフォームでは、Reactiveが選ばれることが多くなります。
 
-### フォームの検証
+## フォームの検証
 
 どちらの方式でも、入力値の検証（バリデーション）ができます。「必須である」「メールアドレスの形式である」「文字数が範囲内である」といったルールを課し、満たさなければエラーとして扱います。
 
@@ -183,11 +183,11 @@ protected readonly form = this.fb.group(
 );
 ```
 
-エラーは、`form.errors?.['passwordMismatch']`のようにグループ側の`errors`から読み取ります。個々のコントロールではなく、まとまり全体のエラーとして扱われる点が、単一項目の検証との違いです。
+エラーは、`form.errors?.['passwordMismatch']`のようにグループ側の`errors`から読み取ります。まとまり全体にエラーが付く点が、単一項目の検証との違いです。
 
 ### 非同期バリデーション
 
-「このユーザー名はすでに使われていないか」のように、サーバーへ問い合わせないと判定できない検証もあります。この場合は、同期の`ValidatorFn`ではなく、`AsyncValidatorFn`を使います。戻り値が`Observable<ValidationErrors | null>`（またはPromise）になる点だけが異なります。
+「このユーザー名はすでに使われていないか」のように、サーバーへ問い合わせないと判定できない検証もあります。この場合は、同期用の`ValidatorFn`に代えて`AsyncValidatorFn`を使います。戻り値が`Observable<ValidationErrors | null>`（またはPromise）になる点だけが異なります。
 
 ```ts:src/app/signup-form.ts
 import { Component, inject } from '@angular/core';
@@ -231,7 +231,9 @@ export class SignupForm {
 }
 ```
 
-非同期バリデーターは、同期の検証をすべて通過したあとにだけ実行されます。空欄のうちからサーバーへ問い合わせる無駄が起きない、という設計です。問い合わせ中は、コントロールの状態が`PENDING`になり、`control.pending`が`true`を返します。この`pending`を使えば、「確認中...」の表示を出せます。上の例では`updateOn: 'blur'`を指定し、入力のたびではなく、フォーカスが外れた時点でだけ検証を走らせて、リクエスト数を抑えています。
+非同期バリデーターは、同期の検証をすべて通過したあとにだけ実行されます。空欄のうちからサーバーへ問い合わせる無駄が起きない、という設計です。問い合わせ中は、コントロールの状態が`PENDING`になり、`control.pending`が`true`を返します。この`pending`を使えば、「確認中...」の表示を出せます。上の例では`updateOn: 'blur'`を指定し、フォーカスが外れた時点でだけ検証を走らせて、入力中のリクエストを抑えています。
+
+## 動的なフォームとカスタム入力部品
 
 ### FormArrayで項目を動的に増減する
 
@@ -344,7 +346,7 @@ export class CounterInput implements ControlValueAccessor {
 
 4つのメソッドは、それぞれ役割が明確です。`writeValue`はフォームから部品への一方向、`registerOnChange`と`registerOnTouched`は部品からフォームへ変化を伝えるコールバックの受け取り、`setDisabledState`は無効化への追従です。この橋渡しさえ実装すれば、`<app-counter-input formControlName="quantity" />`のように、標準の入力欄と区別なく使えます。`forwardRef`を挟むのは、クラスの定義が完了する前にトークン登録を参照する必要があるためです。
 
-### よくあるつまずき
+### 動的なフォームとカスタム入力部品でよくあるつまずき
 
 - **`FormsModule`と`ReactiveFormsModule`の混同**: Template-drivenは`FormsModule`、Reactiveは`ReactiveFormsModule`をimportします。使う方式に応じて、正しいほうを宣言します。
 - **`formControlName`の綴り違い**: `FormGroup`で定義した名前と、テンプレートの`formControlName`が一致していないと、結びつきません。名前の綴りを確認します。
@@ -352,7 +354,7 @@ export class CounterInput implements ControlValueAccessor {
 - **非同期バリデーターを毎入力で走らせる**: `updateOn: 'blur'`やデバウンスを挟まないと、キー入力のたびにサーバーへ問い合わせてしまいます。実行頻度を抑える工夫が要ります。
 - **単純なフォームにReactiveを持ち込む**: 項目が1つ2つのフォームにまで`FormGroup`を用意すると、かえって大げさです。フォームの規模に見合った方式を選びます。逆に、複雑なフォームをTemplate-drivenで押し通すと、テンプレートが肥大化します。フォームの複雑さに応じて、方式を見直す柔軟さも大切です。
 
-### 2つの方式の使い分け
+## Template-driven FormsとReactive Formsを使い分ける
 
 Template-drivenとReactiveの使い分けの目安を、表に整理します。
 
@@ -404,9 +406,9 @@ export class ProfileForm {
 }
 ```
 
-`form.value`の型が、定義した構造（`name`は文字列、`age`は数値）から自動で導かれます。存在しない項目にアクセスしようとすれば、コンパイル時にエラーになります。「TypeScriptとComponentの基本」の章で学んだTypeScriptの型の恩恵が、フォームにも及ぶわけです。
+`form.value`の型が、定義した構造（`name`は文字列、`age`は数値）から自動で導かれます。存在しない項目にアクセスしようとすれば、コンパイル時にエラーになります。[「TypeScriptとComponentの基本」の章](./04-component-basics)で学んだTypeScriptの型の恩恵が、フォームにも及ぶわけです。
 
-ここで気になるのが、`value.name`が単なる`string`ではなく`string | undefined`と型付く点です。これは型の不備ではなく、仕様です。Angularは、`disable()`で無効化されたコントロールを`value`から除外します。無効化された項目は、実行時に`value`へ現れないため、型としても「存在しないかもしれない」ことを表す`undefined`が付きます。無効なコントロールも含めた完全な値がほしいときは、`getRawValue()`を使います。こちらは除外を行わないため、`raw.name`は`string`と、`undefined`のない型で得られます。
+ここで気になるのが、`value.name`に`string | undefined`という型が付く点です。一見すると型の不備に思えますが、これはAngularの仕様です。Angularは、`disable()`で無効化されたコントロールを`value`から除外します。無効化された項目は、実行時に`value`へ現れないため、型としても「存在しないかもしれない」ことを表す`undefined`が付きます。無効なコントロールも含めた完全な値がほしいときは、`getRawValue()`を使います。こちらは除外を行わないため、`raw.name`は`string`と、`undefined`のない型で得られます。
 
 もうひとつ、初期値に`''`を与えても、`reset()`はコントロールを`null`に戻すのが既定の挙動です。そのため各コントロールの値の型には`null`が混じります。これを避けたいときは、`NonNullableFormBuilder`を使います。`fb.nonNullable.group(...)`で作ると、コントロールが非nullになり、`reset()`は初期値へ戻ります。
 
@@ -419,9 +421,9 @@ protected readonly form = this.fb.nonNullable.group({
 
 現在のReactive Formsは、標準でこのTyped Formsとして動くため、特別な設定は要りません。型の安全性が、最初から得られます。
 
-### Signal Formsの登場
+## Signal Formsの登場
 
-Reactive Formsは堅牢ですが、RxJSベースであり、値の変化は`valueChanges`というObservableで受け取ります。「SignalsとZoneless」の章で見たように、モダンAngularの状態管理はSignalへ移りつつあります。フォームだけがObservableのままでは、アプリ全体の一貫性が損なわれます。
+Reactive Formsは堅牢ですが、RxJSベースであり、値の変化は`valueChanges`というObservableで受け取ります。[「SignalsとZoneless」の章](./13-signals-and-zoneless)で見たように、モダンAngularの状態管理はSignalへ移りつつあります。フォームだけがObservableのままでは、アプリ全体の一貫性が損なわれます。
 
 そこで登場したのが、Signal Formsです。Angular 22（2026年）で安定版になった、Signalを土台とする新しいフォームの仕組みです。フォームの状態がSignalとして表現されるため、これまで学んできたSignalの考え方が、そのままフォームに通用します。`@angular/forms/signals`から機能をimportして使います。
 
@@ -472,7 +474,7 @@ export class LoginForm {
 
 `[formField]="loginForm.email"`で、フォームの`email`項目と入力欄が結びつきます。双方向の同期は、Signal Formsが自動で行います。各項目の状態は、その項目を関数として呼び出して読み取ります。`loginForm.email()`で項目の状態にアクセスし、さらに`.value()`で現在値、`.invalid()`で検証結果、`.touched()`で操作済みかを、いずれもSignalとして取得できます。
 
-ここで注意したいのが`errors()`です。これは文字列ではなく、`{ kind, message }`という形のオブジェクトの配列を返します。`kind`はエラーの種類、`message`は表示用の文言です。そのため、エラーを表示するときは、配列をそのまま補間するのではなく、`@for`で回して1件ずつ`message`を出します。ひとつの項目に複数のエラーが同時に付くこともあるため、この形が理にかなっています。
+ここで注意したいのが`errors()`です。返り値は、`{ kind, message }`という形のオブジェクトの配列です。`kind`はエラーの種類、`message`は表示用の文言を表します。エラーを表示するときは、`@for`で配列を回し、1件ずつ`message`を出します。ひとつの項目に複数のエラーが同時に付くこともあるため、この形が理にかなっています。
 
 すべてがSignalなので、テンプレートでの表示も、これまでのSignalとまったく同じ感覚で書けます。`valueChanges`の購読も、その解除も要りません。フォームの状態が、アプリのほかの状態と同じ土俵に乗るのです。これが、Signal Formsの最大の利点です。
 
@@ -588,7 +590,7 @@ protected readonly f = form(this.model, (path) => {
 
 このように、単純な必須チェックから、クロスフィールド、配列、非同期、外部スキーマ連携まで、検証の宣言を1か所のスキーマ関数に集約できるのが、Signal Formsの検証の強みです。
 
-### 3つの方式の位置づけ
+## 3つのフォーム方式を使い分ける
 
 これで、フォームの方式が3つになりました。それぞれの位置づけを整理します。
 
@@ -625,9 +627,9 @@ Signal Formsは、Reactive Formsの堅牢さと型安全性を保ちながら、
 
 Signal Formsが重要なのは、フォームの状態を、アプリケーションのほかの状態と同じ「Signal」という土俵に載せる点にあります。「SignalsとZoneless」の章で見たように、モダンAngularは状態管理をSignalに統一する方向へ進んでいます。ところが、フォームだけがRxJSベースのままだと、フォームの値をほかのSignalと組み合わせるたびに、変換（`toSignal()`など）が必要でした。
 
-Signal Formsでは、フォームの値も検証状態も、最初からSignalです。`computed()`でフォームの値から別の値を導いたり、`effect()`でフォームの変化に反応したりが、変換なしに、そのまま書けます。フォームが、アプリの状態管理に自然に溶け込むのです。これは、単なる書き方の違いではなく、アプリケーション全体の一貫性という、より大きな利点につながります。「SignalsとZoneless」の章から一貫して見てきた「状態はSignalで持つ」という流れの、フォームにおける到達点が、Signal Formsだといえます。
+Signal Formsでは、フォームの値も検証状態も、最初からSignalです。`computed()`でフォームの値から別の値を導いたり、`effect()`でフォームの変化に反応したりが、変換なしに、そのまま書けます。フォームが、アプリの状態管理に自然に溶け込むのです。この一貫性は、書き方の違い以上に大きな利点です。「SignalsとZoneless」の章から一貫して見てきた「状態はSignalで持つ」という流れの、フォームにおける到達点が、Signal Formsだといえます。
 
-### よくあるつまずき
+### 3つのフォーム方式の使い分けでよくあるつまずき
 
 - **フォームの状態の読み方を間違える**: Signal Formsでは、項目を関数として呼んでから状態を読みます。`loginForm.email().value()`のように、二段階になる点に注意します。
 - **エラーを配列として扱わない**: `errors()`は`{ kind, message }`の配列です。`{{ loginForm.email().errors() }}`と直接補間せず、`@for`で回して`message`を1件ずつ表示します。

@@ -232,6 +232,8 @@ export class Tooltip {
 
 `#t="appTooltip"`は、「`appTooltip`という名前で公開されたDirectiveを、`t`という変数で受け取る」という意味です。組み込みの`ngModel`をテンプレート参照変数で受け、`#ctrl="ngModel"`のように検証状態を取り出す書き方も、この仕組みによるものです。
 
+## Directiveを合成し、公開APIを整える
+
 ### hostDirectivesでDirectiveを合成する
 
 作成した属性Directiveの振る舞いを、別のComponentやDirectiveへそのまま取り込みたいことがあります。たとえば、ハイライトの機能を、あるボタンComponentに最初から備えさせたい、というケースです。これを宣言的に行うのが`hostDirectives`です。v15で導入された、Directiveを合成するためのAPIです。
@@ -288,13 +290,13 @@ Directiveのセレクターには、いくつかの慣習があります。
 
 これらは、Componentの要素型セレクターがケバブケースだったのと対照的です。属性として付ける都合上、Directiveはキャメルケースが基本になります。
 
-### よくあるつまずき
+### 属性Directiveの作成でよくあるつまずき
 
 属性Directiveでつまずきやすい点を挙げます。
 
 - **`imports`への宣言忘れ**: Componentと同じく、Directiveも使う側のComponentの`imports`に宣言する必要があります。付けたはずの振る舞いが効かないときは、まずここを確認します。
 - **セレクターの角括弧忘れ**: `selector: 'appHighlight'`と角括弧なしで書くと、要素型セレクターと解釈され、属性として機能しません。属性Directiveでは`[appHighlight]`と角括弧で囲みます。
-- **`ElementRef`の直接操作に頼りすぎる**: `nativeElement`を直接触ると、サーバーサイドレンダリング（『SSRとモダンAngularへの移行』の章で扱います）などの環境で問題になることがあります。可能な範囲では`host`によるバインディングを、手続き的な操作が必要なら`Renderer2`を優先します。
+- **`ElementRef`の直接操作に頼りすぎる**: `nativeElement`を直接触ると、サーバーサイドレンダリング（[『SSRとモダンAngularへの移行』の章](./25-ssr-and-migration)で扱います）などの環境で問題になることがあります。可能な範囲では`host`によるバインディングを、手続き的な操作が必要なら`Renderer2`を優先します。
 
 ## 構造Directiveとng-templateの仕組み
 
@@ -462,7 +464,7 @@ export class Unless {
 新しく条件分岐や繰り返しを書くときは、構造Directiveではなく`@if`・`@for`を使います。構造Directiveの仕組みは、`ng-template`を用いた高度なテンプレート操作と、既存コードの読解のために押さえておく知識と位置づけてください。
 :::
 
-### よくあるつまずき
+### 構造Directiveとng-templateの仕組みでよくあるつまずき
 
 構造Directiveと`ng-template`まわりでつまずきやすい点を挙げます。
 
@@ -595,7 +597,7 @@ export class TruncatePipe implements PipeTransform {
 
 `description()`が30文字を超えると、30文字＋`...`に切り詰められます。パラメーターに既定値を持たせているため、`| truncate`と引数なしでも動きます。
 
-なお、Pipeも『TypeScriptとComponentの基本』の章で学んだStandaloneの考え方が適用され、Angular 19以降は`standalone: true`の指定が不要です。単体でimportして使えます。
+なお、Pipeも[『TypeScriptとComponentの基本』の章](./04-component-basics)で学んだStandaloneの考え方が適用され、Angular 19以降は`standalone: true`の指定が不要です。単体でimportして使えます。
 
 ### Pure PipeとImpure Pipe
 
@@ -639,7 +641,7 @@ export class FilterActivePipe implements PipeTransform {
 }
 ```
 
-こうすると、`user`が届くまでは「読み込み中」を表示し、届いたら中身を表示できます。`user$ | async`を何度も書かずに、`user`という名前で使い回せる点も利点です。ObservableやRxJSの詳しい仕組みは『RxJSの基礎』の章で扱いますが、その値をテンプレートに映す入り口が、この`async`Pipeだと覚えておいてください。
+こうすると、`user`が届くまでは「読み込み中」を表示し、届いたら中身を表示できます。`user$ | async`を何度も書かずに、`user`という名前で使い回せる点も利点です。ObservableやRxJSの詳しい仕組みは[『RxJSの基礎』の章](./16-rxjs-basics)で扱いますが、その値をテンプレートに映す入り口が、この`async`Pipeだと覚えておいてください。
 
 ### Pipeとメソッド呼び出しの違い
 
@@ -654,9 +656,9 @@ export class FilterActivePipe implements PipeTransform {
 
 モダンAngularでは、状態をSignalで持つことが増えています。Signalから導いた値の整形は、Pipeで行うことも、`computed()`で行うこともできます。使い分けの目安は、その変換が「表示のためのものか」「複数箇所で再利用するか」です。
 
-`uppercase`や`date`のような汎用的な表示変換はPipeが向きます。一方、そのComponent固有の、状態から別の状態を導く計算は、`computed()`のほうが自然です。両者は競合するものではなく、役割に応じて併用します。Signalと`computed()`の詳細は、『SignalsとZoneless』の章で改めて扱います。
+`uppercase`や`date`のような汎用的な表示変換はPipeが向きます。一方、そのComponent固有の、状態から別の状態を導く計算は、`computed()`のほうが自然です。両者は競合するものではなく、役割に応じて併用します。Signalと`computed()`の詳細は、[『SignalsとZoneless』の章](./13-signals-and-zoneless)で改めて扱います。
 
-### よくあるつまずき
+### Pipeとテンプレートの再利用でよくあるつまずき
 
 Pipeでつまずきやすい点を挙げておきます。
 

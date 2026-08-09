@@ -24,7 +24,7 @@ Angularは、登場以来、長い時間をかけて大きく姿を変えてき�
 - 古い情報と新しい情報の違いに戸惑っている方
 - 実務でAngularを使っており、設計判断の根拠を固めたい方
 
-TypeScriptについては、Angularを書くうえで必要な範囲を「TypeScriptとComponentの基本」の章で改めて解説します。TypeScriptに不慣れでも読み進められます。
+TypeScriptについては、Angularを書くうえで必要な範囲を[「TypeScriptとComponentの基本」の章](./04-component-basics)で改めて解説します。TypeScriptに不慣れでも読み進められます。
 
 ## 本書のレベル設計
 
