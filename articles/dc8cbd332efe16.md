@@ -29,7 +29,6 @@ Singletonの説明は、たいていこれで終わります。そして実装�
 パターン名を当てるのは後です。先に「この値の正しいスコープは何か」を問います。
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart TD
     A[プロセス] --> B[共有logger]
     A --> C[request 1]
@@ -145,7 +144,6 @@ class DatabaseProvider {
 接続、タイマー、購読。これらを持つSingletonは、終わるときに解放が要ります。
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 stateDiagram-v2
     [*] --> idle
     idle --> initializing: get()
