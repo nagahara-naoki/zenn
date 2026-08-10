@@ -24,7 +24,6 @@ published: true
 | エンジン実装 | 仕様どおりの挙動をどう高速化するか | V8 `Map`, 要素, インラインキャッシュ, GC |
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart TD
     A[JavaScript source] --> B[ECMAScript仕様が意味を定める]
     B --> C[V8が仕様を実装]
@@ -88,7 +87,6 @@ const account = new Account("user-42", "secret");
 JavaScriptエンジンが `class Account { ... }` を評価すると、クラスコンストラクターとして使う関数オブジェクトと、そのプロトタイプオブジェクトを作ります。メソッド定義は `prototype` 側へ配置され、`static` 要素はクラス側で処理されます。
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart LR
     A[Account class object] --> B[static member]
     A -->|prototype property| C[Account.prototype]
@@ -115,7 +113,6 @@ flowchart LR
 基底クラスでは、概念上おおむね次の順です。
 
 ```mermaid
-%%{init: {'theme': 'base', 'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'actorBkg': '#eaeafd', 'actorBorder': '#5b5bd6', 'actorTextColor': '#1f2430', 'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 sequenceDiagram
     participant N as new式
     participant C as Account constructor
@@ -182,7 +179,6 @@ class AdminAccount extends Account {
 派生 `constructor` は、自分で最初のオブジェクトを作りません。`super()` を通じて基底 `constructor` の構築処理を実行し、返された `this` を受け取ります。その後、派生クラスのインスタンスフィールドを初期化し、`super()` より後の `constructor` 本体を続けます。
 
 ```mermaid
-%%{init: {'theme': 'base', 'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'actorBkg': '#eaeafd', 'actorBorder': '#5b5bd6', 'actorTextColor': '#1f2430', 'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 sequenceDiagram
     participant D as AdminAccount constructor
     participant B as Account constructor
@@ -258,7 +254,6 @@ const second = new Point(3, 4);
 ```
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eaeafd', 'primaryBorderColor': '#5b5bd6', 'primaryTextColor': '#1f2430', 'mainBkg': '#eaeafd', 'nodeBorder': '#5b5bd6', 'nodeTextColor': '#1f2430', 'secondaryColor': '#dcdcfa', 'secondaryBorderColor': '#5b5bd6', 'secondaryTextColor': '#1f2430', 'tertiaryColor': '#f4f4fe', 'tertiaryBorderColor': '#5b5bd6', 'tertiaryTextColor': '#1f2430', 'clusterBkg': '#f4f4fe', 'clusterBorder': '#5b5bd6', 'lineColor': '#9a9ae0', 'textColor': '#1f2430', 'titleColor': '#1f2430', 'edgeLabelBackground': '#eaeafd', 'labelBackground': '#eaeafd', 'labelBoxBkgColor': '#eaeafd', 'labelTextColor': '#1f2430', 'noteBkgColor': '#eaeafd', 'noteTextColor': '#1f2430', 'noteBorderColor': '#5b5bd6'}}}%%
 flowchart LR
     A[空のshape] -->|xを追加| B[xを持つshape]
     B -->|yを追加| C[x, yを持つshape]
