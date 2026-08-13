@@ -191,9 +191,9 @@ Subjectが向くのは、次のような場面です。
 
 逆に、Creation FunctionやOperatorで書けるなら、そちらを優先します。たとえば、DOMイベントを配るだけなら`fromEvent`で足りますし、共有だけなら`share`で書けます。まず「Observableだけで書けないか」を考え、それでも必要なときにだけSubjectを使う。この順番を守ると、コードが読みやすく保てます。
 
-## まとめ
+## Subjectは外部から値を流す必要がある場所に限って使う
 
-この章では、SubjectとMulticastを確認しました。
+SubjectとMulticastの要点を整理します。
 
 - Subjectは、Observableであり、Observerでもあります。外から値を流せます。
 - 1回の`next`で複数の購読者に配れます。これがMulticastです。
