@@ -381,7 +381,7 @@ export function fetchTask(id: string): Promise<Task> {
 
 ## まとめ
 
-この章では、エラー処理と読み込み表示の設計を扱いました。
+エラーの種類に応じて再試行を決め、SuspenseとError Boundaryで表示上の責務を分けます。
 
 - HTTPの失敗を`ApiError`に変換し、ステータスコードで種類を見分けられるようにします。
 - 通信の共通処理を1つの関数にまとめると、各API関数が1行になります。ここで6本のAPI関数がそろいます。
