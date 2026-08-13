@@ -26,7 +26,7 @@ Angularには、伝統的に2つのフォーム方式があります。
 - **Template-driven Forms**: テンプレート側を主役に、フォームを組み立てる方式です。`ngModel`を使い、テンプレートに書いた指定から、Angularがフォームの構造を読み取ります。手軽さが特徴です。
 - **Reactive Forms**: クラス側を主役に、フォームを組み立てる方式です。`FormControl`や`FormGroup`をクラスで定義し、それをテンプレートに結びつけます。構造が明示的で、堅牢さが特徴です。
 
-大きな違いは、「フォームの定義が、テンプレートとクラスのどちらにあるか」です。Template-drivenはテンプレートに、Reactiveはクラスに、フォームの中心があります。順に見ていきましょう。
+大きな違いは、フォームをどこで定義するかです。Template-driven Formsはテンプレート、Reactive Formsはクラスを中心に定義します。
 
 ### Template-driven Forms
 
@@ -480,7 +480,7 @@ export class LoginForm {
 
 ### Signal Formsの検証パターン
 
-Signal Formsの検証は、すべてスキーマ関数の中で宣言します。ここに、Signal Formsの表現力の多くが詰まっています。順に見ていきましょう。
+Signal Formsの検証は、スキーマ関数の中で宣言します。基本的な制約から、条件付きの検証まで順に確認します。
 
 まず、組み込みバリデーターです。Reactive Formsの`Validators`に相当するものが、スキーマ関数内で呼ぶ関数として用意されています。いずれも第1引数に対象のパス、続けて条件やメッセージを渡します。
 
@@ -646,6 +646,6 @@ Signal Formsでは、フォームの値も検証状態も、最初からSignal�
 - Typed Formsは、Reactive Formsの値に正確な型を与える仕組みで、v14以降は標準です
 - Signal Formsは、v22で安定化した、Signalを土台とする新しいフォーム方式です
 - `form(model, スキーマ関数)`でフォームを作り、`[formField]`で入力欄に結びつけます
-- **新規に複雑なフォームを作るならSignal Formsを第一の選択肢とするのが現在の推奨です。既存のReactive Formsも引き続き有効なため、当面は両方を理解しておくことが実務では重要です**
+- 新規に複雑なフォームを作るなら、Signal Formsを第一の選択肢にします。既存のReactive Formsも引き続き有効なため、実務では両方の理解が必要です
 
 次章では、サーバーとデータをやり取りするHTTP通信を学びます。
