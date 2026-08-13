@@ -180,9 +180,9 @@ const results$ = keyword$.pipe(
 
 「入力を整えるところ（`keyword$`）」と「検索するところ（`results$`）」を分けて名前を付けると、それぞれを個別に確認でき、意図も読み取りやすくなります。「Operatorとpipe・Marble Diagramの読み方」の章で触れた「読みやすいOperatorの並べ方」を、テストとデバッグの観点からも実践する、というわけです。
 
-## まとめ
+## 仮想時間と観測点がRxJSのテストを安定させる
 
-この章では、テストとデバッグを確認しました。
+テストとデバッグで使う手段を整理します。
 
 - RxJSのテストが難しいのは時間が絡むためで、TestSchedulerの仮想時間で解決します。
 - TestSchedulerは`rxjs/testing`から使い、Marble記法で入力と出力を並べて検証します。
