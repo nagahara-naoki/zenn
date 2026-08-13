@@ -95,7 +95,9 @@ recent.subscribe((value) => console.log(value)); // B, C
 
 BehaviorSubjectが「現在の1つ」を渡すのに対し、ReplaySubjectは「直近の複数」を渡せます。履歴を少し遡って伝えたいときに使います。
 
-さらに、AsyncSubjectという派生もあります。これは、完了（complete）したときに、最後の値だけを購読者に渡します。使う場面は限られますが、「最終結果だけが必要」なときに用います。まとめると、Subjectの仲間は「いつ、どの値を、購読者に渡すか」の振る舞いが少しずつ違う、と理解すればよいでしょう。実務でよく使うのは`Subject`と`BehaviorSubject`の2つで、残りは「そういうものもある」と知っておけば十分です。とくに状態を扱うなら`BehaviorSubject`、単なる通知なら`Subject`、という選び方が基本になります。
+`AsyncSubject`は、完了（complete）した時点で最後の値だけを購読者へ渡す派生です。「最終結果だけが必要」という限られた場面で使います。
+
+Subjectの種類は、「いつ、どの値を購読者へ渡すか」が異なります。実務でよく使うのは`Subject`と`BehaviorSubject`です。状態を扱うなら`BehaviorSubject`、単なる通知なら`Subject`を基本に選びます。
 
 | 種類 | 新しい購読者に渡すもの |
 |---|---|
