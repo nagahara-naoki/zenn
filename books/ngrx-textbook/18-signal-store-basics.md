@@ -6,7 +6,7 @@ title: "SignalStoreの基本"
 
 ここまで学んできたClassic Store（Action・Reducer・Selector・Effects）は、大規模で、予測可能性が重要なアプリに向いています。変更がすべてActionとして記録され、DevToolsで追える、という強みがありました。しかし、その仕組みは記述量が多く、小さな状態にはやや重く感じられます。Actionを定義し、Reducerを書き、Selectorを作り……という手順は、ちょっとした状態を扱うには大げさなことがあります。
 
-SignalStoreは、AngularのSignalsを土台に、ずっと少ない記述で状態管理を実現する仕組みです。この章では、`signalStore`の基本、状態がSignalになること、派生値と更新メソッドの書き方を見ていきます。これまでのタスク管理の状態を、SignalStoreで組み立て直してみましょう。
+SignalStoreは、AngularのSignalsを土台に、Classic Storeより少ない記述で状態を管理する仕組みです。これまでのタスク管理の状態を組み立て直しながら、`signalStore`の基本、Signalとしての状態、派生値と更新メソッドの書き方を確認します。
 
 ## SignalStoreとは
 
