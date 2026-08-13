@@ -270,7 +270,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 ## まとめ
 
-この章では、TanStack Queryを導入し、`useEffect`によるデータ取得を置き換えました。
+`useEffect`によるデータ取得を`useQuery`へ置き換えると、取得結果と通信状態をキャッシュにまとめられます。
 
 - QueryClientがキャッシュの本体で、QueryClientProviderがそれをアプリ全体へ配ります。
 - QueryClientはコンポーネントの外で1つだけ作ります。中で作るとキャッシュが毎回消えます。
