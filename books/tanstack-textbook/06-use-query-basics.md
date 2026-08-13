@@ -254,7 +254,7 @@ refetchInterval: (query) =>
 
 ## まとめ
 
-この章では、`useQuery`の実践的な書き方を扱いました。
+`useQuery`は、データの有無と通信状態を分けて読むと、表示の切り替えを正しく設計できます。
 
 - `status`はデータの有無（`pending` / `success` / `error`）、`fetchStatus`は通信の有無（`fetching` / `paused` / `idle`）を表します。
 - 全画面の切り替えは`isPending`、更新中の控えめな合図は`isFetching`で出します。
