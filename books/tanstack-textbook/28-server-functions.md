@@ -303,7 +303,7 @@ TanStackの開発は活発で、これからも変わり続けます。TanStack 
 
 ## まとめ
 
-この章では、Server Functionsとフルスタックの構成を扱いました。
+Server Functionsは、型で結ばれたサーバー処理をルートやQueryから呼び出す境界になります。
 
 - Server Functionsは、サーバー側の処理を型安全な関数呼び出しとして書く仕組みです。裏側では通信に変換されます。
 - `createServerFn().handler()`で作ります。更新処理は`{ method: 'POST' }`を指定します。
