@@ -301,7 +301,7 @@ Devtoolsを2つ開いて観察します。Query Devtoolsでキャッシュの増
 
 ## まとめ
 
-この章では、RouterとQueryの連携を実装しました。
+Loaderが取得開始を担い、Queryがキャッシュを担うことで、遷移の速さとデータ共有を両立できます。
 
 - LoaderはRouter Contextを通じてQueryClientを受け取ります。`createRootRouteWithContext`で型を宣言します。
 - `defaultPreloadStaleTime: 0`にして、鮮度の判断をQueryに一本化します。
