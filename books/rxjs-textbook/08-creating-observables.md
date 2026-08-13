@@ -269,9 +269,9 @@ button.addEventListener('click', () => {
 
 このような「新しい処理を始めるとき、前の処理を止める」という動きは、実はRxJSではOperatorできれいに書けます。`switchMap`がその代表です。手作業で`unsubscribe`を管理するかわりに、Operatorで解決する方法を、「Flattening Operator」の章で見ます。いまは、多重起動という落とし穴があること、そして手作業での防ぎ方を、知っておいてください。
 
-## まとめ
+## 値の出どころに合わせてCreation Functionを選ぶ
 
-この章では、よく使うCreation Functionを確認しました。
+よく使うCreation Functionの選び方を整理します。
 
 - `of`は、渡した値をそのまま順番に流します。
 - `from`は、配列・Iterable・Promiseを展開して流します。
