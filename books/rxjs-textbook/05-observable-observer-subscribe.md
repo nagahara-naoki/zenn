@@ -251,9 +251,9 @@ console.log('この行の前に、上のログが出る');
 
 この違いは、実務で効いてきます。Observableなら、処理を組み立ててから購読するまで、実行を遅らせられます。組み立てと実行を分けられるので、同じ設計図を必要なときに何度でも動かせます。この柔軟さが、RxJSの土台になっています。
 
-## まとめ
+## subscribeが設計図を実行へ変える
 
-この章では、Observable、Observer、`subscribe`の仕組みを確認しました。
+Observable、Observer、`subscribe`の関係を整理します。
 
 - Observableは値そのものではなく、値をどう流すかを書いた設計図です。
 - 値を生み出すProducerと、受け取るObserver（Consumer）を、Observableがつなぎます。
