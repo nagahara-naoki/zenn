@@ -180,9 +180,9 @@ const value = await firstValueFrom(EMPTY, { defaultValue: '既定値' }); // 既
 
 ですから、途中の処理でPromiseへ変換するのは避けます。変換するのは、`async` / `await`のコードへ渡す、最後の一歩だけにします。ストリームとして扱える範囲は、できるだけObservableのまま組み立てる。これが、RxJSの力を最大限に活かす書き方です。
 
-## まとめ
+## Promiseへの変換はストリームの境界に限る
 
-この章では、特殊なObservableとPromise相互変換を確認しました。
+特殊なObservableとPromise相互変換の要点を整理します。
 
 - `defer`は購読時にObservableを作り、値や処理の確定を遅らせます。
 - `iif`は購読時に条件を評価し、2つのObservableを切り替えます。
