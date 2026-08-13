@@ -129,9 +129,9 @@ flowchart LR
 
 つまり、Flattening Operatorを選ぶことは、「非同期処理の競合を、どう解決するか」を選ぶことなのです。処理順序を保ちたいのか、最新だけがほしいのか、二重実行を防ぎたいのか。目的によって、選ぶOperatorが変わります。次章では、その4つのOperatorを、Marble Diagramと具体例で、じっくり見比べていきます。
 
-## まとめ
+## Nested Subscribeは平坦化して1本の流れに戻す
 
-この章では、Higher-order ObservableとNested Subscribeを確認しました。
+Higher-order ObservableとNested Subscribeの関係を整理します。
 
 - `map`の中でObservableを返すと、Observableを流すObservable（Higher-order Observable）になります。
 - 外側をOuter、内側をInner Observableと呼びます。
