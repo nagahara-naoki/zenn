@@ -166,9 +166,9 @@ Operatorの動きを示すときは、上に入力、下に出力を置き、あ
 
 なお、テストの章では、より厳密なMarble記法を使います。購読の開始を表す`^`や、購読解除を表す`!`など、記号が増えます。それは「テストとデバッグ」の章で扱います。本書の説明では、ここで示した読みやすい記法を基本とします。
 
-## まとめ
+## pipeで処理をつなぎ、Marble Diagramで流れを読む
 
-この章では、Operatorをつなぐ`pipe`と、値の流れを表すMarble Diagramを確認しました。
+Operatorをつなぐ`pipe`と、値の流れを表すMarble Diagramの要点を整理します。
 
 - Operatorは、Observableを受け取り、新しいObservableを返す関数です。
 - `pipe`はOperatorを左から順に適用し、元のObservableは変更しません。
