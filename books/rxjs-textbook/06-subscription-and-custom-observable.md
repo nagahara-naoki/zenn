@@ -227,9 +227,9 @@ Observableを自作するときは、後片付けを忘れないことが何よ�
 
 実務では、Observableをゼロから自作する場面はそれほど多くありません。`of`、`from`、`fromEvent`、`interval`といったCreation Functionが、よくある生成をカバーしているからです。それでも一度自作しておくと、それらの内部を理解した状態でCreation Functionを使えます。
 
-## まとめ
+## 購読時に確保したリソースは解除時に片付ける
 
-この章では、購読解除とObservableの自作を確認しました。
+購読解除とObservableを自作するときの要点を整理します。
 
 - Subscriptionは購読を表し、`unsubscribe`で解除できます。
 - `unsubscribe`はTeardown Logicを実行し、タイマーやリスナーなどのリソースを解放します。
