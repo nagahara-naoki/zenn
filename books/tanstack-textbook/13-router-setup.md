@@ -305,7 +305,7 @@ const routeTree = rootRoute.addChildren([indexRoute]);
 
 ## まとめ
 
-この章では、TanStack Routerを導入しました。
+ファイルからルートツリーを生成すると、URLと画面の対応を型で追跡できます。
 
 - 文字列で書くルーティングは、パスやパラメータの間違いを実行時まで検出できません。
 - `@tanstack/router-plugin`が`src/routes/`を監視し、`routeTree.gen.ts`を生成します。プラグインは`react()`より前に置きます。
