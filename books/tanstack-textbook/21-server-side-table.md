@@ -311,7 +311,7 @@ return HttpResponse.json({
 
 ## まとめ
 
-この章では、テーブルの計算をサーバーへ移しました。
+データ量が増えたら、ソート、絞り込み、ページ区切りをサーバーへ移し、Tableには結果と総件数を渡します。
 
 - 役割を分けます。URLが状態を持ち、Routerが検証し、Queryがキャッシュし、サーバーが計算し、Tableが描画します。
 - `manualPagination`・`manualSorting`・`manualFiltering`で、ライブラリの計算を止めます。
