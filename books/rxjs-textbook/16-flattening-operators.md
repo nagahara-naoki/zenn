@@ -169,9 +169,9 @@ flowchart TD
 
 この判断フローを頭に入れておけば、実務で「どれを使うべきか」で迷ったとき、上から順にたどるだけで、答えにたどり着けます。
 
-## まとめ
+## Inner Observableの扱い方で4つのOperatorを選ぶ
 
-この章では、4つのFlattening Operatorを見比べました。
+4つのFlattening Operatorの違いを整理します。
 
 - 4つとも、Outerの値をInner Observableに変えて平坦化します。違いはInnerの処理中の振る舞いです。
 - `mergeMap`は並行して実行し、順序は保証されません。同時実行数を制限できます。
