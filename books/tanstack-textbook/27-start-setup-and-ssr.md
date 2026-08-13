@@ -272,7 +272,7 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 
 ## まとめ
 
-この章では、TanStack Startを導入しました。
+TanStack Startを使うと、Routerのルート定義を保ったままSSRへ広げられます。
 
 - SPAは、HTML・JavaScript・データで3往復します。初期表示とクローラーへの対応が弱くなります。
 - StartはViteとTanStack Routerの上に築かれています。Routerの知識はそのまま使えます。
