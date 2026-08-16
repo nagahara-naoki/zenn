@@ -2,6 +2,8 @@
 title: "認証とトークンの境界を設計する"
 ---
 
+入出力の契約が整っても、呼び出し元と許可された操作を区別できなければ、APIを安全には公開できません。
+
 認証は「この呼び出し元は誰か」を確かめる仕組みです。認可は「その主体が、この操作をしてよいか」を判断します。二つを分けなければ、正しいトークンを持つだけで他人のリソースを操作できるAPIになりかねません。
 
 ## 認証方式は利用者に合わせる
@@ -102,9 +104,7 @@ Content-Type: application/problem+json
 
 認証はログイン画面だけの機能ではありません。トークンの発行から検証、ローテーション、失効、監査までを一つのライフサイクルとして設計します。
 
-:::message
-認証済みであることは、すべての操作を許可することではありません。認証結果を次章の認可判断へ渡します。
-:::
+認証済みであることは、すべての操作を許可することではありません。確定した主体の情報を、認可判断へ渡します。
 
 ### 参考資料
 
@@ -112,4 +112,3 @@ Content-Type: application/problem+json
 - [JSON Web Token Best Current Practices（RFC 8725）](https://www.rfc-editor.org/rfc/rfc8725)
 - [OAuth 2.0 Demonstrating Proof of Possession（RFC 9449）](https://www.rfc-editor.org/rfc/rfc9449)
 - [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
-

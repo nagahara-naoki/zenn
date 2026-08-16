@@ -2,7 +2,7 @@
 title: "Webhookと非同期処理を信頼できる形にする"
 ---
 
-処理完了まで数分かかる、別システムへ変化を知らせたい。この二つは、同期HTTPだけでは扱いにくい課題です。本章では、ジョブとWebhookを「いつか届く通信」として設計します。
+処理完了まで数分かかる。別システムへ変化を知らせたい。この二つは、同期HTTPだけでは扱いにくい課題です。ジョブとWebhookを、遅延や再送が起こる「いつか届く通信」として設計します。
 
 ## 同期、ポーリング、Webhookを選ぶ
 
@@ -17,7 +17,7 @@ Webhookを使っても、受信失敗や紛失に備えて状態を照会するA
 ## 受付と完了を分ける
 
 ```http
-POST /event-exports HTTP/1.1
+POST /exports HTTP/1.1
 Content-Type: application/json
 
 {"format":"csv","filter":{"status":"published"}}
@@ -25,7 +25,7 @@ Content-Type: application/json
 
 ```http
 HTTP/1.1 202 Accepted
-Location: /event-exports/exp_123
+Location: /exports/exp_123
 Retry-After: 5
 Content-Type: application/json
 
@@ -114,4 +114,3 @@ Webhook URLを自由入力させるとSSRFの入口になります。`https`、�
 :::message
 WebhookはHTTPのコールバックではなく、重複・遅延・順不同・停止を前提にした配送システムです。
 :::
-

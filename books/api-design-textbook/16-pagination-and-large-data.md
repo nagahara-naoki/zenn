@@ -4,7 +4,7 @@ title: "ページネーションと大量データを安全に扱う"
 
 一覧を一度に返すと、データの増加に伴って応答時間とメモリ使用量が増えます。ページネーションは単なる画面分割ではなく、変化するデータを安定して読み進めるための仕組みです。
 
-## offset方式は分かりやすい
+## オフセット方式は分かりやすい
 
 ```http
 GET /events?offset=40&limit=20
@@ -14,7 +14,7 @@ GET /events?offset=40&limit=20
 
 一方、先頭から大量の行を読み飛ばす実装では、後ろのページほど遅くなります。ページ移動中に新しいイベントが先頭へ追加されると、同じ項目が次ページにも現れることがあります。削除されれば項目が抜けます。
 
-## cursor方式は基準点から続きを読む
+## カーソル方式は基準点から続きを読む
 
 ```http
 GET /events?limit=20&cursor=eyJzdGFydHNBdCI6IjIwMjYtMDktMTJUMDQ6MDA6MDBaIiwiaWQiOiJldnRfMTIzIn0
@@ -52,7 +52,7 @@ ORDER BY starts_at ASC, id ASC
 
 カーソルも両方を保持します。順序が一意でなければ、「前回の続き」を定義できません。
 
-更新によって項目が境界をまたぐと、cursor方式でも重複や欠落が起こり得ます。必要な整合性に応じて選びます。
+更新によって項目が境界をまたぐと、カーソル方式でも重複や欠落が起こり得ます。必要な整合性に応じて選びます。
 
 - フィード: 多少の重複を許し、クライアントがIDで除外する
 - 帳票: スナップショット時刻を固定する
@@ -109,18 +109,14 @@ sequenceDiagram
     participant C as Client
     participant A as API
     participant W as Worker
-    C->>A: POST /event-exports
+    C->>A: POST /exports
     A-->>C: 202 Accepted + Location
     A->>W: 生成を依頼
     W-->>A: ファイル保存・状態更新
-    C->>A: GET /event-exports/exp_123
+    C->>A: GET /exports/exp_123
     A-->>C: completed + 一時ダウンロードURL
 ```
 
 ジョブには`queued`、`running`、`completed`、`failed`、`expired`などの状態を持たせます。結果URLの有効期限、再生成、権限確認、個人情報を含むファイルの保護も必要です。
 
 ページネーション、バルク処理、エクスポートは、データ量が増えてから後付けすると互換性を壊しがちです。最初から無制限の一覧を許さず、規模に応じて処理方式を切り替えられる境界を用意します。
-
-:::message
-大量データでは、件数だけでなく、読み取り中の変化と処理時間を設計します。
-:::

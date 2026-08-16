@@ -2,9 +2,21 @@
 title: "総合演習：イベント予約APIを完成させる"
 ---
 
-ここまで学んだ判断を、ひとつのAPIへ統合します。題材は、主催者がイベントを公開し、参加者が席を予約し、外部システムが予約確定通知を受け取るサービスです。
+最後に、ここまで学んだ判断を一つのAPIへ統合します。題材は、主催者がイベントを公開し、参加者が席を予約し、外部システムが予約確定通知を受け取るサービスです。
 
 この章の目的は、唯一の正解を示すことではありません。要件からリソース、HTTP、エラー、セキュリティ、信頼性、運用まで、設計判断がつながっている状態を作ります。
+
+## 設計を始める前の5つの問い
+
+完成例を読む前に、自分ならどう設計するかを考えてみてください。
+
+1. APIの責任範囲をどこまでとし、どの利用者を想定するか
+2. 何を独立したリソースとし、予約にどの状態遷移を許すか
+3. 満席、再送、同時更新をどの応答と仕組みで扱うか
+4. 参加者と主催者をどう認証し、対象ごとの権限をどう確認するか
+5. Webhook、監視、契約テストを使って公開後のAPIをどう運用するか
+
+以降は、この5問に対する一つの設計例です。要件が変われば答えも変わるため、各判断の理由に注目してください。
 
 ## 1. 境界と利用者を定める
 
@@ -44,25 +56,22 @@ erDiagram
 - `reservations`: 参加者と席数を結ぶ予約
 - `event-publications`: 公開予約と公開履歴
 - `webhook-subscriptions`: 通知先と購読イベント
-- `event-exports`: 大量出力の非同期ジョブ
+- `exports`: 大量出力の非同期ジョブ
 
 予約をイベントの配列へ埋め込まず、独立したリソースにします。予約には所有者、取消期限、状態、監査履歴があるためです。
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending
-    pending --> confirmed: 在庫確保と決済承認
-    pending --> failed: 確保・決済に失敗
-    pending --> expired: 確保期限切れ
+    [*] --> confirmed: 在庫確保と決済承認
+    [*] --> failed: 確保・決済に失敗
     confirmed --> cancelled: 参加者または主催者が取消
     confirmed --> attended: 入場確認
     cancelled --> [*]
     failed --> [*]
-    expired --> [*]
     attended --> [*]
 ```
 
-この状態機械から、`confirmed`から`pending`へ戻す操作は作らない、`cancelled`をDELETEで消さない、といったAPI判断が導けます。
+一時的な席の確保は内部処理とし、公開する予約状態にはしません。この状態機械から、`cancelled`をDELETEで消さない、確定済みの予約を未確定へ戻さない、といったAPI判断が導けます。
 
 ## 3. エンドポイントを一覧にする
 
@@ -81,19 +90,30 @@ stateDiagram-v2
 | `POST` | `/events` | 下書きイベントを作成 |
 | `PATCH` | `/events/{eventId}` | 許可された属性を部分更新 |
 | `POST` | `/events/{eventId}/publications` | 即時または予約公開 |
-| `POST` | `/events/{eventId}/cancellations` | イベントを中止 |
+| `POST` | `/events/{eventId}/cancellation` | イベントを中止 |
 | `GET` | `/events/{eventId}/reservations` | 参加者予約一覧 |
 
 ### 参加者向け
 
 | メソッド | パス | 結果 |
 |---|---|---|
-| `POST` | `/events/{eventId}/reservations` | 自分の予約を作成 |
+| `POST` | `/reservations` | 自分の予約を作成 |
 | `GET` | `/me/reservations` | 自分の予約一覧 |
 | `GET` | `/reservations/{reservationId}` | 自分の予約詳細 |
-| `POST` | `/reservations/{reservationId}/cancellations` | 予約を取消 |
+| `POST` | `/reservations/{reservationId}/cancellation` | 予約を取消 |
 
 取消には実行者、理由、返金結果があり、記録を後から確認するため、`DELETE`ではなくcancellationリソースを作ります。
+
+### 外部連携・非同期処理
+
+| メソッド | パス | 結果 |
+|---|---|---|
+| `POST` | `/webhook-subscriptions` | Webhook購読を作成 |
+| `GET` | `/webhook-subscriptions` | Webhook購読を一覧取得 |
+| `DELETE` | `/webhook-subscriptions/{subscriptionId}` | Webhook購読を解除 |
+| `GET` | `/webhook-deliveries/{deliveryId}` | 配送結果を確認 |
+| `POST` | `/exports` | 大量出力ジョブを作成 |
+| `GET` | `/exports/{exportId}` | 出力の進行状況と取得先を確認 |
 
 ## 4. 一覧の契約を決める
 
@@ -186,12 +206,12 @@ Idempotency-Key: 01J4QBM8Z9D6CGBNTFCPV0AH2R
 ## 7. 予約作成の一貫性を守る
 
 ```http
-POST /events/evt_123/reservations HTTP/1.1
+POST /reservations HTTP/1.1
 Authorization: Bearer ...
 Idempotency-Key: 01J4QBX4H80YDTB81Y6KZQ40XG
 Content-Type: application/json
 
-{"seats":2,"paymentMethodId":"pm_abc"}
+{"eventId":"evt_123","seats":2,"paymentMethodId":"pm_abc"}
 ```
 
 処理の要点は、認可、重複排除、残席確保、決済連携、結果記録です。
@@ -217,9 +237,11 @@ sequenceDiagram
     end
 ```
 
-DBの予約保存とアウトボックス記録は同じトランザクションにします。決済との分散トランザクションは使えないため、途中失敗時の補償を定義します。残席確保後に決済が失敗したら席を戻し、予約を`failed`として記録します。タイムアウトで決済結果が不明なら、決済側の冪等性キーで照会してから確定します。
+DBには、予約と「後で送るイベント」の記録を同じトランザクションで保存します。この方法をトランザクショナルアウトボックスと呼びます。
 
-冪等性記録は、主体、経路、キー、入力フィンガープリント、応答を24時間保持します。同じキーと異なる席数は`409`で拒否します。
+外部の決済サービスまで含めた一括更新はできないため、途中で失敗した場合の戻し方も決めます。残席確保後に決済が失敗したら席を戻し、予約を`failed`として記録します。タイムアウトで決済結果が分からないときは、決済側の冪等性キーで結果を照会してから予約を確定します。
+
+冪等性の記録には、主体、経路、キー、応答に加え、入力から計算した識別値を24時間保持します。この識別値が入力フィンガープリントです。同じキーでイベント、席数、決済手段のいずれかが異なる要求を受けたら、`409`で拒否します。
 
 ## 8. 同時編集を上書きしない
 
@@ -362,4 +384,3 @@ API設計は、URLを美しく並べる仕事ではありません。利用者�
 :::message
 設計判断は単独では働きません。HTTP、業務状態、セキュリティ、信頼性、運用が同じ契約を支えるとき、APIは長く使える製品になります。
 :::
-
