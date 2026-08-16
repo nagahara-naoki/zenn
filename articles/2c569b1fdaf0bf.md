@@ -1,5 +1,5 @@
 ---
-title: "AngularのOnPushはなぜ速い？変更検知の仕組みから理解する"
+title: "AngularのOnPushはなぜ速い"
 emoji: "🚀"
 type: "tech"
 topics: ["angular", "typescript", "パフォーマンス", "変更検知", "signals"]
