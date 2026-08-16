@@ -92,7 +92,3 @@ token.memberships contains requestedTenantId
 - バッチ、エクスポート、Webhookにも同じ境界を確認する
 
 認可はUIでボタンを隠すことではありません。攻撃者が任意のHTTPリクエストを作る前提で、APIが最後の境界を守ります。
-
-:::message
-すべてのリソース操作で「誰が、どの対象に、何を、どの条件で行えるか」を評価します。
-:::

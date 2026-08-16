@@ -16,11 +16,11 @@ title: "冪等性・競合・再試行を一緒に設計する"
 ## 冪等性キーでPOSTの再送を束ねる
 
 ```http
-POST /events/evt_123/reservations HTTP/1.1
+POST /reservations HTTP/1.1
 Idempotency-Key: 01J4Q8Q5Y0X1G7G2Q9P8K3A6M4
 Content-Type: application/json
 
-{"seats": 2}
+{"eventId":"evt_123","seats":2}
 ```
 
 サーバーは初回の処理結果を保存します。同じ主体が同じキーと同じ内容で再送したら、新しい予約を作らず、保存済みの結果を返します。
@@ -44,7 +44,7 @@ sequenceDiagram
 
 同時に同じキーが到着した場合、最初の処理が完了するまで待つか、「処理中」と返すかを決めます。DBの一意制約や原子的な挿入で、二件がともに初回と判定されないようにします。
 
-`Idempotency-Key`は広く使われていますが、2026年8月時点ではIETFの標準RFCではなく、HTTPAPIワーキンググループのインターネットドラフトです。独自採用する場合は、キー形式、保持期間、競合応答、再現するヘッダーをAPI契約で定義します。
+`Idempotency-Key`は広く使われていますが、2026年8月時点ではIETFの標準RFCではありません。HTTPAPIワーキンググループのドラフトは2026年4月に失効しています。独自採用する場合は、キー形式、保持期間、競合応答、再現するヘッダーをAPI契約で定義します。
 
 ## リソースの競合には条件付きリクエストを使う
 
@@ -108,11 +108,10 @@ WHERE id = :id AND available_seats >= 2;
 保存する応答に個人情報が含まれるなら、暗号化、アクセス制御、削除要件も適用します。キー自体を監査や相関に利用できても、秘密情報を埋め込ませないよう形式と長さを制限します。
 
 :::message
-タイムアウト後の曖昧さ、同時更新、再試行は別々の問題に見えますが、同じ副作用を安全に確定する一つの設計です。
+タイムアウト後の曖昧さ、同時更新、再試行に共通する課題は、同じ副作用を重複なく安全に確定させることです。
 :::
 
 ### 参考資料
 
 - [RFC 9110: HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
-- [The Idempotency-Key HTTP Header Field（IETF Internet-Draft）](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
-
+- [The Idempotency-Key HTTP Header Field（失効したIETFドラフト）](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
