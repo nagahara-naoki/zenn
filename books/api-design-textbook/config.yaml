@@ -1,7 +1,7 @@
 title: "API設計の教科書"
 summary: "変更に強く、利用者が迷わないWeb APIを設計する。HTTP、リソース設計、エラー、認証、冪等性、バージョニング、OpenAPIまでを、イベント予約APIの設計を通して体系的に学ぶ。"
 topics: ["api", "rest", "http", "openapi", "backend"]
-published: true
+published: false
 price: 0
 chapters:
   - 01-api-as-contract
