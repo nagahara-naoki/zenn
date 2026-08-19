@@ -2,6 +2,10 @@
 title: "Loaderによるデータ取得"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-16/tanstack-tasks-spa)と[第15章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-15...chapter-16)を確認できます。一覧・詳細ルートのLoaderと`api.ts`の中断対応を変更します。
+:::
+
 ここまで、データ取得はコンポーネントの中で行ってきました。`useQuery`を呼び、返ってきた状態で表示を分岐する形です。
 
 この章では、取得を始める**タイミング**を前に倒します。コンポーネントが描画される前、遷移が決まった瞬間に取得を始める仕組みが、TanStack RouterのLoaderです。
@@ -277,6 +281,10 @@ router.invalidate(); // 現在のルートのLoaderを再実行する
 
 これは画面単位の操作です。「タスクに関わるキャッシュだけをまとめて古くする」といった細かい指定はできません。データの更新が多いアプリでは、キャッシュの管理をTanStack Queryに任せるほうが素直です。
 :::
+
+## この章の完成コード
+
+Loader、読み込み表示、エラー表示、`AbortSignal`の受け渡しを含む状態は[`chapter-16`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-16/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

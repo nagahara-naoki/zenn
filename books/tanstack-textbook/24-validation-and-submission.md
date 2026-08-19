@@ -2,6 +2,10 @@
 title: "バリデーションと送信処理"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-24/tanstack-tasks-spa)と[第23章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-23...chapter-24)を確認できます。前章のフォームと`formOptions.ts`へ検証を追加します。
+:::
+
 前章でフォームの骨格を作りました。ここでは、入力の検証と送信を仕上げます。
 
 検証は、書く場所とタイミングの組み合わせで整理できます。まずそこを押さえてから、Zodによるスキーマ検証、非同期の確認、配列項目、そしてサーバーからのエラーの扱いへ進みます。
@@ -381,6 +385,10 @@ useBlocker({
 `enableBeforeUnload`は、ブラウザのタブを閉じる操作やリロードに対する警告です。アプリ内の遷移とブラウザ操作の両方を、同じ条件で守れます。
 
 RouterとFormが別のライブラリでありながら、状態を1つ渡すだけでつながります。それぞれが状態を隠さず公開しているからこそできる連携です。
+
+## この章の完成コード
+
+Zodスキーマ、初期検証、項目別エラー、二重送信防止を含むフォームは[`chapter-24`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-24/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

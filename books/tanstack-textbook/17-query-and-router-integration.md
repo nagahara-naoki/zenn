@@ -2,6 +2,10 @@
 title: "QueryとRouterの連携"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-17/tanstack-tasks-spa)と[第16章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-16...chapter-17)を確認できます。Router Contextへ`queryClient`を渡し、Loaderを`ensureQueryData`へ置き換えます。
+:::
+
 前章の最後で、キャッシュの仕組みが2つあると書きました。RouterのLoaderと、TanStack Queryです。
 
 どちらか選ぶ必要はありません。取得を早く始めるのはLoaderに任せ、キャッシュの管理はQueryに任せる。この章では、その組み合わせを実装します。TanStackの各ライブラリを使う醍醐味が、いちばんはっきり出る部分です。
@@ -298,6 +302,10 @@ Devtoolsを2つ開いて観察します。Query Devtoolsでキャッシュの増
 その状態でクリックすると、通信は発生せず、待ち時間なく詳細が表示されます。`useSuspenseQuery`は中断すらしません。
 
 一度見た詳細に戻ったときも同じです。`staleTime`の1分以内なら、キャッシュがそのまま使われます。1分を過ぎていれば、古いデータを見せながら裏で更新されます。
+
+## この章の完成コード
+
+RouterとQueryが同じキャッシュを使う完成形は[`chapter-17`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-17/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

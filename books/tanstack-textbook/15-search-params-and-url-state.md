@@ -2,6 +2,10 @@
 title: "Search ParamsとURL状態"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-15/tanstack-tasks-spa)と[第14章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-14...chapter-15)を確認できます。主な変更先は`src/routes/tasks/index.tsx`です。
+:::
+
 「フロントエンドの状態を分類する」の章で、URL状態という分類を立てました。この章がその回収です。
 
 ページネーションの章で`useState`に置いたページ番号を、URLへ引っ越します。あわせて絞り込み条件も載せます。TanStack Routerの機能の中で、この章で扱うSearch Paramsの扱いが、いちばん他のライブラリと差がつく部分です。
@@ -278,6 +282,10 @@ URLから読んだ値を`useState`にコピーし、そのstateを画面で使�
 ### 秘密の情報を載せる
 
 URLは履歴に残り、ログにも記録され、リファラとして外部へ送られることもあります。トークンや個人情報を検索条件に入れないでください。
+
+## この章の完成コード
+
+検索条件の検証とURL更新を組み込んだ一覧ルートは[`chapter-15`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-15/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

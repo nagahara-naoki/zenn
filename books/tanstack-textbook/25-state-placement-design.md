@@ -2,6 +2,10 @@
 title: "状態の置き場所を設計する"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-25/tanstack-tasks-spa)と[第24章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-24...chapter-25)を確認できます。実装全体の対応表は`ARCHITECTURE.md`にまとめています。
+:::
+
 本書の最初に、状態を4種類に分けました。ここまでの章で、それぞれの置き場所を実装してきました。
 
 この章は総括です。分類をもう一度確認し、ライブラリの境界をどう引くか、ディレクトリをどう並べるか、そして避けるべき形を整理します。新しいAPIは出てきません。判断の話です。
@@ -279,6 +283,10 @@ flowchart LR
 9. `useState`が残っているなら、それがUI状態だと確認したか
 
 最後の項目が効きます。`useState`が並んでいたら、1つずつ「これは本当にUI状態か」と問い直してください。多くの場合、いくつかはURLかQueryへ引っ越せます。
+
+## この章の完成コード
+
+SPA版の最終的なディレクトリ構成と状態の置き場所は[`chapter-25`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-25/tanstack-tasks-spa)で確認できます。
 
 ## まとめ
 

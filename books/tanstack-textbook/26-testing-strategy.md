@@ -2,6 +2,10 @@
 title: "テスト戦略"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-26/tanstack-tasks-spa)と[第25章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-25...chapter-26)を確認できます。`vitest.config.ts`、`src/test/`、コンポーネントテストを追加します。
+:::
+
 ここまで組んだコードをテストします。
 
 TanStackを使ったアプリのテストで最初に決めるべきは、**何をテストしないか**です。ライブラリの動作を検証し始めると、いくらでも書けてしまいます。境界を引いてから、必要なものを書きます。
@@ -319,6 +323,10 @@ jsdomで確認しづらいものがあります。
 | E2E（Playwrightなど） | 主要な業務フロー、ブラウザ固有の挙動 |
 
 E2Eは実行が遅く、壊れやすいものです。「ログインしてタスクを作成して一覧で確認する」のような、収益に直結する数本に絞るのが現実的です。細かい分岐は、速く動く単体テストで網羅します。
+
+## この章の完成コード
+
+MSWのハンドラを再利用するセットアップとQueryClientのテスト用ラッパーは[`chapter-26`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-26/tanstack-tasks-spa)にあります。`npm test`で実行できます。
 
 ## まとめ
 

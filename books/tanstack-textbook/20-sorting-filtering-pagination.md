@@ -2,6 +2,10 @@
 title: "ソート・フィルタ・ページネーション"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-20/tanstack-tasks-spa)と[第19章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-19...chapter-20)を確認できます。前章の`TaskTable.tsx`へ並び替え・絞り込み・ページ送り・行選択を追加します。
+:::
+
 前章で作った表は、まだ何もできません。この章で、並び替え・絞り込み・ページ区切り・行選択を足します。
 
 作業のほとんどは、`useReactTable`に渡すオプションを増やすだけです。ただ、その裏にある仕組みを理解しておかないと、「なぜ動かないのか」で詰まります。まずRow Modelから見ます。
@@ -323,6 +327,10 @@ getRowId: (row) => row.id,
 そして件数以外にも、クライアント側では正しく再現できない処理があります。日本語の並び順、全文検索の関連度順、権限による絞り込み。これらはサーバー側のロジックです。
 
 次章では、絞り込みと並び替えをサーバーに任せる形へ切り替えます。TanStack Tableの状態管理はそのまま使い、計算だけをサーバーに移す構成です。
+
+## この章の完成コード
+
+4つのRow Modelと制御された状態を組み込んだ表は[`chapter-20`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-20/tanstack-tasks-spa)にあります。
 
 ## まとめ
 
