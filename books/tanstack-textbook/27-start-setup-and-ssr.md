@@ -2,6 +2,10 @@
 title: "TanStack Startの導入とSSR"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-27/tanstack-tasks-start)と[第26章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-26...chapter-27)を確認できます。Start編はSPA版とは別の`tanstack-tasks-start/`で動かします。
+:::
+
 最終部です。ここまでのアプリは、すべてブラウザの中で動いていました。この章から、サーバー側へ広げます。
 
 担当するのはTanStack Startです。TanStack RouterとViteの上に築かれたフルスタックフレームワークで、サーバーサイドレンダリングとサーバー側の処理を扱えるようになります。
@@ -269,6 +273,10 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 `'data-only'`が中間の選択肢です。データ取得の往復を減らしつつ、HTMLの生成コストは払わない形になります。
 
 アプリ全体の既定値は、Routerの`defaultSsr`で決められます。「公開ページはSSR、ログイン後の画面はクライアント」という方針なら、既定を`false`にして公開ページだけ`true`にする、といった設計ができます。
+
+## この章の完成コード
+
+Vite設定、Router、ルートドキュメント、SSRされるページを含むStart版の土台は[`chapter-27`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-27/tanstack-tasks-start)にあります。
 
 ## まとめ
 

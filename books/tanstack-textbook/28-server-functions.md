@@ -2,6 +2,10 @@
 title: "Server FunctionsとフルスタックQuery"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-28/tanstack-tasks-start)と[第27章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-27...chapter-28)を確認できます。主な変更先は`src/features/tasks/server.ts`、`src/router.tsx`、`src/routes/index.tsx`です。
+:::
+
 本書の最後の章です。
 
 前章でサーバー側のレンダリングを手に入れました。残っているのは、サーバー側で動く処理そのものです。データベースへの接続、秘密鍵を使った署名、外部APIの呼び出し。どれもクライアントには置けません。
@@ -300,6 +304,10 @@ Headlessという思想も、同じ根から来ています。ロジックだけ
 TanStackの開発は活発で、これからも変わり続けます。TanStack DBはクライアント側のデータ層を、TanStack AIはAIとの連携を扱おうとしています。Tableは、内部を全面的に書き直したv9が登場しました。
 
 そうした変化の中でも、この本で扱った問いは変わりません。**この状態は誰のものか。どこに置くべきか。**新しいライブラリを前にしたときも、この問いから始めてください。
+
+## この章の完成コード
+
+Server Functionの取得・作成、入力検証、QueryのSSR連携を含む最終形は[`chapter-28`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-28/tanstack-tasks-start)にあります。
 
 ## まとめ
 
