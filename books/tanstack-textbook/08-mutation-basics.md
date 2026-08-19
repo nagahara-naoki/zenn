@@ -2,6 +2,10 @@
 title: "Mutationによるデータ更新"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-08/tanstack-tasks-spa)と[第7章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-07...chapter-08)を確認できます。更新用APIを`api.ts`へ追記し、作成・更新・削除のコンポーネントを新規作成します。
+:::
+
 ここまでは、データを読む話でした。この章から、書く話に移ります。
 
 タスクを作る、状態を完了にする、削除する。こうした更新のあとには、必ず宿題が残ります。手元のキャッシュが古くなるのです。一覧に新しいタスクが並ばない、完了にしたのに未完了のまま表示される。この食い違いを解消するところまでが、更新処理の仕事です。
@@ -22,7 +26,7 @@ title: "Mutationによるデータ更新"
 
 ## 更新系のAPI関数を用意する
 
-`api.ts`には、まだ取得の関数しかありません。この章から使う3本を足します。
+`api.ts`には、まだ取得の関数しかありません。この章から使う3本を、既存の`src/features/tasks/api.ts`の末尾へ追記します。importは既存行へ`TaskInput`を足してください。
 
 ```ts:src/features/tasks/api.ts
 import type { Task, TaskInput } from './types';
@@ -67,7 +71,7 @@ export async function deleteTask(id: string): Promise<void> {
 
 ## useMutationの基本
 
-タスクを作成するフォームを書きます。
+タスクを作成するフォームを置く`src/features/tasks/components/CreateTaskForm.tsx`を新規作成します。
 
 ```tsx:src/features/tasks/components/CreateTaskForm.tsx
 import { useState } from 'react';
@@ -125,7 +129,9 @@ flowchart LR
 
 その伝達手段が`invalidateQueries`です。
 
-```tsx
+次に、同じ`CreateTaskForm.tsx`の`useMutation`を、キャッシュの無効化を含むコードへ置き換えます。
+
+```tsx:src/features/tasks/components/CreateTaskForm.tsx
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function CreateTaskForm() {
@@ -200,7 +206,7 @@ queryClient.invalidateQueries({ queryKey: ['tasks'], exact: true });
 
 このとき、再取得は無駄になります。手元に最新のデータがあるのだから、キャッシュに直接入れてしまえばよいのです。それが`setQueryData`です。
 
-```tsx
+```tsx:src/features/tasks/components/TaskStatusToggle.tsx
 export function TaskStatusToggle({ task }: { task: Task }) {
   const queryClient = useQueryClient();
 
@@ -247,9 +253,9 @@ export function TaskStatusToggle({ task }: { task: Task }) {
 
 ## 作成・更新・削除で何を最新化するか
 
-3種類の更新では、後片付けの内容が少し違います。削除を例に見ます。
+3種類の更新では、後片付けの内容が少し違います。削除ボタンを置く`src/features/tasks/components/DeleteTaskButton.tsx`を新規作成します。
 
-```tsx
+```tsx:src/features/tasks/components/DeleteTaskButton.tsx
 export function DeleteTaskButton({ taskId }: { taskId: string }) {
   const queryClient = useQueryClient();
 
@@ -344,6 +350,10 @@ mutate(
 :::
 
 なお、`onSettled`は成功でも失敗でも呼ばれます。読み込み表示の後片付けなど、どちらでも必要な処理に使います。
+
+## この章の完成コード
+
+`CreateTaskForm.tsx`、`TaskStatusToggle.tsx`、`DeleteTaskButton.tsx`を追加し、作成・更新・削除のあとに一覧と詳細のキャッシュがそろう状態にしました。全体は[`chapter-08`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-08/tanstack-tasks-spa)で確認できます。
 
 ## まとめ
 

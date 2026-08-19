@@ -2,6 +2,10 @@
 title: "キャッシュとデータの鮮度"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-07/tanstack-tasks-spa)と[第6章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-06...chapter-07)を確認できます。この章で変更する完成コードは`src/main.tsx`です。
+:::
+
 TanStack Queryの中心にあるのはキャッシュです。そして、そのキャッシュを制御する設定は、実質2つしかありません。`staleTime`と`gcTime`です。
 
 この2つを理解すると、ここまで「既定でそうなっている」と流してきた動きが、すべて説明できるようになります。逆に、ここを曖昧にしたままだと、「なぜか毎回リクエストが飛ぶ」「なぜか古いデータが出る」という状態から抜け出せません。この章は、本書でいちばん時間をかけて読む価値があります。
@@ -185,7 +189,7 @@ flowchart TD
 
 ## 設定はどこに書くか
 
-`staleTime`をQueryごとに書いていくと、書き漏れが出ます。アプリ全体の既定値は、QueryClientを作るときに指定できます。
+`staleTime`をQueryごとに書いていくと、書き漏れが出ます。アプリ全体の既定値は、`src/main.tsx`にある`queryClient`の定義を次のコードへ置き換えて指定します。
 
 ```tsx:src/main.tsx
 const queryClient = new QueryClient({
@@ -199,7 +203,7 @@ const queryClient = new QueryClient({
 });
 ```
 
-そのうえで、個別のQueryで上書きします。
+そのうえで、個別のQueryで上書きします。次は上書き方法を示す説明用コードで、完成コードには追加しません。
 
 ```tsx
 // マスタデータは変わらないので、自動では古くしない
@@ -221,6 +225,10 @@ Devtoolsを開いて、`staleTime`の効果を観察してください。
 `staleTime: 30_000`を指定した`['tasks']`は、取得後30秒間`fresh`と表示されます。この間、タブを離れて戻ってもリクエストは飛びません。30秒を過ぎるとラベルが`stale`に変わり、次にタブへ戻ったときに再取得が走ります。
 
 そして、再取得中も一覧が消えないことを確かめてください。画面はそのまま、データだけが静かに入れ替わります。これがstale-while-revalidateの体感です。
+
+## この章の完成コード
+
+`QueryClient`の既定値へ`staleTime`、`gcTime`、`retry`を設定しました。変更後の`main.tsx`は[`chapter-07`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-07/tanstack-tasks-spa)にあります。
 
 ## まとめ
 
