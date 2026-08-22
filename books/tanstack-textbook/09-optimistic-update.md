@@ -2,6 +2,10 @@
 title: "Optimistic Update"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-09/tanstack-tasks-spa)と[第8章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-08...chapter-09)を確認できます。完成コードでは、前章の`TaskStatusToggle.tsx`を楽観的更新へ置き換えます。
+:::
+
 前章の更新処理には、待ち時間がありました。ボタンを押してから画面が変わるまで、サーバーの応答を待つ必要があります。本書のモックは400ミリ秒の遅延を入れているので、その間ボタンは「作成中...」のままです。
 
 チェックボックスを1つ入れるだけの操作で毎回0.4秒待たされると、アプリは鈍く感じられます。この章では、待ち時間を体感からなくす手法を扱います。Optimistic Update（楽観的更新）です。
@@ -39,7 +43,7 @@ sequenceDiagram
 
 実装には2つの水準があります。まず簡単なほうから見ます。
 
-`useMutation`は、送信中の引数を`variables`として返します。これを使えば、キャッシュに触らずに仮の表示を作れます。
+`useMutation`は、送信中の引数を`variables`として返します。これを使えば、キャッシュに触らずに仮の表示を作れます。次の`TaskListWithPendingRow`は方法1を説明する独立した例で、完成コードでは方法2を採用します。
 
 ```tsx
 export function TaskListWithPendingRow() {
@@ -75,10 +79,10 @@ export function TaskListWithPendingRow() {
 
 ## 方法2: キャッシュを先に書き換える
 
-複数の画面に反映したい場合や、詳細画面の値そのものを変える場合は、キャッシュに手を入れます。
+複数の画面に反映したい場合や、詳細画面の値そのものを変える場合は、キャッシュに手を入れます。前章で作った`TaskStatusToggle.tsx`を、次のコードへ置き換えます。
 
-```tsx
-export function OptimisticStatusToggle({ task }: { task: Task }) {
+```tsx:src/features/tasks/components/TaskStatusToggle.tsx
+export function TaskStatusToggle({ task }: { task: Task }) {
   const queryClient = useQueryClient();
 
   const { mutate, isPending } = useMutation({
@@ -175,7 +179,7 @@ flowchart TD
   OK --> ST
 ```
 
-一覧のキャッシュに対して楽観的更新をかける場合も、手順は変わりません。書き換える対象が配列になるだけです。
+一覧のキャッシュに対して楽観的更新をかける場合も、手順は変わりません。次は`onMutate`内の書き換え部分だけを示した説明用コードです。
 
 ```tsx
 queryClient.setQueryData<TaskListResult>(['tasks'], (old) =>
@@ -273,6 +277,10 @@ Devtoolsのキャッシュを見ながら試すと、値が書き換わってか
 再試行のボタンを添えるのも有効です。ネットワークの一時的な不調なら、押し直せば通ります。
 
 エラー通知をアプリ全体で統一する方法は、「エラー処理とSuspense」の章で扱います。
+
+## この章の完成コード
+
+完成コードでは、詳細と一覧のキャッシュを先に更新し、失敗時に両方を戻します。`cancelQueries`から`invalidateQueries`までの流れは、[`chapter-09`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-09/tanstack-tasks-spa)の`TaskStatusToggle.tsx`で確認できます。
 
 ## まとめ
 

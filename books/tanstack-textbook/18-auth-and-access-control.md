@@ -2,6 +2,10 @@
 title: "認証とアクセス制御"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-18/tanstack-tasks-spa)と[第17章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-17...chapter-18)を確認できます。`features/auth/`、認証モック、`_authenticated.tsx`、`login.tsx`を追加します。
+:::
+
 Router編の最後は認証です。
 
 やることは3つあります。ログインしていないユーザーを保護された画面から弾くこと、弾いたあとログイン画面へ送ってから元の場所へ戻すこと、そしてログアウト時に前のユーザーのデータを残さないことです。
@@ -389,6 +393,10 @@ flowchart TD
 ```
 
 認証情報をサーバー状態として扱い、`beforeLoad`で門を作り、Contextで下流へ流す。これがTanStackでの認証の型です。ライブラリを追加せずに、ここまで組めます。
+
+## この章の完成コード
+
+ログイン、保護ルート、元のURLへの復帰、ログアウト時のキャッシュ破棄は[`chapter-18`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-18/tanstack-tasks-spa)で動かせます。モックのパスワードは`password`です。
 
 ## まとめ
 

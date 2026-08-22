@@ -2,6 +2,10 @@
 title: "Queryの設計パターン"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-11/tanstack-tasks-spa)と[第10章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-10...chapter-11)を確認できます。`queries.ts`を新規作成し、各コンポーネントのQuery定義を置き換えます。
+:::
+
 ここまでの章で、`useQuery`をコンポーネントの中に直接書いてきました。動きはしますが、このまま画面が増えていくと問題が出ます。
 
 同じデータを取るコードが画面ごとに散らばり、`queryKey`の書き方が微妙にずれ、`staleTime`を1か所だけ直し忘れる。よくある崩れ方です。この章では、Queryの定義を1か所にまとめる方法と、キーの設計を扱います。実務のコードとサンプルコードの差が、いちばん大きく出る部分です。
@@ -54,7 +58,7 @@ flowchart TD
 
 キーの文字列を手で書いていると、必ずどこかで綴りがずれます。`'detail'`と`'details'`が混在した瞬間、キャッシュは静かに二重化します。
 
-キーを作る関数を1か所に集めます。この形をQuery Key Factoryと呼びます。
+キーを作る関数を1か所に集めます。`src/features/tasks/queries.ts`を新規作成してください。この形をQuery Key Factoryと呼びます。
 
 ```ts:src/features/tasks/queries.ts
 export const taskKeys = {
@@ -80,7 +84,7 @@ queryClient.removeQueries({ queryKey: taskKeys.detail('3') });  // 特定の詳�
 
 ## queryOptionsで定義をまとめる
 
-キーが整理できたら、次はQueryの定義そのものです。`queryKey`と`queryFn`と`staleTime`は、いつも同じ組み合わせで使われます。まとめて名前を付けます。
+キーが整理できたら、次はQueryの定義そのものです。`queryKey`と`queryFn`と`staleTime`は、いつも同じ組み合わせで使われます。先ほど作った`queries.ts`へ、importと`taskQueries`を追記します。
 
 そのための道具が`queryOptions`です。
 
@@ -105,7 +109,7 @@ export const taskQueries = {
 };
 ```
 
-コンポーネント側は、こうなります。
+コンポーネント側では、各`useQuery`のオプションを`taskQueries`へ置き換えます。次は置き換え後の利用例です。
 
 ```tsx
 export function TaskListWithQueries({ page }: { page: number }) {
@@ -278,6 +282,10 @@ flowchart LR
 コンポーネントは`api.ts`を直接呼びません。`queries.ts`を経由させることで、`staleTime`やキーの設計を1か所に閉じ込められます。
 
 Mutationの定義も、同じ考え方で`mutations.ts`に集められます。ただ、Mutationはキャッシュの無効化という画面側の関心と結びつきやすいので、無理にまとめず、コンポーネントの近くに置く判断もあります。
+
+## この章の完成コード
+
+キーと取得条件を`src/features/tasks/queries.ts`へ集め、コンポーネントからAPI関数への直接参照を外しました。Query編で使うキーの全体像は、[`chapter-11`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-11/tanstack-tasks-spa)で確認できます。
 
 ## まとめ
 

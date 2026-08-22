@@ -2,6 +2,10 @@
 title: "useQueryによるデータ取得"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-06/tanstack-tasks-spa)と[第5章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-05...chapter-06)を確認できます。完成コードには`TaskDetail.tsx`と`TaskSummaries.tsx`を追加しています。
+:::
+
 前章で、一覧を取得する`useQuery`を書きました。ここでは、その`useQuery`をもう少し詳しく見ます。
 
 扱うのは4つです。Queryが取りうる状態の読み方、`queryKey`に変数を入れて詳細画面を作る方法、条件が揃うまで取得を待つ方法、そして数が決まらない並列取得です。実務で使う`useQuery`の書き方は、だいたいこの章で出そろいます。
@@ -42,6 +46,8 @@ flowchart LR
 | `isLoading` | `isPending && isFetching` | 初回の読み込み中だけを狙う |
 
 使い分けの目安は、画面をどう見せたいかです。データがまだ無いなら、画面の骨組みだけを出す`isPending`。データはあって裏で更新しているだけなら、小さなスピナーや薄い色で伝える`isFetching`。
+
+以下は`TaskList.tsx`の表示部分だけを抜き出した説明用コードです。`isPending`と`isFetching`の使い分けを確認してください。
 
 ```tsx
 const { data, isPending, isFetching } = useQuery({
@@ -115,7 +121,7 @@ useQuery({
 
 ## 条件が揃うまで待つ
 
-一覧で選択されたタスクの詳細を出す画面を考えます。何も選ばれていないときは、取得する必要がありません。
+一覧で選択されたタスクの詳細を出す画面を考えます。何も選ばれていないときは、取得する必要がありません。次の`SelectedTaskDetail`は`enabled`を説明するための例で、完成コードには追加しません。
 
 `enabled`オプションで、実行の条件を指定できます。
 
@@ -141,7 +147,7 @@ export function SelectedTaskDetail({ selectedId }: { selectedId: string | null }
 
 ### 前のクエリの結果を使って次を取る
 
-`enabled`のもう1つの使い道が、依存クエリです。1つめの結果が出てから、それを材料に2つめを取ります。
+`enabled`のもう1つの使い道が、依存クエリです。1つめの結果が出てから、それを材料に2つめを取ります。次のコードも動作を説明する独立した例です。
 
 ```tsx
 export function FirstTaskDetail() {
@@ -192,7 +198,7 @@ const members = useQuery({ queryKey: ['members'], queryFn: fetchMembers });
 
 取得したいデータの数が実行時に決まる場合、`useQuery`を並べる方法は使えません。フックの呼び出し回数を変えられないからです。そのために`useQueries`があります。
 
-```tsx
+```tsx:src/features/tasks/components/TaskSummaries.tsx
 import { useQueries } from '@tanstack/react-query';
 
 export function TaskSummaries({ ids }: { ids: string[] }) {
@@ -221,7 +227,7 @@ export function TaskSummaries({ ids }: { ids: string[] }) {
 
 ## 一定間隔で取り直す
 
-在庫数や処理の進捗のように、放っておいても変わるデータは、定期的に取り直したくなります。`refetchInterval`を指定します。
+在庫数や処理の進捗のように、放っておいても変わるデータは、定期的に取り直したくなります。`refetchInterval`を指定します。ここではQueryオプションだけを抜き出しており、完成コードには追加しません。
 
 ```tsx
 useQuery({
@@ -251,6 +257,10 @@ refetchInterval: (query) =>
 ただし、この再取得は無条件ではありません。データが「古い」と判定されている場合にだけ起こります。前章で見たとおり、既定ではデータは取得直後から古い扱いです。だから毎回リクエストが飛んで見えます。
 
 この「古い」の基準を自分で決められるようになると、通信の回数を意図どおりに設計できます。次章のテーマです。
+
+## この章の完成コード
+
+IDを含むQueryと、数が実行時に決まる並列Queryを、動くコンポーネントとして追加しました。[`chapter-06`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-06/tanstack-tasks-spa)では`App.tsx`への配置まで確認できます。
 
 ## まとめ
 

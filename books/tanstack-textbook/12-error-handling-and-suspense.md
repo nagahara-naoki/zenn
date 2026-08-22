@@ -2,6 +2,10 @@
 title: "エラー処理とSuspense"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-12/tanstack-tasks-spa)と[第11章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-11...chapter-12)を確認できます。`api.ts`の通信処理と`main.tsx`のQueryClientを置き換え、Suspense用の詳細画面を新規作成します。
+:::
+
 Query編の最後は、うまくいかなかったときの話です。
 
 通信は失敗します。サーバーが落ちる、電波が切れる、権限が足りない、データが消えている。それぞれ違う失敗なので、扱いも変わります。すべてを「エラーが発生しました」で片付けると、ユーザーは次に何をすればよいのかわかりません。
@@ -10,7 +14,7 @@ Query編の最後は、うまくいかなかったときの話です。
 
 ## エラーの型を作る
 
-まず、失敗の種類を見分けられるようにします。いまの`api.ts`は、失敗をすべて同じ`Error`にしています。
+まず、失敗の種類を見分けられるようにします。いまの`api.ts`は、失敗をすべて同じ`Error`にしています。最初の短いコードは現状を示す説明用です。
 
 ```ts
 if (!response.ok) {
@@ -18,7 +22,7 @@ if (!response.ok) {
 }
 ```
 
-これでは、404（存在しない）と500（サーバーの障害）を区別できません。ステータスコードを持つエラーの型を作ります。
+これでは、404（存在しない）と500（サーバーの障害）を区別できません。`src/features/tasks/api.ts`の先頭へ、ステータスコードを持つエラーの型を追記します。
 
 ```ts:src/features/tasks/api.ts
 export class ApiError extends Error {
@@ -32,7 +36,7 @@ export class ApiError extends Error {
 }
 ```
 
-そして、通信の共通処理をひとつにまとめます。
+そして、同じ`api.ts`へ通信の共通処理を追記します。
 
 ```ts:src/features/tasks/api.ts
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -52,7 +56,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 204（本文なし）を特別扱いしているのは、`response.json()`が本文の無い応答で失敗するためです。削除の応答がここに当たります。
 
-これで、各API関数が1行になります。章をまたいで少しずつ増えてきた6本を、ここでまとめて整えます。
+これで、各API関数が1行になります。章をまたいで少しずつ増えてきた6本を、ここでまとめて置き換えます。
 
 ```ts:src/features/tasks/api.ts
 // import に TaskInput を足す
@@ -132,7 +136,7 @@ useQuery({
 
 `failureCount`は、これまでに失敗した回数です。`true`を返せば再試行し、`false`を返せばそこで確定します。
 
-この判定はアプリ全体で共通なので、QueryClientの既定に書くのが実際的です。
+この判定はアプリ全体で共通なので、`src/main.tsx`にある`queryClient`の定義を置き換えます。
 
 ```tsx:src/main.tsx
 const queryClient = new QueryClient({
@@ -230,7 +234,9 @@ Error Boundaryは自分で書くこともできますが、`react-error-boundary
 npm i react-error-boundary
 ```
 
-```tsx
+次のフォールバックは、`src/features/tasks/components/TaskDetailPage.tsx`を新規作成して、その中へ書きます。
+
+```tsx:src/features/tasks/components/TaskDetailPage.tsx
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
@@ -250,7 +256,9 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
 
 両方をまとめてリセットするために、`QueryErrorResetBoundary`を使います。
 
-```tsx
+同じ`TaskDetailPage.tsx`へ、Error BoundaryとQueryのリセットを組み合わせたページコンポーネントを追記します。
+
+```tsx:src/features/tasks/components/TaskDetailPage.tsx
 import { QueryErrorResetBoundary } from '@tanstack/react-query';
 
 export function TaskDetailPage({ id }: { id: string }) {
@@ -274,7 +282,9 @@ export function TaskDetailPage({ id }: { id: string }) {
 
 `useSuspenseQuery`を使うと、読み込み中の分岐もコンポーネントの外に出せます。
 
-```tsx
+データを表示する`SuspenseTaskDetail`も、同じ`TaskDetailPage.tsx`へ追記します。
+
+```tsx:src/features/tasks/components/TaskDetailPage.tsx
 import { useSuspenseQuery } from '@tanstack/react-query';
 
 export function SuspenseTaskDetail({ id }: { id: string }) {
@@ -317,7 +327,7 @@ const [first, second] = useSuspenseQueries({
 
 失敗のたびにトーストを出したい、という要件はよくあります。すべての`useQuery`に`onError`を書くのは現実的ではありません。
 
-QueryClientを作るときに、キャッシュ全体のコールバックを設定できます。
+QueryClientを作るときに、キャッシュ全体のコールバックを設定できます。`src/main.tsx`の`queryClient`を、既定の再試行条件と次のキャッシュ設定を併せ持つ形へ置き換えます。
 
 ```tsx:src/main.tsx
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
@@ -378,6 +388,10 @@ export function fetchTask(id: string): Promise<Task> {
 `__fail=500`に変えると、`throwOnError`の条件に合致してError Boundaryのフォールバックが出ます。同じ失敗でも、種類によって行き先が変わることを目で確認できます。
 
 ブラウザの開発者ツールでネットワークをオフラインにする実験もしてください。エラーにならず、`paused`のまま待つ様子が観察できます。
+
+## この章の完成コード
+
+HTTPエラーを`ApiError`へ変換し、4xxでは再試行せず、想定外の失敗はError Boundaryへ渡す構成にしました。`TaskDetailPage.tsx`、通知処理、QueryClientの設定を含むQuery編の完成形は、[`chapter-12`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-12/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

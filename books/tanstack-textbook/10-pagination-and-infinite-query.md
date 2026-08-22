@@ -2,13 +2,17 @@
 title: "ページネーションと無限スクロール"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-10/tanstack-tasks-spa)と[第9章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-09...chapter-10)を確認できます。`api.ts`を置き換え、ページ番号方式とカーソル方式のコンポーネントを新規作成します。
+:::
+
 ここまで、タスク一覧は全件を一度に取得していました。137件ならなんとか動きますが、1万件になれば通信も描画も破綻します。
 
 一覧を分割して取得する方法は、大きく2つあります。ページ番号で区切るページネーションと、下へ読み進めるほど継ぎ足していく無限スクロールです。TanStack Queryは、それぞれに専用の仕組みを持っています。
 
 ## APIの関数に引数を持たせる
 
-まず、ページ番号を渡せるように`api.ts`を直します。
+まず、ページ番号を渡せるように`src/features/tasks/api.ts`の`TaskListParams`、`toSearchParams`、`fetchTasks`を次のコードへ置き換えます。
 
 ```ts:src/features/tasks/api.ts
 export type TaskListParams = {
@@ -68,7 +72,7 @@ queryFn: () => fetchTasks(),
 
 ページ番号を`useState`で持ち、`queryKey`に含めます。
 
-```tsx
+```tsx:src/features/tasks/components/PaginatedTaskList.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTasks } from '../api';
@@ -127,7 +131,7 @@ flowchart LR
 
 ### placeholderDataで前のページを見せる
 
-`placeholderData`に`keepPreviousData`を指定すると、新しいQueryのデータが届くまで、前のQueryのデータを表示し続けます。
+`placeholderData`に`keepPreviousData`を指定すると、新しいQueryのデータが届くまで、前のQueryのデータを表示し続けます。先ほど作った`PaginatedTaskList.tsx`の`useQuery`を置き換えます。
 
 ```tsx
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -143,7 +147,9 @@ const { data, isPending, isPlaceholderData, isFetching } = useQuery({
 
 このとき、表示しているのが「前のページのデータ」であることを知る手段が要ります。`isPlaceholderData`がその合図です。
 
-```tsx
+次の表示部分も、同じ`PaginatedTaskList.tsx`の一覧と「次へ」ボタンへ反映します。
+
+```tsx:src/features/tasks/components/PaginatedTaskList.tsx
 <ul style={{ opacity: isPlaceholderData ? 0.6 : 1 }}>
   {data.items.map((task) => (
     <li key={task.id}>{task.title}</li>
@@ -205,7 +211,7 @@ export async function fetchTaskFeed(params: TaskFeedParams = {}): Promise<TaskFe
 
 普通の`useQuery`との違いは、1つのキャッシュに**複数ページ分のデータ**を保持するところです。
 
-```tsx
+```tsx:src/features/tasks/components/TaskFeed.tsx
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { fetchTaskFeed } from '../api';
 
@@ -256,7 +262,7 @@ export function TaskFeed() {
 
 ### スクロールで自動的に読み込む
 
-「もっと見る」ボタンを押させる形でも動きますが、最後の要素が画面に入ったら自動で読み込むほうが自然です。IntersectionObserverを使います。
+「もっと見る」ボタンを押させる形でも動きますが、最後の要素が画面に入ったら自動で読み込むほうが自然です。IntersectionObserverを使います。ここからの自動読み込みは任意の拡張で、完成コードはボタン方式です。
 
 ```tsx
 function useOnScreen(onVisible: () => void) {
@@ -352,6 +358,10 @@ useInfiniteQuery({
 業務システムの一覧なら、ページネーションが無難です。「昨日見た3ページ目のあの行」に戻れることは、業務では価値があります。
 
 読み流す前提のコンテンツなら無限スクロールが向いています。ただし、フッターに到達できなくなる問題や、位置を共有できない問題は残ります。
+
+## この章の完成コード
+
+`PaginatedTaskList.tsx`と`TaskFeed.tsx`を追加しました。ページ移動中の表示と、複数ページを1つのキャッシュへ積む形は、[`chapter-10`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-10/tanstack-tasks-spa)で動かせます。
 
 ## まとめ
 

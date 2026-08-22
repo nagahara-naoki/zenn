@@ -2,6 +2,10 @@
 title: "開発環境の準備"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-04/tanstack-tasks-spa)を別画面で開いておくと、本文とファイル全体を見比べながら進められます。この章では、ViteプロジェクトへAPIモックと通信関数を新規作成します。
+:::
+
 前章で、状態を4種類に分けました。ここからは実際に手を動かせるよう、プロジェクトを用意します。
 
 この章でやることは3つです。Reactプロジェクトを作り、本書を通して使うタスク管理APIのモックを組み、ディレクトリ構成の方針を決めます。作ったものは最後の章まで育て続けるので、ここでの土台づくりは無駄になりません。
@@ -63,7 +67,7 @@ export type TaskStatus = 'todo' | 'doing' | 'done';
 
 ## 本書で使うAPI
 
-題材はタスク管理アプリです。タスクの型を、次のように決めます。
+題材はタスク管理アプリです。タスクの型を置く`src/features/tasks/types.ts`を新規作成します。
 
 ```ts:src/features/tasks/types.ts
 export type TaskStatus = 'todo' | 'doing' | 'done';
@@ -142,7 +146,7 @@ npx msw init public --save
 
 ### データを用意する
 
-まず、メモリ上のデータを作ります。137件あると、ページ送りの挙動が確かめやすくなります。
+まず、メモリ上のデータを置く`src/mocks/db.ts`を新規作成します。137件あると、ページ送りの挙動が確かめやすくなります。
 
 ```ts:src/mocks/db.ts
 import type { Task, TaskPriority, TaskStatus } from '../features/tasks/types';
@@ -183,7 +187,7 @@ export const db = {
 
 ### ハンドラを書く
 
-次に、リクエストへの応答を定義します。先に、一覧が使う絞り込みと並び替えの共通処理を書きます。
+次に、`src/mocks/handlers.ts`を新規作成し、リクエストへの応答を定義します。先に、一覧が使う絞り込みと並び替えの共通処理を書きます。
 
 ```ts:src/mocks/handlers.ts
 import { delay, http, HttpResponse } from 'msw';
@@ -230,7 +234,7 @@ function filterTasks(url: URL): Task[] {
 
 `filter`が新しい配列を返すため、そのあとの`sort`は`db.tasks`を壊しません。ここを`db.tasks.sort()`と書くと、一度並び替えただけでモックのデータそのものが並び替わってしまいます。
 
-続いて、取得系の3本です。
+続いて、同じ`handlers.ts`へ取得系の3本を追記します。ここから先は、先ほどの共通処理の下へ続けてください。
 
 ```ts:src/mocks/handlers.ts
 export const handlers = [
@@ -298,7 +302,7 @@ export const handlers = [
 
 そして、`/api/tasks/feed`を`/api/tasks/:id`より**前**に置いています。MSWは登録順にパターンを照合するため、後ろに置くと`feed`という文字列が`:id`として拾われてしまいます。
 
-残りは更新系の3本です。同じ配列に続けて書きます。
+残りは更新系の3本です。同じ`handlers`配列の末尾へ続けて書きます。
 
 ```ts:src/mocks/handlers.ts
   // 作成
@@ -366,7 +370,7 @@ export const handlers = [
 
 ### ブラウザで起動する
 
-ハンドラをService Workerに登録します。
+ハンドラをService Workerに登録する`src/mocks/browser.ts`を新規作成します。
 
 ```ts:src/mocks/browser.ts
 import { setupWorker } from 'msw/browser';
@@ -375,7 +379,7 @@ import { handlers } from './handlers';
 export const worker = setupWorker(...handlers);
 ```
 
-そして、アプリの起点でモックを立ち上げます。本番のビルドに混ざらないよう、開発時だけ動かします。
+そして、既存の`src/main.tsx`を次のコードへ置き換え、アプリの起点でモックを立ち上げます。本番のビルドに混ざらないよう、開発時だけ動かします。
 
 ```tsx:src/main.tsx
 import { StrictMode } from 'react';
@@ -425,7 +429,7 @@ src/
 
 この構成は章が進むにつれて育ちます。Queryの定義を置く`queries.ts`、ルートを置く`routes/`が、あとから加わります。最終形は「状態の置き場所を設計する」の章で示します。
 
-まず、通信する関数を用意しておきます。
+通信する関数を置く`src/features/tasks/api.ts`を新規作成します。
 
 ```ts:src/features/tasks/api.ts
 import type { Task } from './types';
@@ -464,7 +468,7 @@ export async function fetchTask(id: string): Promise<Task> {
 
 Viteのテンプレートには、oxlintというLinterが入っています。Rustで書かれた高速なLinterで、`npm run lint`で動きます。
 
-TanStackは、ESLint向けの公式プラグインを提供しています。ESLintを使うプロジェクトなら、入れておく価値があります。
+TanStackは、ESLint向けの公式プラグインを提供しています。ESLintを使う場合は、インストール後にプロジェクト直下の`eslint.config.js`を新規作成します。
 
 ```sh
 npm i -D eslint @tanstack/eslint-plugin-query
@@ -498,6 +502,17 @@ TanStackの各ライブラリには、専用の開発者ツールがあります
 :::message
 `@tanstack/react-devtools`という、複数のライブラリのDevtoolsを1つのパネルにまとめるパッケージも登場しています。まだ0系のバージョンなので、本書では個別のDevtoolsを使います。
 :::
+
+## この章の完成コード
+
+この章では、`src/mocks/`の3ファイル、`src/features/tasks/types.ts`、`src/features/tasks/api.ts`を作り、`src/main.tsx`を置き換えました。すべてを組み込んだ状態は、[`chapter-04`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-04/tanstack-tasks-spa)で確認できます。
+
+```sh
+npm ci
+npm run dev
+```
+
+ブラウザのコンソールに`[MSW] Mocking enabled.`と表示されれば、この章の準備は完了です。
 
 ## まとめ
 

@@ -2,13 +2,17 @@
 title: "TanStack Queryの導入"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-05/tanstack-tasks-spa)と[第4章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-04...chapter-05)を確認できます。この章では、`main.tsx`を置き換え、一覧と件数のコンポーネントを新規作成します。
+:::
+
 準備が整いました。ここからTanStack Queryを導入します。
 
 この章のゴールは、`useEffect`で書いていたデータ取得を`useQuery`に置き換え、何が消えて何が手に入ったのかを確かめることです。コードは短くなりますが、短くなること自体が目的ではありません。手放した仕事が、そのままキャッシュや競合状態の解決になっているところを見てください。
 
 ## 素朴なコードを振り返る
 
-「フロントエンドの状態を分類する」の章で見たコードを、もう一度置きます。
+「フロントエンドの状態を分類する」の章で見たコードを、もう一度置きます。これは比較のための説明用コードなので、アプリには追加しません。
 
 ```tsx
 function TaskList({ status }: { status: string }) {
@@ -39,7 +43,7 @@ function TaskList({ status }: { status: string }) {
 npm i @tanstack/react-query
 ```
 
-導入に必要な部品は2つです。QueryClientとQueryClientProviderです。
+導入に必要な部品は2つです。QueryClientとQueryClientProviderです。インストール後、既存の`src/main.tsx`を次のコードへ置き換えます。
 
 QueryClientが、キャッシュの本体です。どのデータをどのキーで保持しているか、それがいつ取得されたか、いま通信中かどうか。すべての情報がこのオブジェクトの中にあります。
 
@@ -86,7 +90,7 @@ QueryClientは、コンポーネントの外で作ります。ここでつまず
 
 ## はじめてのuseQuery
 
-置き換えたコードが、これです。
+一覧を表示する`src/features/tasks/components/TaskList.tsx`を新規作成します。
 
 ```tsx:src/features/tasks/components/TaskList.tsx
 import { useQuery } from '@tanstack/react-query';
@@ -179,7 +183,7 @@ TypeScriptもそう理解します。`if (isPending) return ...`と`if (isError)
 
 キャッシュの効き目がわかりやすいのは、同じデータを2つのコンポーネントが必要とする場面です。
 
-```tsx
+```tsx:src/features/tasks/components/TaskCount.tsx
 export function TaskCount() {
   const { data } = useQuery({
     queryKey: ['tasks'],
@@ -190,7 +194,22 @@ export function TaskCount() {
 }
 ```
 
-`TaskList`と`TaskCount`を並べて置きます。それぞれが`useQuery`を呼んでいるので、リクエストは2回飛びそうに見えます。実際には1回です。
+`TaskCount.tsx`を新規作成し、`TaskList`と`TaskCount`を`src/App.tsx`へ並べて置きます。それぞれが`useQuery`を呼んでいるので、リクエストは2回飛びそうに見えます。実際には1回です。
+
+```tsx:src/App.tsx
+import { TaskCount } from './features/tasks/components/TaskCount';
+import { TaskList } from './features/tasks/components/TaskList';
+
+export default function App() {
+  return (
+    <main>
+      <h1>タスク管理</h1>
+      <TaskCount />
+      <TaskList />
+    </main>
+  );
+}
+```
 
 ```mermaid
 %%{init: {'sequence': {'messageFontWeight': 'bold', 'messageFontSize': 15}, 'themeVariables': {'signalColor': '#9a9ae0', 'signalTextColor': '#8fa0c0'}}}%%
@@ -221,6 +240,8 @@ sequenceDiagram
 ```sh
 npm i @tanstack/react-query-devtools
 ```
+
+次のimportを`src/main.tsx`へ加え、`QueryClientProvider`の内側へDevtoolsを追記します。
 
 ```tsx:src/main.tsx
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -267,6 +288,10 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 :::message
 `?__fail=500`を思い出してください。`api.ts`の`fetch`先を一時的に`/api/tasks?__fail=500`に変えると、失敗時の動きが観察できます。Devtoolsで、3回まで再試行してからエラーになる様子が見えます。再試行の間隔は少しずつ延びていきます。
 :::
+
+## この章の完成コード
+
+TanStack QueryとDevtoolsを導入し、`TaskList.tsx`と`TaskCount.tsx`から同じキャッシュを利用できる状態になりました。ファイル全体は[`chapter-05`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-05/tanstack-tasks-spa)、変更箇所だけなら[第4章との差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-04...chapter-05)を参照してください。
 
 ## まとめ
 

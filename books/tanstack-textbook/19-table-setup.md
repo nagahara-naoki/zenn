@@ -2,6 +2,10 @@
 title: "TanStack Tableの導入"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-19/tanstack-tasks-spa)と[第18章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-18...chapter-19)を確認できます。表の実装先は`TaskTable.tsx`です。
+:::
+
 ここから、データの見せ方に移ります。
 
 タスク一覧は`<ul>`で並べてきました。実務の一覧画面は、たいてい表です。列があり、並び替えができ、絞り込みがあり、行を選べる。作り始めると、想像よりずっと大変な部品です。
@@ -268,6 +272,10 @@ TanStack Tableは、2026年8月に次のメジャーバージョンであるv9�
 
 本書がv8を基準にするのは、v9が出たばかりで、実務のコードもネット上の情報もまだv8が大半だからです。`createColumnHelper`や`flexRender`といった中心の概念はv9にも残るため、この章で学ぶ考え方はそのまま通じます。移行するときは、公式の移行ガイドを参照してください。
 :::
+
+## この章の完成コード
+
+列定義からHTMLの描画までを組み立てた`TaskTable.tsx`は[`chapter-19`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-19/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

@@ -2,6 +2,10 @@
 title: "サーバーサイドテーブル"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-21/tanstack-tasks-spa)と[第20章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-20...chapter-21)を確認できます。`ServerTaskTable.tsx`を追加し、検索条件を一覧ルートのURLへ置きます。
+:::
+
 前章の表は、全件を手元に持つ前提でした。この章では、絞り込み・並び替え・ページ区切りの計算をサーバーへ移します。
 
 そのとき、テーブルの状態はどこに置くべきでしょうか。答えはURLです。ここで、Query・Router・Tableの3つが噛み合います。本書でもっとも実務的な構成であり、これが組めれば管理画面の一覧はひととおり作れます。
@@ -308,6 +312,10 @@ return HttpResponse.json({
 - 選択状態をURLに載せるか、それとも`useState`に留めるか決めたか
 
 最後の項目は判断が必要です。選択した行のIDをURLに載せると共有できますが、100件選ぶとURLが長くなりすぎます。「選択して一括操作する」までの一時的な状態なら、`useState`で持つのが現実的です。
+
+## この章の完成コード
+
+Query・Router・Tableをつないだサーバーサイドテーブルは[`chapter-21`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-21/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

@@ -2,6 +2,10 @@
 title: "TanStack Routerの導入"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-13/tanstack-tasks-spa)と[第12章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-12...chapter-13)を確認できます。`vite.config.ts`、`src/routes/`、`src/main.tsx`を変更します。
+:::
+
 ここから、状態の2つめの置き場所に移ります。URLです。
 
 サーバー状態はTanStack Queryに預けました。次は、画面遷移と、URLに載せたい状態を扱います。担当するのはTanStack Routerです。
@@ -302,6 +306,10 @@ const routeTree = rootRoute.addChildren([indexRoute]);
 生成ファイルが要らない代わりに、親子関係を自分で書きます。ルートが増えると管理が大変になるため、選ぶ場面は限られます。
 
 ライブラリの内部では、File-based Routingもこの形に変換されています。`routeTree.gen.ts`を開くと、`update`と`addChildren`が並んでいるのが見えます。生成されているのはこのコードです。仕組みを知っておくと、生成ファイルを読むときに戸惑いません。
+
+## この章の完成コード
+
+Routerの設定、生成された`routeTree.gen.ts`、ホームとタスク一覧のルートを含む全体は[`chapter-13`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-13/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

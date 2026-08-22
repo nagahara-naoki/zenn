@@ -2,6 +2,10 @@
 title: "型安全なルーティングとナビゲーション"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-14/tanstack-tasks-spa)と[第13章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-13...chapter-14)を確認できます。`src/routes/tasks/`へレイアウト・一覧・詳細ルートを置きます。
+:::
+
 前章で、トップページとタスク一覧のルートを作りました。ここでは、URLに変数を含む詳細画面を追加し、画面のあいだを行き来する方法を扱います。
 
 型がどこまで守ってくれるのかを、実際に間違ったコードを書いて確かめていきます。
@@ -328,6 +332,10 @@ router.history.push(pathFromServer); // 型検査は効かない
 `to`はルートの一覧から選ぶ型になっているので、`string`をそのまま渡すと型エラーです。`history`を使えば移動できますが、そのぶん値が妥当かどうかは自分で確かめる必要があります。「認証とアクセス制御」の章で、ログイン後の戻り先を扱うときに実例が出てきます。
 
 型が守るのは「書き間違い」です。実行時に決まる値の正しさは、依然として自分で確かめる必要があります。
+
+## この章の完成コード
+
+ネストしたルートと`$taskId`を使う詳細画面は[`chapter-14`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-14/tanstack-tasks-spa)にあります。
 
 ## まとめ
 

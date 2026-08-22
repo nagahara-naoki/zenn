@@ -2,6 +2,10 @@
 title: "TanStack Virtualによる仮想化"
 ---
 
+:::message
+[この章の完成コード](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-22/tanstack-tasks-spa)と[第21章からの差分](https://github.com/nagahara-naoki/tanstack-textbook-samples/compare/chapter-21...chapter-22)を確認できます。`VirtualTaskList.tsx`を新規作成します。
+:::
+
 前章で、サーバーサイド処理によって「1万件のうち20件だけ受け取る」形にしました。通信の問題はこれで解決します。
 
 ただ、別の要求もあります。「ページ送りせずに、全部スクロールで見たい」「1画面に500行出したい」。この場合、受け取る件数は減らせません。減らせるのは、描画する要素の数です。
@@ -331,6 +335,10 @@ Performanceパネルで記録しながらスクロールすると、フレーム
 | ページネーションで区切れる | まずそちらを検討する |
 
 順番としては、ページネーションかサーバーサイド処理で件数を減らすのが先です。それでも「一度に全部見せたい」という要件が残ったときに、仮想化を選びます。
+
+## この章の完成コード
+
+スクロール要素、総サイズ、表示中の行の配置を含む仮想リストは[`chapter-22`](https://github.com/nagahara-naoki/tanstack-textbook-samples/tree/chapter-22/tanstack-tasks-spa)にあります。
 
 ## まとめ
 
