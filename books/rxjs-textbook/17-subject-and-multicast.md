@@ -31,11 +31,11 @@ subject.next(2);
 // A: 2
 ```
 
-注目してほしいのは、`subject.next(1)`のように、購読関数の「外」から値を流している点です。これは、これまでのObservableにはなかった動きです。`of`や`interval`は、値を流すタイミングを、自分の内側に持っていました。いつ何を流すかは、Observable自身が決めていたのです。ところがSubjectは、外からそれを操れます。「自分でしゃべるマイク」のようなイメージです。
+注目してほしいのは、`subject.next(1)`のように、購読関数の「外」から値を流している点です。これは、これまでのObservableにはなかった動きです。`of`や`interval`は、値を流すタイミングを、自分の内側に持っていました。ところがSubjectには、外部から通知を渡せます。複数の受信先へつながる、入力端子のような存在です。
 
 ## 複数の購読者へ配信する
 
-Subjectは、複数の購読者へ、同じ値を配ります。前章までのCold Observableが、購読ごとに独立していたのとは、対照的です。
+Subjectは、複数の購読者へ同じ値を配ります。`of`や`interval`のようなUnicastのCold Observableが、購読ごとに独立していたのとは対照的です。
 
 ```text
               subject.next(1)  next(2)
@@ -58,7 +58,7 @@ subject.next(1);
 // B: 1
 ```
 
-たった1回の`next(1)`で、AとBの両方が値を受け取っています。1つの流れを、複数へ配る。この動きが、Multicastです。前章で見たHot Observableは、実は内部で、このSubjectのような仕組みを使っています。
+たった1回の`next(1)`で、AとBの両方が値を受け取っています。1つの通知を複数へ配る。この動きが、Multicastです。`share`などの共有機能も、内部ではSubjectに似た分配役を使います。
 
 ただし、注意点があります。Subjectは、購読したあとの値しか受け取れません。`next`のあとに購読した人は、それより前に流れた値を受け取れないのです。生放送に途中から参加するのと同じです。この弱点を補うのが、次に見る種類ちがいのSubjectです。
 
@@ -121,11 +121,11 @@ subject.subscribe((value) => console.log(value)); // 直近2件（2と3）を受
 - 直近の履歴を渡したい → `ReplaySubject`
 - 完了時の結果だけを渡したい → `AsyncSubject`
 
-このうち、もっともよく使うのは`BehaviorSubject`です。「現在の状態」を表すのに、うってつけだからです。「いまの値」がいつでもあり、新しい購読者にもすぐ渡せる、という性質が、状態管理にぴったりなのです。この`BehaviorSubject`を使った状態管理の方法は、次章で扱います。
+状態を表す場面では、`BehaviorSubject`がよく使われます。「いまの値」がいつでもあり、新しい購読者にもすぐ渡せるからです。ただし、履歴や完了時の値が必要なら、別の種類を選びます。`BehaviorSubject`を使った小規模な状態管理は、次章で扱います。
 
 ## UnicastとMulticastの仕組み
 
-「ColdとHot・同期と非同期」の章で、Cold ObservableはUnicast、Hot ObservableはMulticastだと確認しました。Subjectは、この2つをつなぐ橋渡しをします。具体的には、UnicastなCold Observableを、Multicastに変えられるのです。
+「ColdとHot・同期と非同期」の章では、Cold / HotとUnicast / Multicastを別の軸として整理しました。Subjectは、1つのsource購読から届く通知を複数へ配ることで、UnicastなsourceをMulticastとして扱う橋渡しができます。
 
 仕組みは、こうです。1つのCold Observableを、Subjectに1回だけ購読させます。そして、本当の購読者たちには、そのSubjectのほうを購読してもらいます。すると、Cold Observableの「1回の実行」を、Subjectが複数の購読者へ配ってくれます。
 
@@ -144,34 +144,38 @@ Cold Observableの実行は1回だけ、その結果をSubjectが3人へ配る�
 コードで見てみましょう。Cold ObservableをSubjectに流し込み、購読者はSubjectを購読します。
 
 ```ts
-import { Subject, interval } from 'rxjs';
+import { Subject, interval, take } from 'rxjs';
 
-const source$ = interval(1000);
+const source$ = interval(1000).pipe(take(3));
 const subject = new Subject<number>();
-
-source$.subscribe(subject); // sourceの1回の実行をsubjectへ
 
 subject.subscribe((v) => console.log('A:', v));
 subject.subscribe((v) => console.log('B:', v));
+source$.subscribe(subject); // 2人の準備後、sourceを1回だけ購読する
 
-// AとBは同じ値を共有する（intervalは1つだけ動く）
+// AとBは同じ3つの値を共有する（intervalは1つだけ動く）
 ```
 
-`source$`（`interval`）の実行は1つだけで、AとBは同じ値を共有します。もしSubjectを使わずに`source$`を2回購読していたら、`interval`が2つ動いてしまうところでした。この手作業のパターンを、もっと簡単に書けるようにするのが、`share`や`shareReplay`です。次章で扱います。
+`source$`（`interval`）の実行は1つだけで、AとBは同じ値を共有します。Subjectは過去の値を再配信しないため、先にAとBを購読してからsourceへ接続しています。終わらないsourceを手作業で接続する場合は、source側のSubscriptionも保持して解除しなければなりません。この接続管理まで簡単に書けるのが、次章の`share`や`shareReplay`です。
 
 ## HTTP通信の多重実行を防ぐ
 
-共有がとくに効くのが、HTTP通信です。「ColdとHot・同期と非同期」の章で見たとおり、HTTPのObservableはColdなので、購読するたびにリクエストが飛びます。
+共有がとくに効くのが、購読ごとにHTTPリクエストを始めるCold Observableです。ここでは、`defer`を使ってその性質を明示します。
 
 ```ts
+import { defer, from } from 'rxjs';
+
 // 悪い例: 同じObservableを3回購読 → リクエストが3回飛ぶ
-const tasks$ = from(fetch('/api/tasks').then((r) => r.json()));
+const tasks$ = defer(() =>
+  from(fetch('/api/tasks').then((response) => response.json())),
+);
+
 tasks$.subscribe(renderList);
 tasks$.subscribe(updateCount);
 tasks$.subscribe(cacheResult);
 ```
 
-このコードは、まったく同じデータを、3回も取りにいってしまいます。無駄な通信です。Subjectで共有すれば、リクエストは1回で済み、3つの購読者が同じ結果を受け取れます。多重リクエストは、実務でよく起きる無駄なので、この共有の考え方は重要です。
+`defer`の関数は購読ごとに呼ばれるので、このコードは同じデータを3回取りにいきます。Subjectで共有すれば、リクエストは1回で済み、3つの購読者が同じ結果を受け取れます。なお、`from(fetch(...))`とだけ書くと、`fetch`はObservableを作った時点で1回始まります。同じPromiseを3回購読しても、リクエストは3回にはなりません。
 
 ## 共有による副作用
 

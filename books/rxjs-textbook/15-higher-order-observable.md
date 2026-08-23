@@ -26,7 +26,7 @@ const result$ = keyword$.pipe(
 );
 ```
 
-ここで、`searchApi(keyword)`はObservableを返します。ということは、`map`が流すのは「検索結果」そのものではなく、「検索結果を流すObservable」です。つまり`result$`は、値としてObservableを流すObservableになってしまいます。Observableの中に、Observableが入れ子になった状態です。箱を開けたら、また箱が入っていた、というイメージです。
+ここで、`searchApi(keyword)`はObservableを返します。ということは、`map`が流すのは「検索結果」そのものではなく、「検索結果を流すObservable」です。検索結果の型を`SearchResult[]`とすると、`result$`の型は`Observable<Observable<SearchResult[]>>`です。外側と内側の2層になっていることが、型にも表れます。
 
 ## Higher-order ObservableとInner・Outer
 
@@ -53,7 +53,7 @@ result$.subscribe((value) => {
 });
 ```
 
-なぜでしょうか。前章までに学んだとおり、Inner Observable（`searchApi(...)`）は、購読してはじめて値を流します。ところが、`result$`を購読しても、その中のInner Observableは購読されないままです。だから、検索結果ではなく、購読されていないObservableオブジェクトが、そのまま流れてくるのです。検索結果を受け取るには、この内側のInner Observableも、あらためて購読する必要があります。
+なぜでしょうか。ここで`searchApi(...)`が返すのは、購読をきっかけにリクエストを始めるCold Observableだとします。ところが、`result$`を購読しても、その中のInner Observableは購読されないままです。だから、検索結果ではなく、Observableオブジェクトがそのまま流れます。検索結果を受け取るには、このInnerも購読する必要があります。
 
 ## Nested Subscribeの問題
 
@@ -73,7 +73,7 @@ keyword$.subscribe((keyword) => {
 
 次に、購読の管理が難しくなります。内側の購読を、いつ、どうやって解除するのか。外側の購読と合わせて、どう後片付けするのか。とたんに複雑になります。
 
-そして何より、Inner Observableどうしの調整ができません。これがいちばんの問題です。新しいキーワードが来たとき、前の検索をキャンセルしたいのに、Nested Subscribeでは、前の内側の購読が、そのまま生き残ってしまうのです。
+そして何より、Inner Observableどうしの調整ができません。これがいちばんの問題です。新しいキーワードが来たとき、前の検索結果をもう受け取りたくなくても、Nested Subscribeでは、前の内側の購読が、そのまま生き残ってしまいます。
 
 ## Observableを平坦化する
 
@@ -122,10 +122,10 @@ flowchart LR
 
 - すべての検索を並行して行い、来た順に表示する → `mergeMap`
 - 検索を順番に行い、前の結果を待ってから次へ → `concatMap`
-- 新しい入力が来たら、前の検索をキャンセルする → `switchMap`
+- 新しい入力が来たら、前の検索の購読を解除する → `switchMap`
 - 検索中は、新しい入力を無視する → `exhaustMap`
 
-検索のように「最新の結果だけがほしい」場合は、前の検索をキャンセルする`switchMap`が向いています。前の検索を解除してしまえば、古い結果が新しい結果を上書きする心配が、そもそもなくなるからです。
+検索のように「最新の結果だけがほしい」場合は、前のInnerの購読を解除する`switchMap`が向いています。古いInnerからの通知を受け取らなくなるので、新しい結果が上書きされません。通信自体も中断できるかどうかは、Inner ObservableがTeardown Logicを実装しているかに依存します。
 
 つまり、Flattening Operatorを選ぶことは、「非同期処理の競合を、どう解決するか」を選ぶことなのです。処理順序を保ちたいのか、最新だけがほしいのか、二重実行を防ぎたいのか。目的によって、選ぶOperatorが変わります。次章では、その4つのOperatorを、Marble Diagramと具体例で、じっくり見比べていきます。
 

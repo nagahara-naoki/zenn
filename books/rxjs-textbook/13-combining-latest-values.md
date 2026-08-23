@@ -16,11 +16,11 @@ RxJSには、複数のObservableを組み合わせる方法が、いくつも用
 - すべての完了を待って、結果を集めたいのか
 - 到着した順に、1本にまとめたいのか
 
-この章で扱うのは、1つ目の「最新値を組み合わせる」やり方です。2つ目と3つ目は、次章の「完了待ちと到着順」で扱います。まずは、この分類を頭に入れておくと、合成のOperatorが整理しやすくなります。
+この章で扱うのは、1つ目の「最新値を組み合わせる」やり方です。2つ目と3つ目は、次章の「完了・並行・順序で合成する」で扱います。まずは、この分類を頭に入れておくと、合成のOperatorが整理しやすくなります。
 
 ## Creation FunctionとPipeable Operatorの違い
 
-合成のOperatorには、Creation Functionの形と、Pipeable Operatorの形の、両方があるものがあります。少しややこしいので、先に触れておきます。たとえば`combineLatest`は、Creation Functionとして使います。
+合成APIには、Creation FunctionとPipeable Operatorという2つの形があります。たとえば`combineLatest`は、Creation Functionです。
 
 ```ts
 import { combineLatest } from 'rxjs';
@@ -36,11 +36,11 @@ import { combineLatestWith } from 'rxjs';
 a$.pipe(combineLatestWith(b$)).subscribe(([a, b]) => console.log(a, b));
 ```
 
-どちらも結果は同じです。使い分けの目安は、こうです。複数のObservableを対等に並べたいときは、Creation Functionの形（`combineLatest([a$, b$])`）が読みやすくなります。1本のストリームに、`pipe`の途中で合成をつなげたいときは、Pipeable Operatorの形が収まります。本書では、対等に並べる場面が多いので、Creation Functionの形を主に使います。
+どちらも結果は同じです。複数のObservableを対等に並べたいときは、Creation Functionの形（`combineLatest([a$, b$])`）が読みやすくなります。1本のストリームを主語にして`pipe`の途中で合成したいときは、Pipeable Operatorの形が関係を表しやすくなります。本書では、対等に並べる場面が多いので、Creation Functionの形を主に使います。
 
 ## combineLatestで最新値を組み合わせる
 
-`combineLatest`は、複数のObservableそれぞれの最新値を組み合わせて流します。動きの要点はこうです。どれか1つでも新しい値を流すと、そのときのすべての最新値を、配列にして流します。
+`combineLatest`は、すべてのObservableが少なくとも1回ずつ値を流したあと、どれかが新しい値を流すたびに、全員の最新値を組み合わせます。
 
 ```text
 a$:      --1-----3--------5-->
@@ -83,7 +83,7 @@ b$:      --------A----->
 
 ## 値が一度も通知されない場合
 
-この「全員を待つ」性質は、そのまま落とし穴にもなります。組み合わせるObservableのうち、たった1つでも、一度も値を流さないと、`combineLatest`は永遠に何も流しません。
+この「全員を待つ」性質は、そのまま落とし穴にもなります。組み合わせるObservableのうち、たった1つでも値を流さないかぎり、`combineLatest`は何も流しません。そのObservableが値を流さないまま完了すると、以後も組み合わせを作れないため、`combineLatest`は値を一度も流さずに終わります。残りに終わらないObservableがあれば、値を流さないまま待ち続けます。
 
 たとえば、ユーザーが操作するまで値を流さない入力欄を組み合わせたとします。その欄が一度も操作されないかぎり、`combineLatest`の結果は出てきません。「なぜか何も表示されない」と悩んだら、まず「どれかのObservableが、まだ初回の値を流していないのでは?」と疑ってみてください。この問題は、次に見る`startWith`で解決できます。
 
@@ -104,20 +104,20 @@ import { combineLatest, fromEvent, map, startWith } from 'rxjs';
 
 const keyword$ = fromEvent<InputEvent>(keywordInput, 'input').pipe(
   map((e) => (e.target as HTMLInputElement).value),
-  startWith(''), // 初期値として空文字を流す
+  startWith(keywordInput.value), // 現在の入力値から始める
 );
 const category$ = fromEvent<Event>(categorySelect, 'change').pipe(
   map((e) => (e.target as HTMLSelectElement).value),
-  startWith('all'), // 初期カテゴリ
+  startWith(categorySelect.value), // 現在の選択値から始める
 );
 
 combineLatest([keyword$, category$]).subscribe(([keyword, category]) => {
   console.log('検索条件:', keyword, category);
 });
-// 購読直後に ['', 'all'] が流れる
+// 購読直後に、画面上の現在値の組が流れる
 ```
 
-`startWith`で初期値を与えたので、ユーザーがまだ何も操作していなくても、購読直後に`['', 'all']`が流れます。おかげで、初期状態から画面を組み立てられます。`combineLatest`と`startWith`は、セットで使うことが多い組み合わせです。
+`startWith`で現在のフォーム値を与えたので、ユーザーがまだ何も操作していなくても、購読直後に検索条件が流れます。おかげで、HTMLに初期値が設定されていても、その値と食い違いません。`combineLatest`と`startWith`は、セットで使うことが多い組み合わせです。
 
 ## withLatestFrom
 
@@ -139,11 +139,12 @@ other$:  --a--b-----c-------->
 `withLatestFrom`が向くのは、「あるきっかけのときに、別の最新状態を参照したい」場面です。たとえば、送信ボタンが押されたときに、そのときのフォームの状態を読み取る、という処理です。
 
 ```ts
-import { fromEvent, withLatestFrom, map } from 'rxjs';
+import { fromEvent, withLatestFrom, map, startWith } from 'rxjs';
 
 const submit$ = fromEvent(submitButton, 'click');
 const formValue$ = fromEvent<InputEvent>(input, 'input').pipe(
   map((e) => (e.target as HTMLInputElement).value),
+  startWith(input.value),
 );
 
 submit$
@@ -153,7 +154,7 @@ submit$
   });
 ```
 
-引き金は、ボタンのクリック（`submit$`）です。クリックされた瞬間の、フォームの最新値（`formValue$`）を読み取ります。フォームに入力しただけでは、何も起きません。「引き金」と「参照」を分けたいときに、`withLatestFrom`がぴたりとはまります。
+引き金は、ボタンのクリック（`submit$`）です。クリックされた瞬間の、フォームの最新値（`formValue$`）を読み取ります。`startWith`があるので、入力欄を編集する前に押しても現在値を取得できます。フォームに入力しただけでは、送信処理は起きません。「引き金」と「参照」を分けたいときに、`withLatestFrom`が合います。
 
 ## combineLatestとwithLatestFromの使い分け
 
@@ -177,4 +178,4 @@ submit$
 - `withLatestFrom`は、主となるObservableが動いたときだけ、ほかの最新値を添えて流します。
 - 全員が引き金なら`combineLatest`、主役だけが引き金なら`withLatestFrom`を選びます。
 
-次章では、もう2つの合成を扱います。すべての完了を待つ`forkJoin`と、到着順や順番でまとめる`merge`・`concat`・`zip`・`race`です。
+次章では、さらに5つの合成を扱います。すべての完了を待つ`forkJoin`と、到着順や順番でまとめる`merge`・`concat`・`zip`・`race`です。

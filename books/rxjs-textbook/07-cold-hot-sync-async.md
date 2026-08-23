@@ -2,7 +2,7 @@
 title: "ColdとHot・同期と非同期"
 ---
 
-前章の終わりで、同じObservableを2回購読すると、それぞれが独立して実行される、と確認しました。
+「Observable・Observer・subscribeの仕組み」の章では、同じ`interval`を2回購読すると、購読ごとにタイマーが作られると確認しました。
 
 実は、この性質を持つObservableには名前があります。Cold Observableです。そして、これとは対照的に、実行を共有するHot Observableもあります。この章では、まずColdとHotの違いを、じっくり観察します。
 
@@ -12,7 +12,7 @@ title: "ColdとHot・同期と非同期"
 
 Cold Observableは、購読するたびに、新しい実行が始まるObservableです。値を生み出すProducerが、購読のたびに、あらためて作られます。
 
-前章で見た`interval`が、まさにこれでした。2つの購読は、それぞれ自分のカウントを0から始めましたね。
+そこで見た`interval`が、まさにこれでした。2つの購読は、それぞれ自分のカウントを0から始めます。
 
 ```text
 購読A: --0--1--2--3-->
@@ -23,7 +23,7 @@ Cold Observableでは、購読者ごとにProducerが独立します。身近な
 
 ## Hot Observable
 
-Hot Observableは、購読者どうしが、1つの実行を共有するObservableです。Producerは購読とは別に存在していて、そこへ複数の購読者が相乗りします。
+Hot Observableは、購読とは別に存在するProducerを観察するObservableです。Producerは購読者が現れる前から値を生み出せるため、遅れて購読すると過去の値を受け取れません。
 
 DOMのクリックイベントが、その代表です。クリックは、購読者が何人いようと関係なく発生します。複数の購読者は、同じ1回のクリックを、一緒に受け取ります。
 
@@ -40,9 +40,9 @@ clicks$.subscribe(() => console.log('B: クリック'));
 // B: クリック
 ```
 
-1回のクリックで、AとBの両方が反応しています。同じ実行を共有しているからです。
+1回のクリックで、AとBの両方が反応しています。ただし、`fromEvent`は購読ごとにイベントリスナーを登録します。クリックという外部Producerは共通でも、1つのRxJS内部実行を共有しているわけではありません。この違いは、後でUnicastとMulticastを分けて考えると見通しがよくなります。
 
-こちらも、たとえてみましょう。Hot Observableは、テレビの生放送です。放送は、視聴者がいようといまいと進んでいきます。そして、途中からチャンネルを合わせた人は、それより前の場面を見られません。Hot Observableも同じで、遅れて購読した人は、それまでに流れた値を受け取れないのです。
+HotなProducerは、テレビの生放送に似ています。放送は、視聴者がいようといまいと進みます。途中からチャンネルを合わせた人は、それより前の場面を見られません。同じように、HotなProducerへ遅れて接続した購読者は、それ以前の値を通常は受け取りません。
 
 ```text
 Producer: --a--b--c--d--e-->
@@ -58,7 +58,7 @@ Producer: --a--b--c--d--e-->
 |---|---|---|
 | Producerの位置 | Observableの内側 | Observableの外側 |
 | 購読したとき | 新しい実行が始まる | 進行中の実行に相乗りする |
-| 購読者どうし | 独立している | 共有している |
+| 値の発生 | 購読ごとに独立 | 購読とは独立したProducerから届く |
 | 遅れて購読すると | 最初から受け取る | 途中から受け取る |
 
 見分ける鍵は、Producerがどこにあるかです。Producerが購読のたびに作られるならCold、購読とは別に外で動いているならHotです。オンデマンド配信（Cold）か、生放送（Hot）か、と考えると区別しやすくなります。
@@ -69,32 +69,33 @@ Producer: --a--b--c--d--e-->
 
 | 例 | 分類 | 理由 |
 |---|---|---|
-| HTTPリクエスト | Cold | 購読するたびに新しいリクエストが飛ぶ |
+| `defer(() => from(fetch(...)))` | Cold | 購読するたびに`fetch`を新しく呼ぶ |
+| `from(fetch(...))` | すでに開始済み | `fetch`はObservableを作る前に1回だけ始まる |
 | `interval`・`timer` | Cold | 購読するたびに新しいタイマーが始まる |
-| DOMイベント | Hot | イベントは購読とは無関係に発生する |
-| WebSocket | Hotに近い | 接続は共有され、メッセージは購読と無関係に届く |
+| DOMイベント | HotなProducer | イベントは購読とは無関係に発生する |
+| 接続済みのWebSocket | HotなProducer | メッセージは購読とは無関係に届く |
 
-とくにHTTPリクエストがColdである点は、実務でとても重要です。RxJSでHTTP通信を表すObservableは、購読するたびにリクエストを送ります。ということは、うっかり同じObservableを複数回購読すると、そのぶんリクエストが飛んでしまうのです。この落とし穴は、共有を扱う「shareとshareReplay・Subjectによる状態管理」の章で解決します。いまは「HTTPはCold、つまり購読の数だけ通信が飛ぶ」と覚えておいてください。
+HTTP通信の分類は、HTTPという処理ではなく、Observableへの包み方で決まります。Angularの`HttpClient`、`fromFetch`、`defer(() => from(fetch(...)))`のように購読時にリクエストを作ればColdです。対して`from(fetch(...))`では、先に作られた同じPromiseを観察するため、複数回購読してもリクエストは増えません。「HTTPは常にCold」と覚えず、リクエストがどの時点で作られるかを確認してください。
 
 ## UnicastとMulticast
 
-ColdとHotは、UnicastとMulticastという言葉でも説明できます。用語が増えて申し訳ないのですが、どちらもよく使われるので、対応を押さえておきましょう。
+Cold/Hotと一緒に語られやすい言葉が、UnicastとMulticastです。ただし、この2組は同義ではありません。
 
-Unicastは、購読者ごとに専用の実行を届けることです。Cold Observableは、Unicastです。Multicastは、1つの実行を複数の購読者へ配ることです。Hot Observableは、Multicastです。
+Unicastは、購読者ごとに専用の通知経路を作ることです。Multicastは、1つの上流購読から届いた通知を複数の購読者へ配ることです。Coldな`interval`は通常Unicastですが、`share`を使えば1つのタイマーをMulticastできます。HotなDOMイベントを`fromEvent`で扱う場合は、購読ごとにリスナーを登録するため、HotなProducerを観察していてもRxJS内部の購読は共有されていません。
 
 ```mermaid
 flowchart TD
-  subgraph Unicast["Unicast（Cold）"]
+  subgraph Unicast["Unicast（購読ごとに通知経路）"]
     P1["Producer"] --> A1["購読A"]
     P2["Producer"] --> B1["購読B"]
   end
-  subgraph Multicast["Multicast（Hot）"]
+  subgraph Multicast["Multicast（1つの上流購読を共有）"]
     P3["Producer"] --> A2["購読A"]
     P3 --> B2["購読B"]
   end
 ```
 
-この章では、ColdとHotを「観察する」だけにとどめます。Cold Observableを共有して、Multicastに変える方法もあるのですが、それにはSubjectやOperatorを使います。その話は「SubjectとMulticast」の章で扱います。ここでは、Producerが専用か共有かで見分けられる、と押さえておけば十分です。
+この章では、Producerが購読時に作られるか、購読とは独立して存在するかをCold/Hotで捉えます。通知経路を共有するUnicast/Multicastは別の軸です。Cold Observableへの1つの購読を複数へ配る方法は、「SubjectとMulticast」の章で扱います。
 
 ## ColdとHotを二択だけで考えない
 
@@ -175,16 +176,16 @@ of('2: 同期').subscribe((v) => console.log(v));
 // 3: マイクロタスク
 ```
 
-同期の通知（1と2）が先に出そろい、`Promise`由来の通知（3）は、そのあとに回っています。RxJSは、この実行タイミングを、Schedulerという仕組みで制御しています。アプリ開発でSchedulerを直接指定する場面は多くありませんが、「同期のObservableもある」と知っておくと、実行順序で迷ったときに、原因を探しやすくなります。
+同期の通知（1と2）が先に出そろい、`Promise`由来の通知（3）は、そのあとに回っています。実行タイミングは、値の発生源と、Operatorが利用するSchedulerによって決まります。`from(Promise)`の通知はPromiseのマイクロタスク、`timer`や`interval`は既定の`asyncScheduler`を利用します。「同期のObservableもある」と知っておくと、実行順序で迷ったときに原因を探しやすくなります。
 
 ## Producerを共有するかどうかでColdとHotを見分ける
 
 ColdとHot、同期と非同期の違いを整理します。
 
 - Cold Observableは購読ごとに新しい実行が始まり、購読者どうしは独立します（オンデマンド配信のイメージ）。
-- Hot Observableは1つの実行を共有し、遅れて購読すると途中から受け取ります（生放送のイメージ）。
-- 見分ける鍵はProducerの位置です。HTTPやタイマーはCold、DOMイベントはHotです。
-- ColdはUnicast、HotはMulticastに対応しますが、二択で固定的に考えないようにします。
+- Hot Observableは購読とは別に動くProducerを観察し、遅れて購読すると以前の値を通常は受け取りません（生放送のイメージ）。
+- 見分ける鍵はProducerの位置です。`interval`は購読ごとにタイマーを作るCold、DOMイベントは購読外で発生するHotです。HTTPはObservableへの包み方を確認します。
+- Cold/HotはProducerの開始時点、Unicast/Multicastは通知の共有方法を表す別の軸です。
 - Observableは常に非同期とは限りません。`of`や配列からの`from`は同期的に値を流します。
 - 実行順序はイベントループと関係し、同期・マイクロタスク・マクロタスクの順に流れます。
 

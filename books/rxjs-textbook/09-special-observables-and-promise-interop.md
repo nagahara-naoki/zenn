@@ -4,7 +4,7 @@ title: "特殊なObservableとPromise相互変換"
 
 前章では、よく使うCreation Functionを見ました。この章では、少し特殊な場面で役立つものを扱います。
 
-具体的には、購読するまでObservableの生成そのものを遅らせる`defer`、条件によってObservableを切り替える`iif`、そして「値を流さない」「エラーだけを流す」といった、変わったObservableを紹介します。どれも出番は多くありませんが、知っておくと、いざというときに役立ちます。
+前半では、購読時に処理を作る`defer`と、条件でObservableを選ぶ`iif`を扱います。続いて、値を流さない`EMPTY`・`NEVER`と、エラーを流す`throwError`を見ます。
 
 後半では、PromiseとObservableの相互変換を扱います。`async` / `await`で書かれた既存のコードと、RxJSを組み合わせる場面で必要になる知識です。あわせて、変換すべき場面と、すべきでない場面を整理します。
 
@@ -55,7 +55,7 @@ import { defer, from } from 'rxjs';
 const tasks$ = defer(() => from(fetch('/api/tasks')));
 ```
 
-要点はこうです。作成時に値や処理を確定させたくないとき、`defer`で購読時まで遅らせる。この使い分けを覚えておくと、意図しない先走りを防げます。
+この`tasks$`は購読ごとに新しい`fetch`を呼ぶCold Observableです。ただし、`from`が受け取ったPromiseには中断の仕組みがないため、購読を解除しても`fetch`自体は止まりません。通知を受け取らなくなることと、Producerの処理が中断されることは分けて考えてください。キャンセル可能なHTTP通信は、「エラー処理・再試行・キャンセル」の章で扱います。
 
 ## iifで条件によってObservableを切り替える
 
@@ -107,7 +107,7 @@ throwError(() => new Error('失敗')).subscribe({
 | `NEVER` | なし | なし | なし |
 | `throwError(...)` | なし | なし | あり |
 
-`throwError`には、エラーオブジェクトを直接ではなく、エラーを返す関数を渡します。関数にするのは、購読のたびに新しいエラーを生成するためで、生成時に余計な副作用が起きるのを避ける狙いがあります。
+`throwError`には、エラーオブジェクトを直接ではなく、エラーを返す関数を渡します。購読時にエラーを生成するため、購読箇所に近いスタックトレースを得やすくなります。
 
 ## 条件分岐でObservableを返す
 
@@ -124,7 +124,7 @@ function search(keyword: string) {
 }
 ```
 
-ここで`null`や`undefined`を返すと、購読する側が「値があるか、ないか」の場合分けを迫られて面倒です。かわりに`EMPTY`を返せば、返り値は常にObservableになり、購読する側は、どの分岐でも同じように扱えます。エラーを表したいなら、`throwError`が同じ役割を果たします。「何もしない」も「エラー」も、Observableとして返せるわけです。
+`EMPTY`を返せば、すべての分岐の戻り値をObservableに統一できます。失敗を通知する分岐では`throwError`を返します。
 
 ## ObservableをPromiseへ変換する
 
@@ -164,7 +164,7 @@ const value = await firstValueFrom(EMPTY, { defaultValue: '既定値' }); // 既
 
 ## toPromiseが使われなくなった理由
 
-以前のRxJSには、`toPromise`というメソッドがありました。RxJS 7で非推奨になり、8で削除されています。古いコードで見かけることがあるので、なぜ消えたのかを知っておきましょう。
+RxJS 7.8には、非推奨の`toPromise`メソッドが残っています。次期メジャーとして公開されているRxJS 9 betaでは削除されているため、新しいコードでは使いません。古いコードで見かけることがあるので、置き換え方を知っておきましょう。
 
 `toPromise`には、動きがわかりにくい、という問題がありました。解決されるのは最後の値なのか最初の値なのか、値がないときはどうなるのか。名前からはまったく読み取れなかったのです（実際には、最後の値で解決し、値がなければ`undefined`で解決していました）。
 
@@ -184,11 +184,11 @@ const value = await firstValueFrom(EMPTY, { defaultValue: '既定値' }); // 既
 
 特殊なObservableとPromise相互変換の要点を整理します。
 
-- `defer`は購読時にObservableを作り、値や処理の確定を遅らせます。
+- `defer`は購読時にObservableを作り、値や処理の確定を遅らせます。Promiseの中断機能を追加するものではありません。
 - `iif`は購読時に条件を評価し、2つのObservableを切り替えます。
 - `EMPTY`は値なしで完了、`NEVER`は何もしない、`throwError`はエラーだけを流します。
 - 何もしない分岐では`EMPTY`を返すと、返り値を常にObservableにそろえられます。
-- `firstValueFrom`と`lastValueFrom`でPromiseへ変換します。`toPromise`は使いません。
+- PromiseからObservableへは`from`、ObservableからPromiseへは`firstValueFrom`か`lastValueFrom`を使います。`toPromise`は使いません。
 - 変換はコードの境界だけにとどめ、途中はObservableのまま組み立てます。
 
 次章からは、いよいよOperatorを本格的に扱います。まず`pipe`の仕組みと、値の流れを表すMarble Diagramの読み方を身につけます。

@@ -10,11 +10,9 @@ Operatorそのものの使い方は、次章から扱います。この章は、
 
 ## Operatorとは
 
-Operatorは、Observableを受け取って、新しいObservableを返す関数です。この一言が、Operatorの本質をすべて表しています。値を変換したり、絞り込んだり、複数の流れを合成したりと、いろいろな働きをしますが、どれも「Observableを受け取り、加工して、新しいObservableを返す」という形は共通です。
+本書では、Observableを新しく作る`of`や`from`をCreation Function、既存のObservableを変換する`map`や`filter`をPipeable Operatorと呼び分けます。
 
-RxJSのOperatorは、大きく2種類に分かれます。1つは、これまで使ってきた`of`や`from`のような、Creation Functionです。これらは、ストリームを新しく作ります。もう1つが、これから扱うPipeable Operatorです。こちらは、既存のストリームを変換します。
-
-この章と次章以降で主役になるのは、後者のPipeable Operatorのほうです。
+Pipeable Operatorは、入力Observableを受け取り、変換後の新しいObservableを返す関数です。値の変換・選別・合成など、目的に応じたOperatorがあります。この章と次章以降で単に「Operator」と書く場合は、原則としてPipeable Operatorを指します。
 
 ## Pipeable Operatorとpipe
 
@@ -95,13 +93,13 @@ of(1, 2, 3, 4)
 
 ## 読みやすいOperatorの並べ方
 
-Operator Chainは、読みやすさを意識して並べます。おすすめの順番があります。
+Operator Chainでは、順番そのものが処理の意味になります。まず、必要な結果になる順番を選んでください。そのうえで、結果が変わらない範囲なら、早めに不要な値を除くと後続処理を減らせます。
 
 1. まず選別する（`filter`など）
 2. 次に変換する（`map`など）
 3. 副作用は必要な場所に置く（`tap`など）
 
-なぜこの順番がよいかというと、早い段階で不要な値を絞り込んでおけば、あとの変換が扱う値が減り、流れも追いやすくなるからです。
+たとえば、元の値だけで判定できる`filter`は、重い`map`より前に置けます。一方、変換後の値を条件にする場合は、当然`map`が先です。固定の型を覚えるのではなく、「このOperatorは何を入力として受け取るか」を上から追います。
 
 書き方にもコツがあります。Operatorは、1行に1つずつ書くと、チェーンの流れが縦に読めて見やすくなります。そして、チェーンが長くなりすぎたら、意味のまとまりで変数に分けます。1つの`pipe`に10個も20個も詰め込むより、区切ったほうが、ずっと読みやすくなります。
 
@@ -170,9 +168,9 @@ Operatorの動きを示すときは、上に入力、下に出力を置き、あ
 
 Operatorをつなぐ`pipe`と、値の流れを表すMarble Diagramの要点を整理します。
 
-- Operatorは、Observableを受け取り、新しいObservableを返す関数です。
+- 本書ではCreation FunctionとPipeable Operatorを区別し、Operatorは入力Observableから新しいObservableを作ります。
 - `pipe`はOperatorを左から順に適用し、元のObservableは変更しません。
-- Operator Chainでは、並べる順番で結果が変わります。選別を先に、変換をあとに置くと読みやすくなります。
+- Operator Chainでは、並べる順番で結果が変わります。必要な意味を優先し、結果が同じなら不要な値を早めに除きます。
 - Marble Diagramは、時間を左から右に表し、`-`・値・`|`・`X`で流れを描きます。
 - 入力・Operator・出力を、桁をそろえて並べると、Operatorの動きを図で読めます。
 

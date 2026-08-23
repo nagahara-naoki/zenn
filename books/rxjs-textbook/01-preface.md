@@ -14,8 +14,8 @@ Operatorの一覧を暗記することは、本書の目標ではありません
 
 そのために、次の3つを軸にして進めます。
 
-- **仕組みから理解すること**: Operatorの名前や使い方を覚える前に、「なぜObservableは購読するまで動かないのか」「なぜ`switchMap`は古い処理を捨てられるのか」を仕組みから説明します。仕組みがわかれば、はじめて見るOperatorでも動きを予測できます。
-- **subscribeの位置を意識すること**: Observableは、作っただけでは何も起きません。どこで購読が始まり、どこで購読が終わるのか。この2点を、図とコードで繰り返し確認します。RxJSのつまずきの多くは、この意識が抜けたときに起きます。
+- **仕組みから理解すること**: Operatorの名前や使い方を覚える前に、「なぜCold Observableは購読をきっかけに動くのか」「なぜ`switchMap`は古いInnerの購読を解除できるのか」を仕組みから説明します。仕組みがわかれば、はじめて見るOperatorでも動きを予測できます。
+- **subscribeの位置を意識すること**: 本書でまず扱うCold Observableは、作っただけでは実行されません。どこで購読が始まり、どこで購読が終わるのか。この2点を、図とコードで繰り返し確認します。HotなProducerや作成済みPromiseの例外も、後半で切り分けます。
 - **選べるようになること**: RxJSには、よく似たOperatorがいくつもあります。`mergeMap`と`switchMap`、`combineLatest`と`withLatestFrom`、`share`と`shareReplay`。本書では、似たものを必ず並べて比較し、「いつ・どれを選ぶか」を示します。
 
 RxJSは強力なライブラリです。だからこそ、仕組みを曖昧にしたまま書くと、動いているのか止まっているのかわからないコードになりがちです。その曖昧さを、一つずつ減らしていきます。
@@ -32,7 +32,7 @@ RxJSは強力なライブラリです。だからこそ、仕組みを曖昧に�
 
 RxJSの経験は前提にしません。最初は`of`のような小さなObservableから始め、少しずつ複雑な処理へ進みます。
 
-ただし、JavaScriptとTypeScriptの基本文法は知っているものとして進めます。変数、関数、アロー関数、オブジェクト、配列の`map`や`filter`、そして`Promise`と`async` / `await`がわかっていれば読み進められます。特に`Promise`の考え方は、Observableと比べる場面で何度も登場します。
+ただし、JavaScriptとTypeScriptの基本文法は知っているものとして進めます。変数、関数、アロー関数、オブジェクト、配列の`map`や`filter`、`Promise`と`async` / `await`に加え、型引数、Union型、型アサーション、non-null assertion、クラスの基本を使います。特に`Promise`の考え方は、Observableと比べる場面で何度も登場します。
 
 ## 本書の構成
 
@@ -56,13 +56,20 @@ flowchart TD
 | Observableの仕組み | 「Observable・Observer・subscribeの仕組み」「Subscription・購読解除・Observableの自作」「ColdとHot・同期と非同期」 |
 | Observableの作成 | 「Observableを作る」「特殊なObservableとPromise相互変換」 |
 | Operatorの基本 | 「Operatorとpipe・Marble Diagramの読み方」「値を変換・選別・蓄積する」「件数と時間を制御する」 |
-| Observableの合成 | 「最新値を組み合わせる」「完了待ちと到着順」「Higher-order ObservableとNested Subscribe」「Flattening Operator」 |
+| Observableの合成 | 「最新値を組み合わせる」「完了・並行・順序で合成する」「Higher-order ObservableとNested Subscribe」「Flattening Operator」 |
 | Subjectと共有 | 「SubjectとMulticast」「shareとshareReplay・Subjectによる状態管理」 |
 | エラー・キャンセル・テスト | 「エラー処理・再試行・キャンセル」「テストとデバッグ」 |
 
 前半は、Observableという「処理の設計図」がどう動くのかを丁寧に見ます。ここを飛ばすと、後半のOperatorが「なんとなく動く道具」になってしまいます。中盤からOperatorとObservableの合成に入り、後半でSubjectによる共有、エラー処理、テストへ進みます。
 
 本書の巻末には、Operatorの早見表、古い書き方からの移行ガイド、用語集を付録として用意しています。学習中の索引として使ってください。
+
+読み方は、経験に応じて変えてかまいません。
+
+- はじめて学ぶ人は、第2章から第20章まで順番に読みます。
+- 一度使ったことがある人は、第5章→第7章→第10章→第13章→第16章→第19章→第20章の順で理解を点検し、必要な章へ戻ります。
+- 実務で困りごとを解決したい人は、付録Aの早見表から該当する本文へ進みます。
+- 第21章から第23章は、通読よりも参照に向く付録です。
 
 ## 本書で扱う題材
 
@@ -79,7 +86,7 @@ RxJSの学習では、Operatorごとに例が変わりがちです。話がば�
 
 本書のサンプルコードは、次を前提とします。
 
-- **RxJS 7.8系**（Angularが依存している現行の安定バージョン）
+- **RxJS 7.8.2**（本書で動作を確認したバージョン）
 - **TypeScript**（strictモード）
 
 RxJS 7系では、Creation関数もOperatorも`rxjs`からまとめてimportします。本書はこの形に統一します。
@@ -89,7 +96,7 @@ import { of, interval, fromEvent } from 'rxjs';
 import { map, filter, switchMap } from 'rxjs';
 ```
 
-古いコードでは、Operatorを`rxjs/operators`からimportしていることがあります。これは6系までの書き方です。読み替えられるように、移行の詳しい内容は付録で扱います。
+`rxjs/operators`からimportする書き方もRxJS 7.8で利用できますが、本書ではimport元をそろえるため、`rxjs`からのルートimportに統一します。既存コードを読むときの注意点は、付録の移行ガイドで扱います。
 
 ```ts
 // 古い書き方（本書では使いません）
@@ -103,6 +110,10 @@ const clicks$ = fromEvent(button, 'click');
 ```
 
 実際に手を動かす環境の準備は、「はじめてのRxJS」の章で説明します。ここでは、コードがどのような前提で書かれているかだけ押さえておけば十分です。
+
+実行環境は、コード例によって異なります。`of`や`interval`だけを使う例は、Node.js上で`tsx`から実行できます。`document`、`button`、`input`などが登場する例はDOMを使うため、ブラウザ上のTypeScript環境で試してください。
+
+コードだけで完結し、必要なimportと変数がそろっている例は、そのまま実行できます。一方、`input`、`searchApi`、`render`など、アプリ側で用意する名前が登場する例は、Operatorの組み合わせに焦点を当てた抜粋です。抜粋は、実際の画面要素やAPIへ読み替えてください。Marble Diagram内の式は動きを説明するための疑似コードで、実行用ではありません。
 
 ## コードと図の読み方
 
@@ -177,6 +188,6 @@ flowchart LR
 - 非同期処理をストリームとして設計できるようになることを目指します。
 - 「仕組みから理解する」「subscribeの位置を意識する」「似たOperatorを選べるようにする」の3つを軸に進めます。
 - 7つの段階を順番に進み、Observableの仕組みから、合成、共有、エラー処理、テストまでを扱います。
-- サンプルはRxJS 7.8・TypeScriptを前提とし、値の流れはMarble Diagramで、構造はmermaidで図示します。
+- サンプルはRxJS 7.8.2・TypeScriptを前提とし、値の流れはMarble Diagramで、構造はmermaidで図示します。
 
 次章では、そもそもなぜ非同期処理は複雑になるのかを見ていきます。コールバックやPromiseで感じる難しさを整理し、RxJSがどんな問題を解こうとしているのかを明らかにします。

@@ -14,9 +14,9 @@ Observableは、値そのものではありません。値をどう流すかを�
 
 料理のレシピを思い浮かべると近いかもしれません。レシピには手順が書かれていますが、レシピを持っているだけでは料理はできません。誰かが実際に作って、はじめて料理になります。
 
-Observableも同じです。`of(1, 2, 3)`は「1、2、3をこの順に流す」という手順を持っているだけで、それ自体は何もしません。`subscribe`という「作る」操作があって、はじめて値が流れ始めます。
+Observableも同じです。`of(1, 2, 3)`は「1、2、3をこの順に流す」という手順を持っているだけで、それ自体は何もしません。`subscribe`で設計図を実行すると、はじめて値が流れ始めます。
 
-この「購読するまで動かない」という性質を、RxJSでは遅延実行と呼びます。本章の後半で、あらためて確認します。
+`of`や`interval`のように、購読をきっかけにProducerを作るObservableは遅延実行されます。本章では、このCold Observableを中心に仕組みを追います。購読とは独立して動くHotなProducerは、「ColdとHot・同期と非同期」の章で区別します。
 
 ## ProducerとConsumer
 
@@ -30,7 +30,7 @@ flowchart LR
   OBS --> C["Consumer / Observer<br/>値を受け取る"]
 ```
 
-Observableは、ProducerとConsumerをつなぐ管のようなものです。この管をどうつなぐかによって、値が「取りにいく」ものになるか、「送られてくる」ものになるかが変わります。次の節で見ます。
+ProducerとConsumerのどちらが値を受け取るタイミングを決めるかによって、Pull型とPush型に分かれます。次の節で見ます。
 
 ## Pull型とPush型
 
@@ -86,14 +86,14 @@ iterator.next(); // { value: 1, done: false }
 
 `Promise`は、1つの値を非同期に送ってきます。ただし、`Promise`は作った時点で処理が始まり、値を送れるのは一度だけです。
 
-Observableは、これらの性質を1つにまとめた存在です。複数の値を、非同期にも同期にも送れます。しかも、購読するまで動きません。次の表にまとめます。
+Observableは、複数の値を同期にも非同期にもPushできます。次の表では、本章で扱うCold Observableを、ほかの仕組みと比べます。
 
 | 仕組み | 値の数 | 方式 | 実行のタイミング |
 |---|---|---|---|
 | 関数 | 1つ | Pull | 呼んだとき |
 | Generator | 複数 | Pull | 要求したとき |
 | `Promise` | 1つ | Push | 作ったとき（すぐ） |
-| Observable | 複数 | Push | 購読したとき |
+| Cold Observable | 複数 | Push | 購読したとき |
 
 この表の右下、複数・Push・購読時という組み合わせが、Observableの居場所です。
 
@@ -119,7 +119,7 @@ of(1, 2, 3).subscribe(observer);
 
 `next`は値が届いたとき、`error`は異常が起きたとき、`complete`は正常に終わったときに呼ばれます。
 
-3つすべてを用意する必要はありません。関心のあるものだけを持つObserverを、Partial Observerと呼びます。前章で`next`だけを関数で渡したのも、Partial Observerの一種です。
+3つすべてを用意する必要はありません。関心のあるメソッドだけを持つオブジェクトを、Partial Observerと呼びます。`subscribe((value) => ...)`のように関数を1つ渡す短縮形でも、`next`だけを処理できます。
 
 ```ts
 // nextとcompleteだけに関心があるObserver
@@ -189,7 +189,7 @@ sequenceDiagram
 
 ここで、名前の似た2つを区別します。
 
-Subscriberは、Observerを包んだ内部の存在です。「終わったストリームからは`next`を流さない」という決まりを守らせる役目を持ちます。先ほどエラーのあとに3が流れなかったのは、Subscriberがこの決まりを守ったからです。私たちがSubscriberを直接触ることは、ほとんどありません。
+Subscriberは、Observerを包んだ内部の存在です。「終わったストリームからは`next`を流さない」という決まりを守らせる役目を持ちます。先ほどエラーのあとに3が流れなかったのは、Subscriberがこの決まりを守ったからです。私たちがSubscriberに直接触ることは、ほとんどありません。
 
 Subscriptionは、購読そのものを表すオブジェクトです。`unsubscribe`を持ち、購読を解除できます。終わらないストリームを止めるときに使うのは、こちらです。
 
@@ -200,7 +200,7 @@ Subscriptionは、購読そのものを表すオブジェクトです。`unsubsc
 
 ## 複数回subscribeするとどうなるか
 
-同じObservableを2回購読すると、どうなるでしょうか。答えは、購読するたびにProducerが動き直します。それぞれの購読は、独立して実行されます。
+同じCold Observableを2回購読すると、購読するたびにProducerが新たに動きます。それぞれの購読は、独立して実行されます。
 
 `interval`で確かめます。2つの購読は、それぞれ自分のカウントを0から始めます。
 
@@ -227,11 +227,11 @@ setTimeout(() => {
 
 Bは、Aの続きからではなく、0から数え始めています。同じ`timer$`でも、購読ごとに別々の実行が生まれるからです。
 
-この「購読ごとに独立して実行される」という性質は、次章のCold ObservableとHot Observableの話につながります。ここでは、購読が実行のきっかけであり、購読の数だけ実行が起きると押さえてください。
+この「購読ごとに独立して実行される」という性質が、Cold Observableの特徴です。ここでは、`interval`では購読が実行のきっかけになり、購読の数だけタイマーが作られると押さえてください。
 
 ## Observableの遅延実行
 
-最後に、遅延実行をあらためて確認します。Observableは、購読するまで何もしません。
+最後に、Cold Observableの遅延実行を改めて確認します。`of`は、購読するまで値を流しません。
 
 `Promise`と比べると違いがはっきりします。`Promise`は、作った瞬間に処理が始まります。
 
@@ -247,9 +247,9 @@ console.log('この行の前に、上のログが出る');
 // この行の前に、上のログが出る
 ```
 
-`Promise`は、`then`で受け取る前に、もう動いています。一方、Observableは購読するまで動きません。`of(1, 2, 3)`と書いただけでは、値は流れません。
+`Promise`は、`then`で受け取る前に、もう動いています。一方、`of(1, 2, 3)`は購読するまで値を流しません。
 
-この違いは、実務で効いてきます。Observableなら、処理を組み立ててから購読するまで、実行を遅らせられます。組み立てと実行を分けられるので、同じ設計図を必要なときに何度でも動かせます。この柔軟さが、RxJSの土台になっています。
+この違いは、実務で効いてきます。Cold Observableなら、処理の組み立てと実行を分け、同じ設計を購読ごとに動かせます。ただし、Observableで包んだ元の処理がすでに始まっている場合は遅延しません。`from(fetch(...))`がその例で、詳しくは「特殊なObservableとPromise相互変換」の章で扱います。
 
 ## subscribeが設計図を実行へ変える
 
@@ -257,9 +257,9 @@ Observable、Observer、`subscribe`の関係を整理します。
 
 - Observableは値そのものではなく、値をどう流すかを書いた設計図です。
 - 値を生み出すProducerと、受け取るObserver（Consumer）を、Observableがつなぎます。
-- Observableは、複数の値を扱えるPush型で、購読するまで動きません。
+- Observableは、複数の値を扱えるPush型です。本章で扱ったCold Observableは、購読をきっかけに実行されます。
 - Observerは`next`・`error`・`complete`を持ちます。一部だけのPartial Observerも使えます。
 - `error`と`complete`はストリームを終わらせ、そのあとに`next`は流れません。
-- `subscribe`するとSubscriberが作られProducerが動き出し、Subscriptionが返ります。購読ごとに実行は独立します。
+- `subscribe`するとSubscriberが作られ、Subscriptionが返ります。Cold ObservableではProducerが動き出し、購読ごとに実行が独立します。
 
-次章では、この「購読ごとに独立して実行される」性質を出発点に、Cold ObservableとHot Observable、そして同期実行と非同期実行の違いを見ていきます。
+次章では、Subscriptionと購読解除を詳しく見ます。その次の「ColdとHot・同期と非同期」で、購読ごとに実行される場合と、外部のProducerを観察する場合を切り分けます。

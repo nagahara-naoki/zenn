@@ -6,7 +6,7 @@ title: "Observableを作る"
 
 RxJSには、よくある値の生成をカバーするために、Creation Functionが用意されています。毎回`new Observable`で自作しなくても、これらを使えば、たいていの生成は済みます。この章では、そのうちもっともよく使う5つ、`of`、`from`、`fromEvent`、`interval`、`timer`を扱います。
 
-前章で`new Observable`による自作を体験しましたが、実際の開発では、こうしたCreation Functionを使うことがほとんどです。それぞれが何を作るのか、そしてどう使い分けるのかを、1つずつ押さえていきましょう。
+第6章で`new Observable`による自作を体験しましたが、実際の開発では、こうしたCreation Functionを使うことがほとんどです。それぞれが何を作るのか、そしてどう使い分けるのかを、1つずつ押さえていきましょう。
 
 ## ofで値から作る
 
@@ -69,6 +69,8 @@ from(fetch('/api/tasks')).subscribe((response) => {
 });
 ```
 
+ここで`fetch`は、`from`へ渡す前にすでに始まっています。購読時まで実行を遅らせたい場合は、次章で扱う`defer`が必要です。また、この形の購読を解除しても、元のPromiseや`fetch`は中断されません。
+
 ## ofとfromの違い
 
 `of`と`from`は、名前も役割も似ているので、混同しやすいところです。とくに、配列を渡したときの動きが違うので、ここははっきり区別しておきましょう。つまずきやすいポイントです。
@@ -100,7 +102,7 @@ from([10, 20, 30]).subscribe((value) => console.log('from:', value));
 
 ## fromEventでDOMイベントから作る
 
-DOMイベントをObservableにするのが`fromEvent`です。前章で自作したものと同じ働きを、たった1行で書けます。
+DOMイベントをObservableにするのが`fromEvent`です。「Subscription・購読解除・Observableの自作」の章で書いた、イベントリスナーを登録・解除するObservableと同じ役割を、1行で表せます。
 
 ```ts
 import { fromEvent } from 'rxjs';
@@ -130,7 +132,7 @@ fromEvent<KeyboardEvent>(document, 'keydown').subscribe((event) => {
 });
 ```
 
-`fromEvent`で作ったObservableは、前章で見たとおりHotです。イベントは、購読とは無関係に発生するからです。そして、うれしいことに、購読を解除すると、内部で登録したイベントリスナーが自動的に外れます。自分で`removeEventListener`を書く必要はありません。
+DOMイベントは、購読とは無関係に発生するHotなProducerです。`fromEvent`は、購読ごとにイベントリスナーを登録して、このProducerを観察します。購読を解除すると、その購読で登録したリスナーが自動的に外れるため、自分で`removeEventListener`を書く必要はありません。
 
 ```ts
 const subscription = clicks$.subscribe(() => console.log('クリック'));
@@ -139,7 +141,7 @@ const subscription = clicks$.subscribe(() => console.log('クリック'));
 subscription.unsubscribe();
 ```
 
-前章のTeardown Logicで学んだ「後片付け」を、`fromEvent`が肩代わりしてくれている、というわけです。
+第6章で学んだTeardown Logicを、`fromEvent`が実装してくれています。
 
 ## intervalとtimer
 
@@ -179,7 +181,7 @@ timer(3000, 1000).subscribe((value) => console.log('poll:', value));
 | `timer(3000)` | 3秒後に0 | 完了する |
 | `timer(3000, 1000)` | 3秒後に0 | 1秒ごとに1、2、3… |
 
-使い分けの目安は、こうです。すぐに繰り返しを始めたいなら`interval`、最初だけ待ち時間を置きたいなら`timer`です。
+使い分けの目安は、最初の待ち時間を繰り返し間隔と同じにするなら`interval`、最初の待ち時間を別に指定するなら`timer`です。購読直後に0を流してから繰り返したい場合は、`timer(0, 間隔)`を使います。
 
 ## カウントダウンを作る
 
@@ -243,9 +245,9 @@ setTimeout(() => subscription.unsubscribe(), 3500);
 たとえば、ボタンを押すたびにポーリングを開始するコードで、前の購読を解除し忘れると、押した回数だけタイマーが増えていきます。
 
 ```ts
-import { interval } from 'rxjs';
+import { interval, Subscription } from 'rxjs';
 
-let subscription;
+let subscription: Subscription | undefined;
 
 button.addEventListener('click', () => {
   // 悪い例: 前のsubscriptionを解除していない
@@ -274,7 +276,7 @@ button.addEventListener('click', () => {
 よく使うCreation Functionの選び方を整理します。
 
 - `of`は、渡した値をそのまま順番に流します。
-- `from`は、配列・Iterable・Promiseを展開して流します。
+- `from`は、配列・Iterable・PromiseをObservableへ変換します。Promiseの処理自体を遅延・中断するものではありません。
 - `of`と`from`は配列の扱いが違います。中身を1つずつ取り出したいなら`from`を使います。
 - `fromEvent`はDOMイベントをObservableにし、購読解除でリスナーも自動で外れます。
 - `interval`は一定間隔で、`timer`は待ち時間のあとに値を流します。

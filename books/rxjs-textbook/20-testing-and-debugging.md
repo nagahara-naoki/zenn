@@ -4,13 +4,11 @@ title: "テストとデバッグ"
 
 本書の締めくくりとして、テストとデバッグを扱います。
 
-RxJSのコードは、時間が絡むため、テストが難しく感じられます。「1秒後に値が流れる」処理を確かめるのに、実際に1秒待つテストを書いていたら、テストはどんどん遅くなり、しかも不安定になります。この問題を解決するのが、仮想時間を使うTestSchedulerです。仮想時間なら、1秒も1時間も、一瞬で進められます。
+RxJSのコードでは、値だけでなく、通知される時刻や購読の期間も結果の一部です。実時間を待つテストは遅く、実行環境の揺らぎも受けます。そこで、RxJSがSchedulerで管理する時間を、TestSchedulerの仮想時間に置き換えて検証します。
 
 前半でTestSchedulerによるテストを、後半で`tap`を使ったデバッグと、よくある問題の見つけ方を扱います。ここまで学んだOperatorが、実際に意図どおり動くかを確かめる方法を、身につけましょう。
 
 ## テストで難しいのは時間
-
-まず、なぜRxJSのテストが難しいのかを、はっきりさせておきます。理由は、ほとんどの場合、時間です。
 
 `debounceTime(300)`のOperatorをテストするとき、本当に300ミリ秒待っていたら、テストが遅くなります。`interval`を使う処理なら、何秒も待つことになります。テストは何百個も走らせるものなので、1つあたりの待ち時間は、積もると大きな問題になります。時間に依存する処理を、実時間でテストするのは、効率が悪く、結果も不安定になりがちです。
 
@@ -18,7 +16,7 @@ RxJSのコードは、時間が絡むため、テストが難しく感じられ�
 
 ## TestSchedulerと仮想時間
 
-TestSchedulerは、時間を仮想的に扱うSchedulerです。「ColdとHot・同期と非同期」の章で名前だけ触れたSchedulerが、ここで役割を持ちます。TestSchedulerを使うと、実際には待たず、時間を一瞬で進めてテストできます。「300ミリ秒待つ」処理も、待ち時間ゼロで検証できるのです。
+TestSchedulerは、時間を仮想的に扱うSchedulerです。「ColdとHot・同期と非同期」の章で名前だけ触れたSchedulerが、ここで役割を持ちます。`run`の中では、`interval`や`debounceTime`などRxJSがSchedulerで管理する時間を、実際には待たずに進められます。ただし、任意の`Promise`や実際の`fetch`まで自動で仮想化するものではありません。それらは別のテストダブルへ置き換えます。
 
 ```ts
 import { TestScheduler } from 'rxjs/testing';
@@ -29,7 +27,7 @@ const testScheduler = new TestScheduler((actual, expected) => {
 });
 ```
 
-TestSchedulerは、`rxjs`本体ではなく`rxjs/testing`からimportします。生成するときに、「実行結果と期待値を比較する関数」を渡します。
+TestSchedulerは、`rxjs`本体ではなく`rxjs/testing`からimportします。生成するときに、「実行結果と期待値を比較する関数」を渡します。上の`expect`は、VitestやJestなどのテストファイル内で使えるアサーションを想定しています。
 
 ## テスト向けのMarble記法
 
@@ -77,7 +75,7 @@ testScheduler.run(({ cold, expectObservable }) => {
   const result$ = source$.pipe(debounceTime(3));
 
   // 最後のcのあと、3フレーム静かになってからcが流れる
-  expectObservable(result$).toBe('--------c---|');
+  expectObservable(result$).toBe('-------c----|');
 });
 ```
 
@@ -94,12 +92,12 @@ testScheduler.run(({ cold, expectObservable, expectSubscriptions }) => {
   const source$ = cold('--a--b--c--|');
   const subs = '^------!'; // ここで購読し、ここで解除される想定
 
-  expectObservable(source$, subs).toBe('--a--b--|');
+  expectObservable(source$, subs).toBe('--a--b-');
   expectSubscriptions(source$.subscriptions).toBe(subs);
 });
 ```
 
-これが役立つのは、`switchMap`が古いInner Observableを解除する、といった「購読の解除がからむ挙動」を検証したいときです。目に見えない購読の動きを、図として確かめられます。
+明示的に購読を解除しても、`complete`通知は流れません。そのため、期待値には`|`を書きません。これが役立つのは、`switchMap`が古いInner Observableを解除する、といった「購読の解除がからむ挙動」を検証したいときです。目に見えない購読の動きを、図として確かめられます。
 
 ## Marble Testを読み解く
 
@@ -153,9 +151,9 @@ source$.pipe(
 
 RxJSでつまずきやすい問題は、だいたい決まっています。デバッグの勘どころを、まとめて挙げておきます。
 
-**多重購読と多重HTTPリクエスト**。同じObservableを、複数回購読していないかを疑います。購読開始のログが想定より多く出るなら、多重購読です。HTTPなら、そのぶんリクエストが飛んでいます。`shareReplay`での共有を検討します。
+**多重購読と多重HTTPリクエスト**。同じObservableを複数回購読していないかを疑います。`defer`や`fromFetch`のように購読ごとにHTTPを始めるCold Observableなら、購読数だけリクエストが始まります。いっぽう`from(fetch(...))`は、先に始まった1つのPromiseを購読するため、この診断には当てはまりません。sourceの作り方を確認してから、`shareReplay`での共有を検討します。
 
-**メモリリーク**。購読解除のログが出ないまま画面が変わっているなら、購読が残っています。`unsubscribe`や`takeUntil`で、きちんと解除できているかを確認します。
+**解除されない購読**。購読解除のログが出ないまま画面が変わっているなら、不要な購読が残っている可能性があります。タイマーやイベントリスナーが動き続けていないか、参照が保持されてメモリリークにつながっていないかを確認し、`unsubscribe`や`takeUntil`で寿命を表します。
 
 **Observableがcompleteしない**。`complete`のログが出ないなら、そのObservableは終わっていません。`forkJoin`や`lastValueFrom`が動かない原因は、たいていこれです。
 
@@ -164,6 +162,8 @@ RxJSでつまずきやすい問題は、だいたい決まっています。デ�
 ## Operator Chainを分割する
 
 デバッグのしやすさと、読みやすさのために、長いOperator Chainは分割します。1つの`pipe`にすべてを詰め込むと、どこで問題が起きたのかを、追いにくくなるからです。
+
+**インクリメンタル検索 4/4: 観測点を分けて検証する**
 
 ```ts
 // 意味のまとまりで名前を付けて分ける
@@ -180,15 +180,27 @@ const results$ = keyword$.pipe(
 
 「入力を整えるところ（`keyword$`）」と「検索するところ（`results$`）」を分けて名前を付けると、それぞれを個別に確認でき、意図も読み取りやすくなります。「Operatorとpipe・Marble Diagramの読み方」の章で触れた「読みやすいOperatorの並べ方」を、テストとデバッグの観点からも実践する、というわけです。
 
+## Marble Testを直せるか確認する
+
+1. `expectObservable(source$, '^------!')`で明示的に解除した場合、期待値の末尾に`|`を書きますか。
+2. `switchMap`をテストするとき、出力値だけでなく何を`expectSubscriptions`で確かめますか。
+3. `from(fetch(url))`をTestSchedulerへ入れれば、実際の通信時間も仮想化できますか。
+
+:::details 解答
+1. 書きません。unsubscribeはcomplete通知ではありません。
+2. 古いInnerの購読が、新しいOuterの値の時点で解除されていることです。
+3. できません。TestSchedulerが仮想化するのはRxJSのSchedulerで管理される時間です。HTTPクライアントはテストダブルへ置き換えます。
+:::
+
 ## 仮想時間と観測点がRxJSのテストを安定させる
 
 テストとデバッグで使う手段を整理します。
 
-- RxJSのテストが難しいのは時間が絡むためで、TestSchedulerの仮想時間で解決します。
+- RxJSがSchedulerで管理する時間は、TestSchedulerの仮想時間で高速かつ安定して検証できます。
 - TestSchedulerは`rxjs/testing`から使い、Marble記法で入力と出力を並べて検証します。
 - テスト向けの記法では、エラーは`#`、購読開始は`^`、購読解除は`!`で表します。
 - `tap`は`next`に加えて購読の開始・解除も観察でき、デバッグに役立ちます。
-- 多重購読、メモリリーク、completeしない問題、キャッシュ問題は、ログで見つけられます。
+- 多重購読、解除されない購読、completeしない問題、キャッシュ問題は、ログで見つけられます。
 - 長いOperator Chainは、意味のまとまりで分割すると、テストもデバッグもしやすくなります。
 
 これで本編は終わりです。RxJSの仕組みから、Operatorの選択、合成、共有、エラー処理、テストまでを、一通り見てきました。巻末の付録には、Operatorの早見表、古い書き方からの移行ガイド、用語集を用意しています。学習と実務の両方で、索引として役立ててください。
