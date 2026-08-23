@@ -1,5 +1,5 @@
 ---
-title: "付録B 非推奨・古い書き方からの移行"
+title: "付録B 古いRxJSコードの移行"
 ---
 
 RxJSは長く使われてきたライブラリで、古い書き方が残ったコードも多くあります。この付録では、既存コードを読んだり書き換えたりするときに知っておきたい、代表的な移行をまとめます。
@@ -23,7 +23,7 @@ const first = await firstValueFrom(source$);
 const last = await lastValueFrom(source$);
 ```
 
-最初の値がほしいなら`firstValueFrom`、最後の値がほしいなら`lastValueFrom`を使います。詳しくは「特殊なObservableとPromise相互変換」の章で扱いました。
+最初の値がほしいなら`firstValueFrom`、最後の値がほしいなら`lastValueFrom`を使います。詳しくは「遅延実行とPromiseの変換」の章で扱いました。
 
 ## retryWhenからretryの設定オブジェクトへ
 
@@ -61,7 +61,7 @@ import { share } from 'rxjs';
 source$.pipe(share());
 ```
 
-多くの場合、`share`か`shareReplay`で置き換えられます。詳しくは「shareとshareReplay・Subjectによる状態管理」の章で扱いました。
+多くの場合、`share`か`shareReplay`で置き換えられます。詳しくは「処理の共有と状態管理」の章で扱いました。
 
 ## mapTo・switchMapToなどの〜To系から関数形式へ
 
@@ -141,7 +141,7 @@ keyword$
   .subscribe((result) => render(result));
 ```
 
-置き換えの考え方は、「Higher-order ObservableとNested Subscribe」と「Flattening Operator」の章で扱いました。
+置き換えの考え方は、「Observableの入れ子」と「非同期処理の4つの実行方法」の章で扱いました。
 
 ## その他の見直しどころ
 

@@ -1,5 +1,5 @@
 ---
-title: "はじめてのRxJS"
+title: "RxJSを動かしてみる"
 ---
 
 前章で、RxJSの登場人物と処理の流れを、地図として確認しました。
@@ -97,7 +97,7 @@ of(1, 2, 3).subscribe({
 observable$.pipe(operator1, operator2).subscribe(observer);
 ```
 
-`pipe`は、Operatorを左から順に適用し、新しいObservableを返します。ここで、初学者が誤解しやすい点があります。`pipe`は元のObservableを変えるのではなく、変換した「新しいObservable」を返す、ということです。元のObservableはそのまま残ります。この性質のおかげで、1つのObservableから、別々の変換を安心して作れます。詳しくは「Operatorとpipe・Marble Diagramの読み方」の章で扱います。
+`pipe`は、Operatorを左から順に適用し、新しいObservableを返します。ここで、初学者が誤解しやすい点があります。`pipe`は元のObservableを変えるのではなく、変換した「新しいObservable」を返す、ということです。元のObservableはそのまま残ります。この性質のおかげで、1つのObservableから、別々の変換を安心して作れます。詳しくは「OperatorとMarble Diagram」の章で扱います。
 
 ## mapで値を変換する
 
@@ -195,7 +195,7 @@ setTimeout(() => {
 // 購読を解除しました
 ```
 
-`unsubscribe`を呼ぶと、`interval`は値を流すのをやめます。購読を解除しないまま画面を離れると、不要なタイマーとコールバックが残り、処理の重複やリソースリークにつながります。購読の解除は、RxJSでとても重要なテーマなので、「Subscription・購読解除・Observableの自作」の章で、あらためて詳しく扱います。
+`unsubscribe`を呼ぶと、`interval`は値を流すのをやめます。購読を解除しないまま画面を離れると、不要なタイマーとコールバックが残り、処理の重複やリソースリークにつながります。購読の解除は、RxJSでとても重要なテーマなので、「購読解除とObservableの自作」の章で、あらためて詳しく扱います。
 
 ## 最初のRxJSプログラムを作る
 

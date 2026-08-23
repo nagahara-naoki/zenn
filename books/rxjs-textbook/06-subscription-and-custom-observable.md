@@ -1,5 +1,5 @@
 ---
-title: "Subscription・購読解除・Observableの自作"
+title: "購読解除とObservableの自作"
 ---
 
 前章で、`subscribe`するとSubscriptionが返ると確認しました。
@@ -217,7 +217,7 @@ function fromClick(element: HTMLElement) {
 }
 ```
 
-これは、RxJSが用意している`fromEvent`と同じ考え方です。購読でリスナーを付け、解除でリスナーを外す。この対応を自分で書くと、`fromEvent`の中で何が起きているのかが腑に落ちます。実際の開発では、こうした定番の処理は`fromEvent`を使えば十分です。「Observableを作る」の章で扱います。
+これは、RxJSが用意している`fromEvent`と同じ考え方です。購読でリスナーを付け、解除でリスナーを外す。この対応を自分で書くと、`fromEvent`の中で何が起きているのかが腑に落ちます。実際の開発では、こうした定番の処理は`fromEvent`を使えば十分です。「Observableの作り方」の章で扱います。
 
 ## 自作するときの注意点
 

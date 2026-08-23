@@ -1,5 +1,5 @@
 ---
-title: "SubjectとMulticast"
+title: "Subjectによる複数配信"
 ---
 
 ここからは、1つの実行を複数の購読者で共有する仕組みを扱います。
@@ -125,7 +125,7 @@ subject.subscribe((value) => console.log(value)); // 直近2件（2と3）を受
 
 ## UnicastとMulticastの仕組み
 
-「ColdとHot・同期と非同期」の章では、Cold / HotとUnicast / Multicastを別の軸として整理しました。Subjectは、1つのsource購読から届く通知を複数へ配ることで、UnicastなsourceをMulticastとして扱う橋渡しができます。
+「Observableの実行タイミング」の章では、Cold / HotとUnicast / Multicastを別の軸として整理しました。Subjectは、1つのsource購読から届く通知を複数へ配ることで、UnicastなsourceをMulticastとして扱う橋渡しができます。
 
 仕組みは、こうです。1つのCold Observableを、Subjectに1回だけ購読させます。そして、本当の購読者たちには、そのSubjectのほうを購読してもらいます。すると、Cold Observableの「1回の実行」を、Subjectが複数の購読者へ配ってくれます。
 

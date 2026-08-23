@@ -1,5 +1,5 @@
 ---
-title: "テストとデバッグ"
+title: "RxJSのテストとデバッグ"
 ---
 
 本書の締めくくりとして、テストとデバッグを扱います。
@@ -16,7 +16,7 @@ RxJSのコードでは、値だけでなく、通知される時刻や購読の�
 
 ## TestSchedulerと仮想時間
 
-TestSchedulerは、時間を仮想的に扱うSchedulerです。「ColdとHot・同期と非同期」の章で名前だけ触れたSchedulerが、ここで役割を持ちます。`run`の中では、`interval`や`debounceTime`などRxJSがSchedulerで管理する時間を、実際には待たずに進められます。ただし、任意の`Promise`や実際の`fetch`まで自動で仮想化するものではありません。それらは別のテストダブルへ置き換えます。
+TestSchedulerは、時間を仮想的に扱うSchedulerです。「Observableの実行タイミング」の章で名前だけ触れたSchedulerが、ここで役割を持ちます。`run`の中では、`interval`や`debounceTime`などRxJSがSchedulerで管理する時間を、実際には待たずに進められます。ただし、任意の`Promise`や実際の`fetch`まで自動で仮想化するものではありません。それらは別のテストダブルへ置き換えます。
 
 ```ts
 import { TestScheduler } from 'rxjs/testing';
@@ -31,7 +31,7 @@ TestSchedulerは、`rxjs`本体ではなく`rxjs/testing`からimportします�
 
 ## テスト向けのMarble記法
 
-TestSchedulerでは、値の流れを、Marble Diagramの文字列で書きます。「Operatorとpipe・Marble Diagramの読み方」の章で見た読みやすい記法に、テスト用の記号がいくつか加わります。
+TestSchedulerでは、値の流れを、Marble Diagramの文字列で書きます。「OperatorとMarble Diagram」の章で見た読みやすい記法に、テスト用の記号がいくつか加わります。
 
 | 記号 | 意味 |
 |---|---|
@@ -112,7 +112,7 @@ Marble Testは、慣れるまでは記号の羅列に見えて、とっつきに
 
 ## tapによるデバッグ
 
-ここからはデバッグです。ストリームの途中で何が起きているかを見るには、「値を変換・選別・蓄積する」の章で扱った`tap`が役立ちます。
+ここからはデバッグです。ストリームの途中で何が起きているかを見るには、「値の変換・絞り込み・集計」の章で扱った`tap`が役立ちます。
 
 RxJS 7の`tap`は、`next`（値）に加えて、購読の開始や解除も観察できます。
 
@@ -178,7 +178,7 @@ const results$ = keyword$.pipe(
 );
 ```
 
-「入力を整えるところ（`keyword$`）」と「検索するところ（`results$`）」を分けて名前を付けると、それぞれを個別に確認でき、意図も読み取りやすくなります。「Operatorとpipe・Marble Diagramの読み方」の章で触れた「読みやすいOperatorの並べ方」を、テストとデバッグの観点からも実践する、というわけです。
+「入力を整えるところ（`keyword$`）」と「検索するところ（`results$`）」を分けて名前を付けると、それぞれを個別に確認でき、意図も読み取りやすくなります。「OperatorとMarble Diagram」の章で触れた「読みやすいOperatorの並べ方」を、テストとデバッグの観点からも実践する、というわけです。
 
 ## Marble Testを直せるか確認する
 

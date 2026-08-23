@@ -1,5 +1,5 @@
 ---
-title: "特殊なObservableとPromise相互変換"
+title: "遅延実行とPromiseの変換"
 ---
 
 前章では、よく使うCreation Functionを見ました。この章では、少し特殊な場面で役立つものを扱います。
@@ -55,7 +55,7 @@ import { defer, from } from 'rxjs';
 const tasks$ = defer(() => from(fetch('/api/tasks')));
 ```
 
-この`tasks$`は購読ごとに新しい`fetch`を呼ぶCold Observableです。ただし、`from`が受け取ったPromiseには中断の仕組みがないため、購読を解除しても`fetch`自体は止まりません。通知を受け取らなくなることと、Producerの処理が中断されることは分けて考えてください。キャンセル可能なHTTP通信は、「エラー処理・再試行・キャンセル」の章で扱います。
+この`tasks$`は購読ごとに新しい`fetch`を呼ぶCold Observableです。ただし、`from`が受け取ったPromiseには中断の仕組みがないため、購読を解除しても`fetch`自体は止まりません。通知を受け取らなくなることと、Producerの処理が中断されることは分けて考えてください。キャンセル可能なHTTP通信は、「エラー・再試行・処理の終了」の章で扱います。
 
 ## iifで条件によってObservableを切り替える
 

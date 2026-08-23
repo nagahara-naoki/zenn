@@ -1,5 +1,5 @@
 ---
-title: "Observable・Observer・subscribeの仕組み"
+title: "Observableの仕組み"
 ---
 
 前章では、Observableを作って購読し、値を受け取るところまでを体験しました。
@@ -16,7 +16,7 @@ Observableは、値そのものではありません。値をどう流すかを�
 
 Observableも同じです。`of(1, 2, 3)`は「1、2、3をこの順に流す」という手順を持っているだけで、それ自体は何もしません。`subscribe`で設計図を実行すると、はじめて値が流れ始めます。
 
-`of`や`interval`のように、購読をきっかけにProducerを作るObservableは遅延実行されます。本章では、このCold Observableを中心に仕組みを追います。購読とは独立して動くHotなProducerは、「ColdとHot・同期と非同期」の章で区別します。
+`of`や`interval`のように、購読をきっかけにProducerを作るObservableは遅延実行されます。本章では、このCold Observableを中心に仕組みを追います。購読とは独立して動くHotなProducerは、「Observableの実行タイミング」の章で区別します。
 
 ## ProducerとConsumer
 
@@ -249,7 +249,7 @@ console.log('この行の前に、上のログが出る');
 
 `Promise`は、`then`で受け取る前に、もう動いています。一方、`of(1, 2, 3)`は購読するまで値を流しません。
 
-この違いは、実務で効いてきます。Cold Observableなら、処理の組み立てと実行を分け、同じ設計を購読ごとに動かせます。ただし、Observableで包んだ元の処理がすでに始まっている場合は遅延しません。`from(fetch(...))`がその例で、詳しくは「特殊なObservableとPromise相互変換」の章で扱います。
+この違いは、実務で効いてきます。Cold Observableなら、処理の組み立てと実行を分け、同じ設計を購読ごとに動かせます。ただし、Observableで包んだ元の処理がすでに始まっている場合は遅延しません。`from(fetch(...))`がその例で、詳しくは「遅延実行とPromiseの変換」の章で扱います。
 
 ## subscribeが設計図を実行へ変える
 
@@ -262,4 +262,4 @@ Observable、Observer、`subscribe`の関係を整理します。
 - `error`と`complete`はストリームを終わらせ、そのあとに`next`は流れません。
 - `subscribe`するとSubscriberが作られ、Subscriptionが返ります。Cold ObservableではProducerが動き出し、購読ごとに実行が独立します。
 
-次章では、Subscriptionと購読解除を詳しく見ます。その次の「ColdとHot・同期と非同期」で、購読ごとに実行される場合と、外部のProducerを観察する場合を切り分けます。
+次章では、Subscriptionと購読解除を詳しく見ます。その次の「Observableの実行タイミング」で、購読ごとに実行される場合と、外部のProducerを観察する場合を切り分けます。

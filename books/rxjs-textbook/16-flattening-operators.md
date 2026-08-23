@@ -1,5 +1,5 @@
 ---
-title: "Flattening Operator"
+title: "非同期処理の4つの実行方法"
 ---
 
 前章で、Higher-order Observableと、それを平坦化するFlattening Operatorの存在を確認しました。この章では、その4つを、1つずつ、じっくり見比べます。

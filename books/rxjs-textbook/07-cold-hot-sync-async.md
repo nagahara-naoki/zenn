@@ -1,8 +1,8 @@
 ---
-title: "ColdとHot・同期と非同期"
+title: "Observableの実行タイミング"
 ---
 
-「Observable・Observer・subscribeの仕組み」の章では、同じ`interval`を2回購読すると、購読ごとにタイマーが作られると確認しました。
+「Observableの仕組み」の章では、同じ`interval`を2回購読すると、購読ごとにタイマーが作られると確認しました。
 
 実は、この性質を持つObservableには名前があります。Cold Observableです。そして、これとは対照的に、実行を共有するHot Observableもあります。この章では、まずColdとHotの違いを、じっくり観察します。
 
@@ -95,7 +95,7 @@ flowchart TD
   end
 ```
 
-この章では、Producerが購読時に作られるか、購読とは独立して存在するかをCold/Hotで捉えます。通知経路を共有するUnicast/Multicastは別の軸です。Cold Observableへの1つの購読を複数へ配る方法は、「SubjectとMulticast」の章で扱います。
+この章では、Producerが購読時に作られるか、購読とは独立して存在するかをCold/Hotで捉えます。通知経路を共有するUnicast/Multicastは別の軸です。Cold Observableへの1つの購読を複数へ配る方法は、「Subjectによる複数配信」の章で扱います。
 
 ## ColdとHotを二択だけで考えない
 

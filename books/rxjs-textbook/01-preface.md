@@ -1,5 +1,5 @@
 ---
-title: "本書の読み方"
+title: "この本の読み方"
 ---
 
 本書は、RxJSを使って非同期処理を「時間とともに流れる値」として設計できるようになるための教科書です。
@@ -52,13 +52,13 @@ flowchart TD
 
 | 段階 | 扱う内容 |
 |---|---|
-| RxJSの基礎 | 「非同期処理とリアクティブプログラミング」「ストリームとRxJSの全体像」「はじめてのRxJS」 |
-| Observableの仕組み | 「Observable・Observer・subscribeの仕組み」「Subscription・購読解除・Observableの自作」「ColdとHot・同期と非同期」 |
-| Observableの作成 | 「Observableを作る」「特殊なObservableとPromise相互変換」 |
-| Operatorの基本 | 「Operatorとpipe・Marble Diagramの読み方」「値を変換・選別・蓄積する」「件数と時間を制御する」 |
-| Observableの合成 | 「最新値を組み合わせる」「完了・並行・順序で合成する」「Higher-order ObservableとNested Subscribe」「Flattening Operator」 |
-| Subjectと共有 | 「SubjectとMulticast」「shareとshareReplay・Subjectによる状態管理」 |
-| エラー・キャンセル・テスト | 「エラー処理・再試行・キャンセル」「テストとデバッグ」 |
+| RxJSの基礎 | 「非同期処理の基本」「RxJSの全体像」「RxJSを動かしてみる」 |
+| Observableの仕組み | 「Observableの仕組み」「購読解除とObservableの自作」「Observableの実行タイミング」 |
+| Observableの作成 | 「Observableの作り方」「遅延実行とPromiseの変換」 |
+| Operatorの基本 | 「OperatorとMarble Diagram」「値の変換・絞り込み・集計」「件数と時間の制御」 |
+| Observableの合成 | 「最新値の組み合わせ」「Observableの結合」「Observableの入れ子」「非同期処理の4つの実行方法」 |
+| Subjectと共有 | 「Subjectによる複数配信」「処理の共有と状態管理」 |
+| エラー・キャンセル・テスト | 「エラー・再試行・処理の終了」「RxJSのテストとデバッグ」 |
 
 前半は、Observableという「処理の設計図」がどう動くのかを丁寧に見ます。ここを飛ばすと、後半のOperatorが「なんとなく動く道具」になってしまいます。中盤からOperatorとObservableの合成に入り、後半でSubjectによる共有、エラー処理、テストへ進みます。
 
@@ -80,7 +80,7 @@ RxJSの学習では、Operatorごとに例が変わりがちです。話がば�
 - **インクリメンタル検索**: 入力を受け取り、APIへ問い合わせ、結果を表示する流れです。`debounceTime`、`distinctUntilChanged`、`switchMap`が一度に必要になる、RxJSらしい題材です。
 - **擬似的なHTTP通信**: `timer`と`map`で、通信の遅延を模したObservableを作ります。外部のサーバーがなくても、通信に近い挙動を試せます。
 
-同じ題材が章をまたいで少しずつ洗練されていきます。たとえばインクリメンタル検索は、時間制御を学ぶ章で登場し、Flattening Operatorの章で完成します。そのつながりを追うことで、Operatorが単独の道具ではなく、設計の部品であることが見えてきます。
+同じ題材が章をまたいで少しずつ洗練されていきます。たとえばインクリメンタル検索は、「件数と時間の制御」で登場し、「非同期処理の4つの実行方法」で完成します。そのつながりを追うことで、Operatorが単独の道具ではなく、設計の部品であることが見えてきます。
 
 ## サンプルコードの前提
 
@@ -109,7 +109,7 @@ Observableを入れる変数には、末尾に`$`を付ける慣習に従いま�
 const clicks$ = fromEvent(button, 'click');
 ```
 
-実際に手を動かす環境の準備は、「はじめてのRxJS」の章で説明します。ここでは、コードがどのような前提で書かれているかだけ押さえておけば十分です。
+実際に手を動かす環境の準備は、「RxJSを動かしてみる」の章で説明します。ここでは、コードがどのような前提で書かれているかだけ押さえておけば十分です。
 
 実行環境は、コード例によって異なります。`of`や`interval`だけを使う例は、Node.js上で`tsx`から実行できます。`document`、`button`、`input`などが登場する例はDOMを使うため、ブラウザ上のTypeScript環境で試してください。
 
@@ -146,7 +146,7 @@ source: --1--2--3--|
 output: --10-20-30-|
 ```
 
-Marble Diagramの詳しい読み方は、「Operatorとpipe・Marble Diagramの読み方」の章で改めて説明します。ここでは、こうした図が値の流れを表すものだと知っておけば十分です。
+Marble Diagramの詳しい読み方は、「OperatorとMarble Diagram」の章で改めて説明します。ここでは、こうした図が値の流れを表すものだと知っておけば十分です。
 
 また、コード例では、`subscribe`で受け取った値をコメントで示します。
 

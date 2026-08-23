@@ -22,7 +22,7 @@ title: "付録A Operator早見表"
 | 値も完了も通知しない | `NEVER` |
 | エラーを通知する | `throwError` |
 
-作成については、[「Observableを作る」](./08-creating-observables)と[「特殊なObservableとPromise相互変換」](./09-special-observables-and-promise-interop)で扱いました。`fromFetch`は[「エラー処理・再試行・キャンセル」](./19-error-retry-cancel)で扱います。
+作成については、[「Observableの作り方」](./08-creating-observables)と[「遅延実行とPromiseの変換」](./09-special-observables-and-promise-interop)で扱いました。`fromFetch`は[「エラー・再試行・処理の終了」](./19-error-retry-cancel)で扱います。
 
 ## 値を変換・選別する
 
@@ -36,7 +36,7 @@ title: "付録A Operator早見表"
 | 値を蓄積する | `scan` |
 | 完了時に集計する | `reduce` |
 
-変換と選別については、[「値を変換・選別・蓄積する」](./11-transform-filter-accumulate)で扱いました。
+変換と選別については、[「値の変換・絞り込み・集計」](./11-transform-filter-accumulate)で扱いました。
 
 ## 件数を制御する
 
@@ -60,7 +60,7 @@ title: "付録A Operator早見表"
 | `next`と`complete`を遅らせる | `delay` |
 | 最初の通知や通知間隔に上限を設ける | `timeout` |
 
-件数と時間の制御は、[「件数と時間を制御する」](./12-count-and-time-operators)で扱いました。
+件数と時間の制御は、[「件数と時間の制御」](./12-count-and-time-operators)で扱いました。
 
 ## Observableを結合する
 
@@ -74,7 +74,7 @@ title: "付録A Operator早見表"
 | 対応する値を組み合わせる | `zip` |
 | 最初に通知したObservableを採用する | `race` |
 
-結合は、[「最新値を組み合わせる」](./13-combining-latest-values)と[「完了・並行・順序で合成する」](./14-forkjoin-merge-concat-zip-race)で扱いました。`combineLatest`は全員が最初の値を出すまで通知せず、`forkJoin`は値なしで完了するsourceがあると結果を出しません。`race`では`next`だけでなく、最初の`error`や`complete`も勝者を決めます。
+結合は、[「最新値の組み合わせ」](./13-combining-latest-values)と[「Observableの結合」](./14-forkjoin-merge-concat-zip-race)で扱いました。`combineLatest`は全員が最初の値を出すまで通知せず、`forkJoin`は値なしで完了するsourceがあると結果を出しません。`race`では`next`だけでなく、最初の`error`や`complete`も勝者を決めます。
 
 ## 非同期処理を平坦化する
 
@@ -85,7 +85,7 @@ title: "付録A Operator早見表"
 | 最新の処理だけ残す | `switchMap` |
 | 実行中の新しい処理を無視する | `exhaustMap` |
 
-平坦化は、[「Higher-order ObservableとNested Subscribe」](./15-higher-order-observable)と[「Flattening Operator」](./16-flattening-operators)で扱いました。「読み取りか書き込みか」だけで決めず、すべて処理するか、順番を守るか、古いInnerを解除してよいか、処理中の新しい値を捨ててよいかで選びます。
+平坦化は、[「Observableの入れ子」](./15-higher-order-observable)と[「非同期処理の4つの実行方法」](./16-flattening-operators)で扱いました。「読み取りか書き込みか」だけで決めず、すべて処理するか、順番を守るか、古いInnerを解除してよいか、処理中の新しい値を捨ててよいかで選びます。
 
 ## エラー・終了を扱う
 
@@ -102,7 +102,7 @@ title: "付録A Operator早見表"
 | 実行を共有する | `share` |
 | 過去の通知を再配信しながら共有する | `shareReplay` |
 
-エラー・終了・共有は、[「エラー処理・再試行・キャンセル」](./19-error-retry-cancel)と[「shareとshareReplay・Subjectによる状態管理」](./18-share-sharereplay-state)で扱いました。
+エラー・終了・共有は、[「エラー・再試行・処理の終了」](./19-error-retry-cancel)と[「処理の共有と状態管理」](./18-share-sharereplay-state)で扱いました。
 
 ## PromiseとObservableを変換する
 
@@ -112,7 +112,7 @@ title: "付録A Operator早見表"
 | 最初の値をPromiseで受け取る | `firstValueFrom` |
 | 最後の値をPromiseで受け取る | `lastValueFrom` |
 
-これらは[「特殊なObservableとPromise相互変換」](./09-special-observables-and-promise-interop)で扱いました。
+これらは[「遅延実行とPromiseの変換」](./09-special-observables-and-promise-interop)で扱いました。
 
 `from(fetch(...))`は、すでに始まったPromiseを包むため、購読解除で通信を中断できません。購読ごとに処理を始めるなら`defer`、HTTPの中断まで必要なら`fromFetch`を検討します。
 

@@ -1,5 +1,5 @@
 ---
-title: "値を変換・選別・蓄積する"
+title: "値の変換・絞り込み・集計"
 ---
 
 前章で、Operatorをつなぐ`pipe`と、Marble Diagramの読み方を身につけました。準備が整ったので、ここからは具体的なOperatorを扱います。
@@ -69,7 +69,7 @@ of('t1')
   .subscribe((value) => console.log(value)); // value は Promise オブジェクト
 ```
 
-`subscribe`で受け取れるのは、通信の結果ではなく、Promiseオブジェクトそのものです。これは、`map`が「値をそのまま変換するだけ」で、非同期処理の完了を待つ機能を持たないからです。PromiseやObservableの結果を流したいときは、`mergeMap`や`switchMap`といったFlattening Operatorを使います。この重要なテーマは、「Higher-order ObservableとNested Subscribe」と「Flattening Operator」の章で、じっくり扱います。ここでは、「`map`は待たない」とだけ覚えておいてください。
+`subscribe`で受け取れるのは、通信の結果ではなく、Promiseオブジェクトそのものです。これは、`map`が「値をそのまま変換するだけ」で、非同期処理の完了を待つ機能を持たないからです。PromiseやObservableの結果を流したいときは、`mergeMap`や`switchMap`といったFlattening Operatorを使います。この重要なテーマは、「Observableの入れ子」と「非同期処理の4つの実行方法」の章で、じっくり扱います。ここでは、「`map`は待たない」とだけ覚えておいてください。
 
 ## tapで副作用を扱う
 
@@ -160,7 +160,7 @@ of({ id: 1 }, { id: 1 }, { id: 2 })
 // { id: 2 }
 ```
 
-このOperatorは、検索フォームで効果を発揮します。同じキーワードが連続で届いても、実際に変わったときだけ次へ流せるので、無駄な処理を減らせます。「件数と時間を制御する」の章で、`debounceTime`と組み合わせて使います。
+このOperatorは、検索フォームで効果を発揮します。同じキーワードが連続で届いても、実際に変わったときだけ次へ流せるので、無駄な処理を減らせます。「件数と時間の制御」の章で、`debounceTime`と組み合わせて使います。
 
 ## scanで値を蓄積する
 
