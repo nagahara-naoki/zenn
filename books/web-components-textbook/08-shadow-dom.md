@@ -1,18 +1,27 @@
 ---
-title: "Shadow DOMは内部構造を変更できる境界を作る"
+title: "Shadow DOMとは何か"
 ---
 
-Shadow DOMを使う最大の利点は、利用者が内部のタグ構造へ依存しにくくなることです。ページのCSSが内部要素へ偶然当たる事故を減らし、コンポーネント側のCSSが外へ漏れることも防ぎます。
+Shadow DOMとは、1つのDOM要素の内側に、外部のCSSとDOM探索から隔離された内部ツリーを作る仕組みです。作られる内部ツリーをShadow Tree、その入口となるノードをShadow Root、内部ツリーを抱える側の要素をShadow Hostと呼びます。
 
-ここで作るのは「別の文書」ではなく、1つのDOM要素に結び付いた内部ツリーです。ホストは通常のDocument Treeに残り、その内側にShadow Rootを入口とするShadow Treeが加わります。画面上では1つの部品に見えても、CSSセレクターとDOM探索には境界があります。
+ホストは通常のDocument Treeに残り、その内側にShadow Rootを起点とするShadow Treeがぶら下がります。画面上では1つの部品に見えますが、ページ側のCSSセレクターとDOM探索が届くのはホストまでで、その内側のShadow Treeには届きません。
 
-Shadow DOMはprivate fieldのような完全な秘匿機構ではありません。`open`なら外部JavaScriptから参照でき、イベントやSlotも境界を越えて関係します。役割は内部を秘密にすることではなく、「どこまでを変更可能な実装詳細とするか」をブラウザにも理解できる形で示すことです。
+用語の関係を整理します。
 
-また、すべてのCustom ElementにShadow DOMが必要なわけではありません。ページ側から子要素を直接編集させたい部品や、既存CSSとの統合を優先する部品ではLight DOMだけを使う選択もあります。
+| 用語 | 指すもの |
+|---|---|
+| Shadow Host | 内部ツリーを抱える側の要素。`<task-item>`のような通常のDOM要素 |
+| Shadow Root | 内部ツリーの入口となるノード。`attachShadow()`の戻り値 |
+| Shadow Tree | Shadow Rootの下にある、作者が管理する内部構造 |
+| Light DOM | ホストの子として利用者がHTMLに書いた要素 |
 
-## ホストへShadow Rootを取り付ける
+この境界があると、利用者は内部のタグ構造へ依存しにくくなります。ページのCSSが内部要素へ偶然当たる事故が減り、コンポーネント側のCSSが外へ漏れることも防げます。内部の作りを後から変更しても、使う側のコードが壊れにくくなるわけです。
 
-Shadow DOMを持つ通常の要素をShadow Hostと呼びます。Custom Element自身をホストにする形が一般的です。
+ただし、Shadow DOMはprivate fieldのような完全な秘匿機構ではありません。`open`なら外部JavaScriptから参照でき、イベントやSlotも境界を越えて関係します。担っているのは内部の秘匿ではなく、「どこまでを変更可能な実装詳細とするか」をブラウザにも理解できる形で示す役割です。
+
+## Shadow Rootを取り付ける
+
+Shadow Rootは`attachShadow()`で取り付けます。Custom Element自身をホストにする形が一般的です。
 
 ```ts
 class TaskItem extends HTMLElement {
@@ -93,7 +102,7 @@ input {
 }
 ```
 
-この性質を使うと、ページ全体の文字設定に馴染ませつつ、部品内部のレイアウトは守れます。テーマ設計は第12章で扱います。
+この性質を使うと、ページ全体の文字設定に馴染ませつつ、部品内部のレイアウトは守れます。テーマ設計は『テーマとスタイルシートの共有』の章で扱います。
 
 ## JavaScriptの探索範囲も分かれる
 
@@ -133,7 +142,18 @@ JavaScriptを実行せずHTMLだけでShadow Rootを作るDeclarative Shadow DOM
 </task-item>
 ```
 
-この方法はサーバーレンダリングと初期表示に関わるため、第22章で扱います。クライアント側の基本実装では`attachShadow()`を使います。
+この方法はサーバーレンダリングと初期表示に関わるため、『Declarative Shadow DOMとSSR』の章で扱います。クライアント側の基本実装では`attachShadow()`を使います。
+
+## まとめ
+
+この章では、Shadow DOMが作る境界を学びました。
+
+- Shadow DOMは、1つのDOM要素の内側に、外部のCSSとDOM探索から隔離された内部ツリーを作る仕組みです。
+- ホストがShadow Host、内部ツリーの入口がShadow Root、その下の構造がShadow Treeです。
+- Shadow Rootは`attachShadow({ mode: 'open' })`で取り付けます。
+- `open`ならホストの`shadowRoot`から内部へアクセスでき、`closed`でも秘匿にはなりません。
+- CSSセレクターとDOM探索は境界を越えませんが、`color`などの継承プロパティとCSS Custom Propertiesは越えます。
+- Light DOMだけで作るほうが素直な要素もあるため、内部を守る必要があるかで選びます。
 
 次章では、利用者が書いたLight DOMをShadow Treeへ表示するSlotと、内部構造を再利用するTemplateを学びます。
 

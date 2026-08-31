@@ -1,10 +1,14 @@
 ---
-title: "Shadow DOMはXSSを防がない"
+title: "セキュリティとXSS対策"
 ---
 
-Shadow DOMはCSSとDOM探索に境界を作りますが、信頼できない入力を安全なHTMLへ変換する仕組みではありません。内部で`innerHTML`へ外部文字列を渡せば、通常のページと同じようにDOM-based XSSが起こります。
+この章で扱うのは、Custom Elementの内部で起きるDOM-based XSSと、その防ぎ方です。DOM-based XSSは、スクリプトが受け取った文字列をDOM APIへ渡した結果、意図しないコードがページ上で実行される攻撃を指します。入口になるのは、サーバーが返すHTMLではありません。ブラウザ上で動くJavaScriptが組み立てるDOMです。
 
-## 文字列はtextContent、構造はDOM APIで組み立てる
+出発点として押さえておきたい事実があります。Shadow DOMはXSSを防ぎません。Shadow DOMが作るのはCSSとDOM探索の境界であり、信頼できない入力を安全なHTMLへ変換する仕組みではないからです。Shadow Root内部で`innerHTML`へ外部文字列を渡せば、通常のページとまったく同じようにDOM-based XSSが起こります。
+
+以降では、テキストと構造の作り分け、templateと外部入力の分離、SanitizerとTrusted Types、Slotとclosed Shadow Root、そしてCustom Eventの`detail`という順で、Custom Elementに固有の入口をひとつずつ見ていきます。
+
+## テキストと構造の作り分け
 
 利用者が入力したタスク名を表示するだけなら、`textContent`を使います。
 
@@ -63,7 +67,7 @@ template.innerHTML = `<p>${task.label}</p>`;
 
 構造は固定templateから複製し、値は`textContent`、属性、プロパティで後から設定します。この分離だけで、多くの注入箇所を消せます。
 
-## HTMLを受け取るAPIには明確な理由が要る
+## HTMLを受け取るAPIとサニタイズ
 
 リッチテキスト表示のようにHTMLが必要な場合、入力をそのまま注入してはいけません。許可する要素と属性を定めたSanitizerを通します。
 
@@ -103,7 +107,7 @@ output.innerHTML = policy.createHTML(untrustedHtml);
 
 Trusted Types自体はサニタイズしません。どの変換関数を通ったかを型とCSPで強制する仕組みです。未対応ブラウザも含め、入力を同じSanitizerへ通す設計は維持します。
 
-## Slotへ渡された内容も通常のDOMである
+## Slotへ渡された内容も通常のDOM
 
 Slotは外部HTMLをShadow DOMへコピーしませんが、Light DOMの内容を表示します。外部から受け取ったHTMLをページ側が安全でない方法で作れば、Slotの有無にかかわらず危険です。
 
@@ -132,7 +136,19 @@ list.addEventListener('task-toggle', (event) => {
 
 イベントが同じページから来たという理由だけで、`detail`の形や権限を信頼しません。サーバー更新では、サーバー側でも認証と認可を行います。
 
-セキュリティの基本は、Shadow DOMという境界へ期待を寄せることではありません。外部入力をHTML、URL、イベント、ネットワークの各入口で検証し、危険なDOM APIを減らすことです。
+## まとめ
+
+この章では、Custom Elementで起きるDOM-based XSSと、その防ぎ方を学びました。
+
+- Shadow DOMはCSSとDOM探索の境界であり、XSS対策にはなりません。
+- 文字列は`textContent`で表示し、構造はDOM APIで組み立てます。URLはプロトコルを確認してから設定します。
+- templateはソースコードへ固定し、外部データは`textContent`やプロパティで後から差し込みます。
+- HTMLとして受け取る必要がある入力は、`Element.setHTML()`かサニタイズライブラリを通します。
+- Trusted Typesは、危険な代入箇所へ通る値を特定の変換関数に限定します。サニタイズそのものは別に用意します。
+- Slotの内容は通常のLight DOMであり、`mode: 'closed'`は秘密の保管場所になりません。
+- Custom Eventの`detail`も外部入力として形を検証し、サーバー側でも認証と認可を行います。
+
+安全なコンポーネントは、境界への期待ではなく入口ごとの検証で成り立ちます。次章の『パフォーマンスの計測と改善』では、同じく計測を出発点にして、要素数と更新回数から性能を見直します。
 
 ## 参考資料
 

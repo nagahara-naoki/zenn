@@ -1,10 +1,12 @@
 ---
-title: "4つの要素をタスク管理UIへ統合する"
+title: "タスク管理UIを完成させる"
 ---
 
-この統合章では、`<task-input>`、`<task-filter>`、`<task-list>`、`<task-item>`を`<task-app>`へ組み込みます。`<task-input>`は第15章、`<task-item>`は第6章から第14章までに確認した公開契約を統合したファイルを使います。ここでは状態の所有者と、要素間の接続に焦点を当てます。
+この章のゴールは2つです。`<task-input>`、`<task-filter>`、`<task-list>`、`<task-item>`という4つの要素を`<task-app>`へ統合すること。そして、状態を誰が所有し、要素どうしをどう接続するかを決めることです。
 
-状態は`<task-app>`が所有し、子要素は公開プロパティで表示に必要な状態を受け取り、`CustomEvent`で操作を返します。`<task-item>`は`task`プロパティを受け取り、`task-toggle`と`task-remove`を通知するものとします。`<task-input>`は`value`と`reportValidity()`を公開します。
+使う実装は、これまでの章で組み立ててきたものです。`<task-input>`は『ElementInternalsとフォーム連携』の章、`<task-item>`は『属性とプロパティ』から『アクセシビリティとフォーカス』までの章で確認した公開契約を、1つのファイルへまとめて使います。
+
+状態は`<task-app>`が所有します。子要素は公開プロパティで表示に必要な状態を受け取り、`CustomEvent`で操作を返します。`<task-item>`は`task`プロパティを受け取り、`task-toggle`と`task-remove`を通知します。`<task-input>`は`value`と`reportValidity()`を公開します。
 
 ## 完成時のデータフロー
 
@@ -24,9 +26,11 @@ flowchart TD
   Item -->|task-toggle / task-remove| App
 ```
 
-子要素はアプリケーションの配列を直接変更しません。操作イベントを受けた`<task-app>`が新しい配列を作り、表示用プロパティを更新します。
+子要素はアプリケーションの配列を直接変更しません。操作イベントを受け取った`<task-app>`が新しい配列を作り、子要素の表示用プロパティを更新します。配列を書き換えられる場所が1か所に限られるため、表示と状態がずれる余地が小さくなります。
 
 ## Task型とfilter型を共有する
+
+要素どうしがやり取りするデータの形は、1つのファイルに置いて全員で共有します。
 
 ```ts:src/task.types.ts
 export type TaskPriority = 'low' | 'normal' | 'high';
@@ -41,11 +45,13 @@ export interface Task {
 }
 ```
 
-時刻はISO 8601文字列として保存します。表示時に`Intl.DateTimeFormat`へ渡せ、JSONへ保存しても形が変わりません。
+時刻はISO 8601文字列として保存します。この形なら表示時にそのまま`Intl.DateTimeFormat`へ渡せますし、JSONへ保存しても形が変わりません。
 
 ## 既出の2要素を完成ファイルへまとめる
 
-`<task-item>`は、`task`プロパティと`completed`属性から表示を作り、利用者の操作をイベントへ変換します。タスク配列そのものは変更しません。内部でネイティブのチェックボックスとボタンを使い、ラベルと補助情報はSlotで受け取ります。
+先に、これまでの章で育ててきた2つの要素を完成形として置いておきます。
+
+`<task-item>`は、`task`プロパティと`completed`属性から表示を作り、利用者の操作をイベントへ変換します。タスク配列そのものには手を触れません。内部ではネイティブのチェックボックスとボタンを使い、ラベルと補助情報はSlotで受け取ります。
 
 :::details task-item.tsの完成コード
 ```ts:src/task-item.ts
@@ -172,7 +178,7 @@ export class TaskItem extends HTMLElement {
 ```
 :::
 
-`<task-input>`は、外側のフォームから1つの入力要素として見えるようにします。内部入力の値、フォームへ送る値、制約検証の結果を同じ状態から更新します。DOM上を移動して再接続されても、入力途中の値は初期値へ戻しません。
+`<task-input>`は、外側のフォームから1つの入力要素として見えるようにします。内部入力の値、フォームへ送る値、制約検証の結果は、いずれも同じ状態から更新します。DOM上を移動して再接続されたときも、入力途中の値は初期値へ戻しません。
 
 :::details task-input.tsの完成コード
 ```ts:src/task-input.ts
@@ -325,6 +331,8 @@ export class TaskInput extends HTMLElement {
 
 ## task-filterは選択をイベントで通知する
 
+`<task-filter>`は表示中の絞り込み条件を持ちますが、タスク配列は知りません。ボタンが押されたら`task-filter-change`を発火し、実際の絞り込みは`<task-app>`へ任せます。
+
 ```ts:src/task-filter.ts
 import type { TaskFilterValue } from './task.types.js';
 
@@ -421,11 +429,11 @@ export class TaskFilter extends HTMLElement {
 }
 ```
 
-初回接続時にも`#render()`を呼び、`aria-pressed`と`tabIndex`を設定します。コードを短くするため省略した登録処理は章末でまとめます。
+初回接続時にも`#render()`を呼んで、`aria-pressed`と`tabIndex`を設定しています。矢印キーでの移動は、フォーカスできるボタンを常に1つだけにするroving tabindexの実装です。なお、コードを短くするため`customElements.define()`は省いてあります。登録処理は章末でまとめて行います。
 
 ## task-listはidを使って既存要素を再利用する
 
-配列更新のたびに全要素を作り直さず、タスクIDから既存の`<task-item>`を探します。
+配列が更新されるたびに全要素を作り直すと、チェックボックスのフォーカスや入力途中の状態が失われます。そこでタスクIDをキーにしたMapを持ち、既存の`<task-item>`を探して使い回します。
 
 ```ts:src/task-list.ts
 import type { Task } from './task.types.js';
@@ -508,9 +516,11 @@ export class TaskList extends HTMLElement {
 }
 ```
 
-既存要素を`append()`すると順序を並べ替えられます。第5章で説明したとおり、`<task-item>`は切断と再接続が起きても状態を失わないように実装します。対象環境で`moveBefore()`を採用できるなら、状態を保つ移動へ置き換えられます。
+既存の要素をもう一度`append()`すれば、順序を並べ替えられます。ただしこの移動は切断と再接続として扱われます。『ライフサイクルコールバック』の章で説明したとおり、`<task-item>`は再接続されても状態を失わないように実装しておきます。対象環境が`moveBefore()`に対応していれば、状態を保ったままの移動へ置き換えられます。
 
 ## task-appが状態を所有する
+
+タスク配列と絞り込み条件を持つのは`<task-app>`だけです。子要素から上がってきたイベントを受け取り、新しい状態を作り、子要素のプロパティへ流し込みます。
 
 ```ts:src/task-app.ts
 import type { Task, TaskFilterValue } from './task.types.js';
@@ -646,11 +656,11 @@ export class TaskApp extends HTMLElement {
 }
 ```
 
-`task-remove`はcancelableな操作要求です。`<task-app>`は状態変更をmicrotaskまで遅らせ、イベントの伝播中に外部が`preventDefault()`を呼んだか確認します。取り消されていなければ、状態を所有する`<task-app>`が削除を確定します。
+`task-remove`は、削除の通知ではなく、取り消せる操作要求です。`<task-app>`は状態変更を`queueMicrotask()`まで遅らせ、伝播の途中で外部が`preventDefault()`を呼んだかどうかを確認します。取り消されていなければ、状態を所有する`<task-app>`が削除を確定します。削除の可否を外部が決められる一方、配列を書き換えるのはあくまで所有者だけです。
 
 ## 依存順に一度だけ登録する
 
-`<task-app>`のコンストラクターは内部で子Custom Elementsを作ります。先に子要素を登録し、最後にアプリケーションを登録します。
+`<task-app>`のコンストラクターは、内部で子Custom Elementsを生成します。そのため子要素を先に登録し、アプリケーションを最後に登録します。`customElements.get()`で確認してから登録すれば、モジュールが二重に読み込まれても例外になりません。
 
 ```ts:src/register.ts
 import { TaskApp } from './task-app.js';
@@ -674,7 +684,7 @@ for (const [name, constructor] of definitions) {
 }
 ```
 
-ページのHTMLは短く保てます。
+登録処理をまとめておくと、ページのHTMLは短いままで済みます。
 
 ```html:index.html
 <!doctype html>
@@ -695,7 +705,7 @@ for (const [name, constructor] of definitions) {
 
 ## 完成後に確認すること
 
-実装が動いたら、まず次の必須項目を確認します。
+実装が動いたら、次の項目を順に確認します。
 
 - 定義前のLight DOMが読め、定義後に正しくアップグレードされる
 - タスク名を空のまま送信できない
@@ -705,17 +715,29 @@ for (const [name, constructor] of definitions) {
 - 削除後に状態と一覧DOMが一致する
 - 強制カラーモードと200%拡大でも操作できる
 
-第19章と第21章まで読んだ場合は、次も確認します。
+『実ブラウザでのテスト』と『フレームワークとの連携』の章まで読んでいれば、次も確認できます。
 
 - Chromium、Firefox、WebKitのPlaywrightテストが通る
 - React、Vue、Angularのいずれかから、`<task-item>`の`task`プロパティと操作イベントを扱える
 
-永続化を加えるなら、`<task-app>`内部へ直接`fetch()`を書き足す前に境界を考えます。外部へ状態の所有を移す場合は、先に`tasks`プロパティと`tasks-change`イベントを公開契約として追加します。そのうえで保存処理を外へ置けば、REST API、IndexedDB、テスト用メモリー実装を交換できます。
+永続化を加えたくなったら、`<task-app>`の内部へ`fetch()`を書き足す前に境界を考えます。状態の所有を外部へ移すなら、`tasks`プロパティと`tasks-change`イベントを公開契約として先に追加します。そのうえで保存処理を外へ置けば、REST API、IndexedDB、テスト用のメモリー実装を差し替えられます。
 
-## Web Componentsで守るのは実装より契約
+## 公開契約という一貫した考え方
 
-本書では、`HTMLElement`を継承する最小クラスから始めました。その後、属性とプロパティ、ライフサイクル、Shadow DOM、Slot、イベント、スタイル、フォーム、テスト、配布へ範囲を広げました。
+本書は、`HTMLElement`を継承する最小クラスから始めました。そこから属性とプロパティ、ライフサイクル、Shadow DOM、Slot、イベント、スタイル、フォーム、テスト、配布へと範囲を広げてきました。
 
-中心にある考え方は変わりません。利用者が触るHTML、DOMプロパティ、イベント、Slot、スタイルAPIを先に設計し、内部実装をその契約の内側へ閉じます。
+中心にある考え方は、どの章でも同じです。利用者が触るHTML、DOMプロパティ、イベント、Slot、スタイルAPIを先に設計し、内部実装をその契約の内側へ閉じる。この順序を守れば、内部をどう書き換えても利用側は壊れません。
 
-ネイティブDOM APIで実装しても、Litへ移行しても、ReactやAngularから利用しても、契約が残れば部品は使い続けられます。Web Componentsはフレームワークをなくす技術ではありません。Webという共通基盤で、再利用可能なUIを提供するための技術です。
+ネイティブDOM APIで実装しても、Litへ移行しても、ReactやAngularから利用しても、契約が残るかぎり部品は使い続けられます。Web Componentsはフレームワークを不要にする技術ではなく、Webという共通基盤の上で再利用可能なUIを提供するための技術です。
+
+## まとめ
+
+この章では、4つの要素を`<task-app>`へ統合しました。
+
+- 状態を所有するのは`<task-app>`だけで、子要素はプロパティを受け取りイベントを返します。
+- `<task-list>`はタスクIDで既存の`<task-item>`を探し、要素を作り直さずに再利用します。
+- `task-remove`はcancelableな操作要求として扱い、`preventDefault()`を確認してから削除を確定します。
+- 登録は依存順に、子要素から`<task-app>`の順で一度だけ行います。
+- 永続化のような機能を足すときも、まず公開契約を決めてから内部実装を選びます。
+
+次章では、本書に出てきた用語の関係を整理し、困りごとから読む章を引ける索引をまとめます。

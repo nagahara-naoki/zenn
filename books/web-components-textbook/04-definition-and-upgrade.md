@@ -1,14 +1,14 @@
 ---
-title: "定義前の要素も登録後にアップグレードされる"
+title: "要素の定義とアップグレード"
 ---
 
-ブラウザは未知のタグを見つけても捨てません。`<task-item>`の定義がまだ読み込まれていなければ、いったん通常の要素としてDOMに置きます。その後、クラスが登録されると既存の要素をCustom Elementへアップグレードします。
+アップグレードとは、すでにDOM上にある要素を、あとから登録されたCustom Elementのクラスへ結びつける処理です。ブラウザは未知のタグを見つけても捨てず、いったん通常の要素としてDOMに置きます。その後`customElements.define()`が呼ばれた時点で、文書中の該当する要素をまとめてそのクラスのインスタンスに変えます。
 
-この遅延があるため、Custom ElementはHTMLを先に配信し、JavaScriptを後から読み込む構成でも使えます。
+この遅延があるため、Custom ElementはHTMLを先に配信し、JavaScriptを後から読み込む構成でも使えます。この章では、定義の登録方法と、アップグレードが設計に及ぼす影響を扱います。
 
-## 登録前の要素はHTMLUnknownElementとは限らない
+## 登録前の要素はHTMLElementとして扱われる
 
-ハイフンを含む有効なCustom Element名は、定義前でも`HTMLElement`として扱われます。
+ハイフンを含む有効なCustom Element名は、定義前でも`HTMLUnknownElement`にはならず、`HTMLElement`として扱われます。
 
 ```html
 <task-item>仕様書を読む</task-item>
@@ -40,7 +40,7 @@ console.log(item instanceof TaskItem); // true
 console.log(item.dataset.upgraded); // "true"
 ```
 
-## defineは名前とコンストラクターを一度だけ結びつける
+## defineは一度しか呼べない
 
 グローバルな`CustomElementRegistry`は`window.customElements`から参照します。主なメソッドは3つです。
 
@@ -78,7 +78,7 @@ export function registerTaskItem(
 }
 ```
 
-利用者は登録名を管理でき、ライブラリをimportしただけでグローバル状態が変わることも避けられます。第20章では、この分け方をnpmパッケージの`exports`へ反映します。
+利用者は登録名を管理でき、ライブラリをimportしただけでグローバル状態が変わることも避けられます。『npmパッケージ化とドキュメント』の章では、この分け方をパッケージの`exports`へ反映します。
 
 ## whenDefinedで登録完了を待つ
 
@@ -95,7 +95,7 @@ if (item instanceof TaskItem) {
 
 ページ全体を`DOMContentLoaded`まで待つ必要はありません。必要な要素の定義だけを待てます。
 
-## コンストラクターでは自分自身の土台だけを作る
+## コンストラクターに書いてよい処理
 
 Custom Elementのコンストラクターには、ブラウザが要素を生成する途中で呼ぶという制約があります。ここでは次の作業に絞ります。
 
@@ -147,7 +147,20 @@ item.textContent = 'テストを書く';
 document.body.append(item);
 ```
 
-ブラウザが登録済みの名前を見て`TaskItem`を生成し、文書へ追加された時点で`connectedCallback()`を呼びます。次章では、この接続と切断を含むライフサイクルを扱います。
+ブラウザが登録済みの名前を見て`TaskItem`を生成し、文書へ追加された時点で`connectedCallback()`を呼びます。
+
+## まとめ
+
+この章では、Custom Elementの定義とアップグレードを扱いました。
+
+- アップグレードは、定義前からDOMにあった要素を登録後にクラスのインスタンスへ変える処理です。
+- 有効な名前の要素は定義前でも`HTMLElement`として存在し、属性とLight DOMを保持します。
+- `define()`は同じ名前で二度呼べないため、登録処理を関数に切り出して`get()`で確認します。
+- 別モジュールから要素を操作する場合は`whenDefined()`で登録完了を待てます。
+- コンストラクターでは`super()`、Shadow Root、内部状態など自分自身の土台だけを用意します。
+- 本書の通しサンプルは、扱いやすいAutonomous Custom Elementを基本にします。
+
+次章では、この接続と切断を含むライフサイクルを扱います。
 
 ## 参考資料
 

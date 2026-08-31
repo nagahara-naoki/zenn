@@ -1,10 +1,10 @@
 ---
-title: "Litは標準APIを残したまま描画の定型処理を減らす"
+title: "Litとは何か"
 ---
 
-ネイティブのWeb Components APIは、要素の登録、Shadow DOM、属性、イベント、Slotを提供します。状態が変わったときのDOM差分更新や宣言的なtemplateは提供しません。
+Litとは、Web Components標準の上に薄く乗るライブラリで、宣言的テンプレートと差分更新を補うものです。ネイティブのWeb Components APIは、要素の登録、Shadow DOM、属性、イベント、Slotを提供します。状態が変わったときのDOM差分更新や宣言的なtemplateは提供しません。Litが引き受けるのはその部分です。
 
-Litはこの部分を補います。`LitElement`は`HTMLElement`を継承しているため、完成した部品の公開面はCustom Elementのままです。
+`LitElement`は`HTMLElement`を継承しています。完成した部品の公開面はCustom Elementのままで、利用側から見れば標準のタグです。
 
 ## Litを追加する
 
@@ -95,6 +95,8 @@ export class LitTaskItem extends LitElement {
 customElements.define('lit-task-item', LitTaskItem);
 ```
 
+登録はいつもどおり`customElements.define()`です。Shadow DOMの生成やstyleの適用は`LitElement`が済ませます。
+
 ## reactive propertyが更新を予約する
 
 `static properties`へ宣言した値をLitではreactive propertyと呼びます。値が変わると更新が予約され、同じ処理内の複数変更はまとめられます。
@@ -106,7 +108,7 @@ item.completed = task.completed;
 await item.updateComplete;
 ```
 
-`task`は`attribute: false`なのでプロパティだけで受け取ります。`completed`はBoolean属性と対応し、`reflect: true`でプロパティ変更を属性へ反映します。第6章で手作業した変換とreflectionをLitが管理しています。
+`task`は`attribute: false`なのでプロパティだけで受け取ります。`completed`はBoolean属性と対応し、`reflect: true`でプロパティ変更を属性へ反映します。『属性とプロパティ』の章で手作業した変換とreflectionを、Litが管理しています。
 
 ## templateのbindingは種類を記号で分ける
 
@@ -132,7 +134,7 @@ html`
 
 プロパティと属性の違いが記法に現れるため、オブジェクトを誤って文字列属性へ渡す事故を減らせます。
 
-## Litのライフサイクルを標準と対応させる
+## Litのライフサイクルと標準の対応
 
 LitElementにも標準のCustom Elementライフサイクルがあります。overrideする場合は`super`を呼びます。
 
@@ -202,7 +204,19 @@ JavaScriptの標準デコレーターとTypeScriptの旧来のexperimental decor
 
 Litへ移行しても、属性、プロパティ、イベント、Slot、Partsの公開契約は変えません。この原則を守れば、内部実装を段階的に置き換えられます。
 
-第25章では、ネイティブ実装で学んだ4つの要素を1つのタスク管理UIへ統合します。
+## まとめ
+
+この章では、Litの位置づけと基本的な書き方を学びました。
+
+- Litは、標準のWeb Componentsに宣言的テンプレートと差分更新を足す薄いライブラリです。
+- `LitElement`は`HTMLElement`を継承するため、公開面はCustom Elementのままです。
+- `static properties`へ宣言したreactive propertyは、値の変更で更新を予約し、複数の変更をまとめます。
+- `reflect: true`で属性への反映をLitが管理します。
+- templateのbindingは、`.`がDOMプロパティ、`?`が真偽属性、`@`がイベントリスナーと記号で分かれます。
+- 標準のライフサイクルはそのまま使え、overrideするときは`super`を呼びます。
+- Slot、CSS Parts、CSS Custom Propertiesはブラウザ標準のまま利用します。
+
+次章の『タスク管理UIを完成させる』では、ネイティブ実装で学んだ4つの要素を1つのタスク管理UIへ統合します。
 
 ## 参考資料
 

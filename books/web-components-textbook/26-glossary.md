@@ -1,33 +1,35 @@
 ---
-title: "用語と目的から引くWeb Components"
+title: "用語集と目的別索引"
 ---
 
-Web Componentsには、似た名前の概念がいくつも登場します。実装中に迷ったときは、まずこの章で言葉の関係を確認してください。
+Web Componentsには、似た名前の概念がいくつも登場します。実装中に迷ったときは、この章で言葉の関係を確認してください。前半は困りごとから読む章を引く索引、後半は用語の定義です。
 
 ## 目的から章を探す
 
 | 知りたいこと・困っていること | 読む章 |
 |---|---|
-| Web Componentsが何を解決するのか | 第2章 |
-| 独自要素がいつ有効になるのか | 第4章 |
-| DOMから外したらリスナーが重複した | 第5章 |
-| 属性とプロパティのどちらを使うか | 第6章 |
-| 状態更新でフォーカスが失われる | 第7章 |
-| ページのCSSが内部へ当たってしまう | 第8章・第11章 |
-| 利用者のHTMLを内部へ表示したい | 第9章 |
-| Shadow DOMの外へ操作を通知したい | 第10章 |
-| 外からテーマを変更できるようにしたい | 第11章・第12章 |
-| キーボードと支援技術へ対応したい | 第14章 |
-| 独自入力を`FormData`へ含めたい | 第15章 |
-| XSS対策を確認したい | 第16章 |
-| 多数の要素を描画すると遅い | 第17章 |
-| タグ名やイベントに型を付けたい | 第18章 |
-| 実ブラウザでテストしたい | 第19章 |
-| npmで配布したい | 第20章 |
-| React、Vue、Angularから使いたい | 第21章 |
-| JavaScript実行前にShadow DOMを表示したい | 第22章 |
-| 新しいAPIの採用可否を判断したい | 第23章 |
-| 手作業の描画更新を減らしたい | 第24章 |
+| Web Componentsが何を解決するのか | Web Componentsとは何か |
+| 独自要素がいつ有効になるのか | 要素の定義とアップグレード |
+| DOMから外したらリスナーが重複した | ライフサイクルコールバック |
+| 属性とプロパティのどちらを使うか | 属性とプロパティ |
+| 状態更新でフォーカスが失われる | 状態とレンダリング |
+| ページのCSSが内部へ当たってしまう | Shadow DOMとは何か / Shadow DOMのスタイリング |
+| 利用者のHTMLを内部へ表示したい | TemplateとSlot |
+| Shadow DOMの外へ操作を通知したい | CustomEventとイベント伝播 |
+| 外からテーマを変更できるようにしたい | Shadow DOMのスタイリング / テーマとスタイルシートの共有 |
+| 公開するプロパティやイベントを決めたい | 公開APIの設計 |
+| キーボードと支援技術へ対応したい | アクセシビリティとフォーカス |
+| 独自入力を`FormData`へ含めたい | ElementInternalsとフォーム連携 |
+| XSS対策を確認したい | セキュリティとXSS対策 |
+| 多数の要素を描画すると遅い | パフォーマンスの計測と改善 |
+| タグ名やイベントに型を付けたい | TypeScriptとの統合 |
+| 実ブラウザでテストしたい | 実ブラウザでのテスト |
+| npmで配布したい | npmパッケージ化とドキュメント |
+| React、Vue、Angularから使いたい | フレームワークとの連携 |
+| JavaScript実行前にShadow DOMを表示したい | Declarative Shadow DOMとSSR |
+| 新しいAPIの採用可否を判断したい | Custom StatesとScoped Registries |
+| 手作業の描画更新を減らしたい | Litとは何か |
+| 要素をまとめて1つのUIへ組み上げたい | タスク管理UIを完成させる |
 
 ## Custom ElementとCustom Elements
 
@@ -47,7 +49,7 @@ upgradeは、定義前からDOMに存在していた要素へ、登録された�
 
 ## ホスト・Light DOM・Shadow Root・Shadow Tree
 
-Shadow Hostは、Shadow Rootが取り付けられた要素です。Custom Element自身がホストになる構成が一般的です。
+Shadow Hostは、Shadow Rootが取り付けられた要素です。多くの場合、独自要素そのものがホストを兼ねます。
 
 Light DOMは、ホストの子として利用者が書いたノードです。`<task-item><span>タスク名</span></task-item>`なら、`span`はLight DOMにあります。
 
@@ -109,7 +111,7 @@ Form-associated Custom Elementは、フォーム送信、制約検証、リセ�
 
 Declarative Shadow DOMは、`<template shadowrootmode="open">`を使い、HTMLだけでShadow Rootを宣言する仕組みです。サーバーから内部構造を返せるため、JavaScript実行前の表示に利用できます。
 
-hydrationは、サーバーが返したHTMLへクライアント側の動作を接続する処理です。Custom Elementでは、既存のShadow Rootを壊さず、イベントリスナーや状態同期を追加します。
+hydrationは、サーバーが返したHTMLへクライアント側の動作を接続する処理です。独自要素の場合は、既存のShadow Rootを作り直さずに、イベントリスナーと状態同期だけを追加します。
 
 ## Custom StatesとScoped Custom Element Registries
 

@@ -1,14 +1,14 @@
 ---
-title: "クラスと登録処理を分けてnpmパッケージにする"
+title: "npmパッケージ化とドキュメント"
 ---
+
+この章では、作ったCustom Elementをnpmパッケージとして配る方法を学びます。扱うのは2つです。要素クラスと登録処理を別の入口に分ける配布設計と、Custom Elements Manifestをはじめとするドキュメントの整備です。
 
 Custom Elementのモジュールをimportしただけでグローバル登録される設計は手軽です。ただし、利用者が名前を変えたい場合、テストごとに異なるクラスを登録したい場合、複数バージョンを共存させたい場合には制約になります。
 
-配布パッケージでは、要素クラスと登録処理を別の入口として公開します。
+制約が生まれる理由は、Custom Element Registryがページ単位の共有資源だからです。同じ名前は原則として一度しか登録できず、あとから別のクラスへ置き換えられません。ライブラリをimportしただけで登録すると、利用者が名前や登録時期を選ぶ余地がなくなります。
 
-この分離が必要なのは、Custom Element Registryがページ単位の共有資源だからです。同じ名前は原則として一度しか登録できず、あとから別のクラスへ置き換えられません。ライブラリをimportしただけで登録すると、利用者が名前や登録時期を選ぶ余地がなくなります。
-
-クラスをexportする入口と、既定名で登録する便利な入口を分ければ、単純な利用と高度な組み込みの両方に対応できます。パッケージ化はファイルを圧縮する作業ではなく、登録方法を含む公開契約を決める作業です。
+クラスをexportする入口と、既定名で登録する便利な入口を分ければ、単純な利用と高度な組み込みの両方に対応できます。パッケージ化はファイルを圧縮する作業というより、登録方法を含む公開契約を決める作業です。
 
 ## 配布用のディレクトリを分ける
 
@@ -55,6 +55,8 @@ export function registerTaskElements(): void {
 registerTaskElements();
 ```
 
+登録済みかを`customElements.get()`で確かめてから定義しているため、同じモジュールが二重に読み込まれても例外になりません。
+
 ## exportsで2つの入口を公開する
 
 ```json:package.json
@@ -80,7 +82,9 @@ registerTaskElements();
 }
 ```
 
-`sideEffects`へ登録用ファイルを書くと、bundler（複数のモジュールを配布用にまとめるツール）が「未使用のexportしかない」と判断して削除するのを防げます。クラスだけを読みたい利用者は通常の入口を使います。
+`sideEffects`へ登録用ファイルを書くと、bundler（複数のモジュールを配布用にまとめるツール）が「未使用のexportしかない」と判断して削除するのを防げます。
+
+クラスだけを読みたい利用者は通常の入口を使います。
 
 ```ts
 import { TaskItem } from '@example/task-elements';
@@ -94,7 +98,9 @@ customElements.define('project-task', TaskItem);
 import '@example/task-elements/register';
 ```
 
-## TypeScriptでES Modulesと型宣言を生成する
+## ES Modulesと型宣言をビルドする
+
+TypeScriptのビルド設定では、ES Modulesの出力と`.d.ts`の生成を有効にします。
 
 ```json:tsconfig.build.json
 {
@@ -128,9 +134,11 @@ pnpm pack
 
 生成された`.tgz`にJavaScript、Source Map、`.d.ts`が入り、不要なテストや設定ファイルが含まれていないかを見ます。
 
-## Custom Elements Manifestで公開面を機械可読にする
+## Custom Elements Manifest
 
-Custom Elements Manifestは、要素、属性、プロパティ、イベント、Slot、CSS Partsなどを記述するJSON形式です。IDEやコンポーネントカタログがAPIを読み取れます。
+Custom Elements Manifestは、要素、属性、プロパティ、イベント、Slot、CSS Partsなどを記述するJSON形式です。この形式で公開面を書き出しておくと、IDEやコンポーネントカタログがAPIを読み取れます。
+
+生成には公式のanalyzerを使います。
 
 ```sh
 pnpm add -D @custom-elements-manifest/analyzer
@@ -163,7 +171,7 @@ export class TaskItem extends HTMLElement {}
 }
 ```
 
-## READMEには最小利用例と契約を書く
+## READMEに書く内容
 
 READMEの冒頭には、インストールから表示までの最短例を置きます。
 
@@ -181,11 +189,11 @@ import '@example/task-elements/register';
 </task-item>
 ```
 
-続けて、対象ブラウザ、属性とプロパティ、イベントdetail、Slot、Parts、CSS Custom Propertiesを記載します。内部のクラス名一覧は公開契約ではないため不要です。
+続けて、対象ブラウザ、属性とプロパティ、イベントdetail、Slot、Parts、CSS Custom Propertiesを記載します。内部のクラス名一覧は公開契約に含まれないため不要です。
 
-## SemVerはHTMLとCSSの契約にも適用する
+## SemVerとHTML・CSSの契約
 
-JavaScriptメソッドを削除する変更だけが破壊的変更ではありません。
+JavaScriptメソッドを削除する変更だけが破壊的変更ではありません。次の変更も利用者のHTML、CSS、型、テストを壊します。
 
 - 属性名の変更
 - イベント名または`detail`形式の変更
@@ -194,9 +202,20 @@ JavaScriptメソッドを削除する変更だけが破壊的変更ではあり�
 - CSS Custom Propertyの意味変更
 - 対象ブラウザの切り上げ
 
-これらは利用者のHTML、CSS、型、テストを壊します。非推奨期間を置き、Major Versionで削除します。
+いずれもMinor Versionで入れず、非推奨期間を置いたうえでMajor Versionで削除します。
 
-パッケージ化によって、Custom Elementは単なるソースファイルから、名前と契約を持つ配布物になります。React、Vue、Angularとの接続方法は第21章で比較します。
+## まとめ
+
+この章では、Custom Elementのnpmパッケージ化とドキュメントを学びました。
+
+- Custom Element Registryはページ単位の共有資源のため、importだけで登録する設計は利用者の選択肢を狭めます。
+- クラスをexportする入口と、既定名で登録する副作用入口を`exports`で分けて公開します。
+- `sideEffects`へ登録用ファイルを書き、bundlerによる削除を防ぎます。
+- Custom Elements Manifestを生成すると、公開面をIDEやカタログが機械的に読み取れます。
+- READMEには最短の利用例と、属性・プロパティ・イベント・Slot・Parts・CSS Custom Propertiesの契約を書きます。
+- SemVerの破壊的変更には、属性名やイベント名などHTMLとCSSの契約の変更も含まれます。
+
+パッケージ化によって、Custom Elementは単なるソースファイルから、名前と契約を持つ配布物になります。次章の『フレームワークとの連携』では、この配布物をReact、Vue、Angularから使う方法を扱います。
 
 ## 参考資料
 

@@ -1,12 +1,12 @@
 ---
-title: "TypeScriptで要素名・プロパティ・イベントを型にする"
+title: "TypeScriptとの統合"
 ---
 
-ブラウザはCustom Elementの名前とクラスを実行時に結びつけます。TypeScriptの型システムは、その登録を自動では知りません。公開する要素名、プロパティ、イベントを型宣言に追加すると、利用側の補完と検査が働きます。
+実行時のCustom Element Registryと、コンパイル時の型情報は別の仕組みです。この一点を押さえておくと、この章の作業はすべて説明が付きます。
 
-実行時のCustom Element Registryと、コンパイル時の型情報は別の仕組みです。`customElements.define()`を呼べばブラウザでは動きますが、それだけでは`document.querySelector('task-item')`の戻り値やイベントの`detail`をTypeScriptが推論できません。
+`customElements.define('task-item', TaskItem)`を呼ぶと、ブラウザは要素名とクラスをRegistryへ登録します。これは実行時の出来事です。TypeScriptの型システムはこの登録を知らないため、`document.querySelector('task-item')`の戻り値は`Element | null`のままですし、`task-toggle`イベントの`detail`も推論できません。
 
-型宣言は、実行時の機能を増やすものではありません。タグ名、プロパティ、イベントという公開契約を開発ツールにも伝え、利用側の間違いを実行前に見つけやすくする層です。
+型宣言は、この隔たりを埋める層です。実行時の機能を増やすものではなく、タグ名・プロパティ・イベントという公開契約を開発ツールへ伝え、利用側の間違いを実行前に見つけやすくします。この章では、公開データ型の定義から`HTMLElementTagNameMap`の拡張、実行時の検証、`.d.ts`の配布まで順に見ていきます。
 
 ## 公開データ型を先に定義する
 
@@ -140,7 +140,7 @@ TypeScriptはHTMLファイルの属性を保証しません。
 <task-item priority="urgent"></task-item>
 ```
 
-`priority`をUnion型にしていても、`getAttribute()`は任意の文字列を返します。第6章の`toPriority()`のように、DOM境界で正規化します。
+`priority`をUnion型にしていても、`getAttribute()`は任意の文字列を返します。『属性とプロパティ』の章の`toPriority()`のように、DOM境界で正規化します。
 
 型は開発時の契約、検証は実行時の境界です。どちらか一方で代用しません。
 
@@ -177,6 +177,19 @@ TypeScriptの`private`は主に型検査上の制限です。JavaScriptの`#`は
 }
 ```
 
-`tsc -p tsconfig.build.json`でJavaScriptと型宣言を生成できます。第20章では`package.json`の`exports`から型の入口を公開します。
+`tsc -p tsconfig.build.json`でJavaScriptと型宣言を生成できます。`package.json`の`exports`から型の入口を公開する方法は、『npmパッケージ化とドキュメント』の章で扱います。
 
-TypeScriptで確かめられるのは、公開契約に沿った値の形までです。イベント経路やフォーカスなど、ブラウザ上の振る舞いは第19章のPlaywrightテストで確認します。
+## まとめ
+
+この章では、Custom Elementの公開契約をTypeScriptの型として表す方法を学びました。
+
+- 実行時のRegistryと型情報は別の仕組みなので、`customElements.define()`だけでは型が付きません。
+- `Task`や`TaskToggleDetail`のような公開データ型に名前を付け、実装と利用コードで共有します。
+- `HTMLElementTagNameMap`を拡張すると、`querySelector()`の戻り値が具体的なクラスになります。
+- `HTMLElementEventMap`の拡張は全要素に影響するため、イベント名へ固有の接頭辞を付けます。
+- 型引数はDOMを検証しないので、必須の内部要素は`instanceof`で確認します。
+- 属性値は任意の文字列が来るため、DOM境界で正規化します。型は開発時の契約、検証は実行時の境界です。
+- `#`で始まるprivate fieldは、型からも実行時からも外部に見えません。
+- 配布時は`declaration: true`で`.d.ts`を生成し、JavaScriptと一緒に届けます。
+
+型で確かめられるのは、公開契約に沿った値の形までです。イベント経路やフォーカスといったブラウザ上の振る舞いは、次章の『実ブラウザでのテスト』で確認します。

@@ -1,12 +1,12 @@
 ---
-title: "新しいAPIは機能検出し、段階的に採用する"
+title: "Custom StatesとScoped Registries"
 ---
 
-Web Componentsは現在も拡張されています。Custom Statesは内部状態をCSSへ安全に公開し、Scoped Custom Element Registriesは要素名の定義範囲をShadow Rootへ閉じます。
+Custom Statesとは、要素の内部状態を状態名としてCSSの`:state()`疑似クラスへ公開する仕組みです。Scoped Custom Element Registriesとは、要素名の定義範囲を文書全体から特定のShadow Rootへ閉じる仕組みです。どちらもWeb Componentsに後から加わったAPIで、この章ではその使い方を扱います。
 
-Custom Statesは主要ブラウザへ広がっています。Scoped Registryは2026年時点でも一部の広く使われるブラウザで未対応です。同じ「新しいAPI」としてまとめず、互換性に応じて採用段階を変えます。
+2つの対応状況は同じではありません。Custom Statesは主要ブラウザへ広がっています。Scoped Registryは2026年時点でも一部の広く使われるブラウザで未対応です。同じ「新しいAPI」としてまとめず、機能検出をはさんで採用段階を変えるのがこの章の方針です。
 
-この章は二部構成です。前半では、安定した強化としてCustom Statesを扱います。後半では、利用できる環境がまだ限られるScoped Custom Element Registriesを扱います。
+前半では、安定した強化としてCustom Statesを扱います。後半では、利用できる環境がまだ限られるScoped Custom Element Registriesを扱います。
 
 ## Custom Statesで状態名だけをCSSへ渡す
 
@@ -50,7 +50,7 @@ task-filter:state(active) {
 }
 ```
 
-## 属性とCustom Stateのどちらを使うか
+## 属性とCustom Stateの使い分け
 
 HTMLから設定でき、URL保存やCSSだけの利用でも意味がある状態は属性に向きます。`disabled`、`required`、`completed`などです。
 
@@ -112,9 +112,11 @@ Declarative Shadow DOMでは、`shadowrootcustomelementregistry`属性を付け�
 </component-host>
 ```
 
-## 対応ブラウザが限られる機能を基本設計にしない
+## 対応が限られる機能は追加機能として入れる
 
-Scoped Registryを主要機能の前提にすると、未対応ブラウザへ大きなpolyfillや別bundleが必要になります。まずグローバルRegistryでも衝突しにくい接頭辞を付けます。Scoped Registryは、対応ブラウザでShadow Root内の依存要素だけに適用する追加機能として導入します。
+Scoped Registryを主要機能の前提にすると、未対応ブラウザへ大きなpolyfillや別bundleが必要になります。まずグローバルRegistryでも衝突しにくい接頭辞を付けます。そのうえで、対応ブラウザではShadow Root内の依存要素だけにScoped Registryを適用する、という追加機能の位置づけで導入します。
+
+利用可否は機能検出で判断します。
 
 ```ts
 function supportsScopedRegistry(): boolean {
@@ -143,7 +145,17 @@ TypeScriptの`lib.dom.d.ts`が新しいoptionへ追いついていない場合�
 
 新しいAPIを知っていることと、本番の基本経路へ置けることは別です。互換性がそろうまでは、既存APIで動く中核を残します。
 
-手作業の更新処理が大きくなった場合は、第24章のLitで定型処理を減らせます。公開契約はそのまま維持します。
+## まとめ
+
+この章では、Custom StatesとScoped Custom Element Registriesを学びました。
+
+- Custom Statesは、`ElementInternals.states`へ追加した状態名をCSSの`:state()`へ公開する仕組みです。
+- スタイル専用の状態を属性で増やさずに済み、HTML上の公開面を狭く保てます。ただし状態名自体は公開契約なので、ドキュメントへ記載します。
+- Scoped Custom Element Registriesは、要素名の定義範囲をShadow Rootへ閉じる仕組みです。同じ名前へ別のクラスを登録でき、名前衝突と複数バージョンの共存を解決します。
+- Scoped Registryは未対応の環境が残るため、機能検出を通したうえで追加機能として導入します。
+- 新しいAPIは、仕様と互換性の確認、検証、機能検出、継続テストの順に段階を踏んで採用します。
+
+手作業の更新処理が大きくなった場合は、次章の『Litとは何か』で扱うライブラリが定型処理を減らします。公開契約はそのまま維持します。
 
 ## 参考資料
 

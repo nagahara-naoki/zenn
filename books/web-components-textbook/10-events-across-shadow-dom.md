@@ -1,14 +1,16 @@
 ---
-title: "内部の操作はCustomEventで外へ通知する"
+title: "CustomEventとイベント伝播"
 ---
 
-コンポーネントの外から内へ値を渡す手段が属性とプロパティなら、内から外へ起きたことを伝える手段はイベントです。DOM標準の通知モデルに合わせると、Vanilla JavaScriptでもフレームワークでも同じ契約を利用できます。
+CustomEventとは、独自の名前と任意のデータ（`detail`）を持たせて発火できるDOMイベントです。Custom Elementは、内部で起きた出来事をCustomEventとして外へ通知します。
 
-コールバック関数をプロパティで渡す方法でも通知はできます。ただし、DOMにはすでに複数の祖先が同じ出来事を受け取れるイベント伝播の仕組みがあります。Custom Elementがイベントを使えば、利用者は組み込み要素と同じ`addEventListener()`で購読でき、一覧側で子要素の操作をまとめて扱えます。
+外から内へ値を渡す手段が属性とプロパティなら、内から外へ知らせる手段がイベントです。DOM標準の通知モデルに合わせておくと、Vanilla JavaScriptからでもフレームワークからでも、同じ`addEventListener()`で受け取れます。
 
-イベントが表すのは、内部DOMで発生した低水準の操作ではなく、コンポーネントとして外へ伝える出来事です。内部ボタンの`click`をそのまま公開するのではなく、「タスクの完了状態を変えたい」という`task-toggle`へ翻訳します。この翻訳によって、内部をボタンから別のUIへ変えても公開契約を保てます。
+コールバック関数をプロパティで渡す方法でも通知はできます。ただしDOMには、複数の祖先が同じ出来事を受け取れる伝播の仕組みが最初から備わっています。イベントを使えば、一覧側で子要素の操作をまとめて扱えます。
 
-## CustomEventのdetailへ必要な情報だけを入れる
+通知するのは、内部DOMで発生した低水準の操作そのものではありません。コンポーネントとして外へ伝えたい出来事です。内部ボタンの`click`をそのまま公開せず、「タスクの完了状態を変えたい」という`task-toggle`へ翻訳します。この翻訳があれば、内部をボタンから別のUIへ変えても公開契約を保てます。
+
+## detailに入れる情報
 
 `<task-item>`内部のチェックボックスが変わったら、`task-toggle`イベントをホストから通知します。
 
@@ -30,7 +32,7 @@ this.#checkbox.addEventListener('change', () => {
 });
 ```
 
-利用側は通常の`addEventListener()`で受け取ります。
+第1引数がイベント名、第2引数が設定です。`detail`へ渡した値は、受け取り側の`event.detail`から読めます。
 
 ```ts
 document.addEventListener('task-toggle', (event) => {
@@ -41,11 +43,13 @@ document.addEventListener('task-toggle', (event) => {
 });
 ```
 
-`detail`へ内部要素の参照を入れると、利用側が実装へ依存します。公開するのは、状態更新に必要な識別子と値だけにします。
+`detail`へ内部要素の参照を入れると、利用側が実装へ依存してしまいます。公開するのは、状態更新に必要な識別子と値だけにします。
 
-## bubblesとcomposedは別の境界を制御する
+## bubblesとcomposed
 
-`bubbles`は親方向へ伝播するかを決めます。`composed`はShadow DOMの境界を越えられるかを決めます。
+イベントがどこまで届くかは、2つの設定で決まります。それぞれ制御する境界が違います。
+
+`bubbles`は、発生元から親方向へさかのぼるかどうかを決めます。`composed`は、Shadow DOMの境界を越えて外へ出られるかどうかを決めます。両方を`true`にして初めて、Shadow Root内部で発火したイベントがページ側の祖先へ届きます。
 
 | `bubbles` | `composed` | 結果 |
 |---|---|---|
@@ -54,11 +58,13 @@ document.addEventListener('task-toggle', (event) => {
 | `false` | `true` | 境界を越えられるが通常のbubbleはしない |
 | `true` | `true` | Shadow DOMを越えて祖先へ伝播する |
 
-アプリケーションへ公開する操作イベントには、通常`bubbles: true`と`composed: true`を指定します。内部だけで使うイベントは`composed: false`のままにし、実装詳細を境界内へ留めます。
+アプリケーションへ公開する操作イベントには、通常`bubbles: true`と`composed: true`を指定します。内部だけで使うイベントは`composed: false`のままにして、実装詳細を境界の内側へ留めます。
 
-## event.targetは境界でホストへ置き換わる
+なお、ブラウザ組み込みのイベントにも同じ区別があります。`click`や`focus`は`composed: true`ですが、`change`や`submit`は`composed: false`です。内部の`input`が発火した`change`はホストの外へ出ないため、公開したい出来事は自分でCustomEventへ翻訳することになります。
 
-Shadow DOM内部の`input`から`change`イベントが届いたとき、外部から見える`event.target`は`<task-item>`に置き換わります。この処理をretargetingと呼びます。
+## retargetingとevent.target
+
+境界を越えたイベントには、もう1つ仕掛けがあります。Shadow DOM内部の`input`から出たイベントを外部で受け取ると、`event.target`は内部の`input`ではなく`<task-item>`になります。ブラウザが発生元をホストへ置き換えるためで、この処理をretargetingと呼びます。
 
 ```ts
 document.addEventListener('click', (event) => {
@@ -67,17 +73,17 @@ document.addEventListener('click', (event) => {
 });
 ```
 
-`composedPath()`はイベントが通った経路を返します。ただしclosedなShadow Rootの内部は外部の経路から隠されます。
+`composedPath()`は、イベントが実際に通った経路を配列で返します。openなShadow Rootなら内部の要素も含まれます。closedなShadow Rootの内部は、外部から見た経路には現れません。
 
-retargetingは、利用側が`input`や`button`といった内部構造へ依存するのを防ぎます。公開イベントはホストの出来事として設計してください。
+retargetingがあるおかげで、利用側が`input`や`button`といった内部構造へ依存せずに済みます。公開イベントは、ホストの出来事として設計してください。
 
-## プロパティ設定に反応してイベントを返さない
+## プロパティ設定に反応させない
 
-外部が`item.completed = true`と設定した直後に`task-toggle`を発行すると、設定した側へ同じ情報を返すだけです。双方向バインディングでは循環更新を起こすこともあります。
+外部が`item.completed = true`と設定した直後に`task-toggle`を発行すると、設定した側へ同じ情報を返すだけになります。双方向バインディングでは循環更新の原因にもなります。
 
-イベントを発行するのは、利用者のクリック、内部タイマーの完了、ネットワーク結果の受信など、コンポーネント内部で新しい事実が発生したときです。外部から渡された値を表示へ反映するだけなら通知は要りません。
+イベントを発行するのは、利用者のクリック、内部タイマーの完了、ネットワーク結果の受信など、コンポーネント内部で新しい事実が生まれたときです。外部から渡された値を表示へ反映するだけなら、通知は要りません。
 
-## 取り消せる操作はcancelableにする
+## cancelableで操作を止められるようにする
 
 削除のように外部が止めたい操作は、確定前のイベントを取り消せるようにします。
 
@@ -111,11 +117,11 @@ list.addEventListener('task-remove', (event) => {
 });
 ```
 
-`dispatchEvent()`の戻り値は、cancelableなイベントが取り消された場合に`false`です。イベント名に`before-`を付ける設計もありますが、本書では操作要求そのものをcancelableにします。
+`dispatchEvent()`の戻り値は、cancelableなイベントが取り消されたとき`false`になります。イベント名に`before-`を付ける設計もありますが、本書では操作要求そのものをcancelableにします。
 
-## bubbleするイベントなら一覧側でまとめて受け取れる
+## 一覧側でまとめて受け取る
 
-複数の`<task-item>`を持つ`<task-list>`は、各要素へ個別にリスナーを登録しなくても、祖先でイベントを受け取れます。
+複数の`<task-item>`を持つ`<task-list>`は、各要素へ個別にリスナーを登録しなくても、祖先の位置でイベントを受け取れます。
 
 ```ts
 class TaskList extends HTMLElement {
@@ -131,6 +137,18 @@ class TaskList extends HTMLElement {
 ```
 
 このイベント委譲は、タスクが後から追加されても機能します。要素の数に比例してリスナーを増やす必要もありません。
+
+## まとめ
+
+この章では、CustomEventとイベント伝播を学びました。
+
+- CustomEventは、独自の名前と`detail`を持つDOMイベントです。
+- `detail`には、状態更新に必要な識別子と値だけを入れます。
+- `bubbles`は親方向への伝播、`composed`はShadow DOM境界の通過を制御します。
+- 境界を越えたイベントの`event.target`はホストへ置き換わります（retargeting）。経路は`composedPath()`で確認できます。
+- 外部から設定された値をそのまま通知し返すと、循環更新の原因になります。
+- 取り消せる操作は`cancelable: true`にし、`dispatchEvent()`の戻り値で判定します。
+- bubbleするイベントなら、一覧側でまとめて受け取れます。
 
 属性、プロパティ、Slot、イベントがそろい、Custom Elementのデータの出入りが見えてきました。次章では、Shadow DOM内部とホストをCSSで結ぶ方法を学びます。
 

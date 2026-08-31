@@ -1,12 +1,16 @@
 ---
-title: "テーマは値の契約として渡し、Stylesheetを共有する"
+title: "テーマとスタイルシートの共有"
 ---
 
-コンポーネントのテーマを公開するとき、利用者が内部の全CSSを上書きできる必要はありません。色、余白、角丸など、製品側が変えてよい値に名前を付けて渡します。
+この章では、Shadow DOMのスタイルにまつわる2つの主題を扱います。
+
+1つ目は、CSS Custom Propertiesによるテーマの公開です。色や余白など製品側が変えてよい値に名前を付け、利用者へ渡します。2つ目は、Constructable Stylesheetsによるスタイルの共有です。1つの`CSSStyleSheet`オブジェクトを作り、複数のShadow Rootで使い回します。
+
+前者は「何を変えられるか」を決める設計の話、後者は「同じCSSをどう配るか」という実装の話です。
 
 ## 意味で名前を付けたCustom Propertiesを公開する
 
-内部実装のCSSプロパティ名をそのまま外へ出すと、用途が伝わりません。
+テーマを公開するとき、利用者が内部の全CSSを上書きできる必要はありません。変えてよい値だけに名前を付けます。このとき、内部実装のCSSプロパティ名をそのまま外へ出すと、用途が伝わりません。
 
 ```css
 :host {
@@ -28,7 +32,7 @@ input {
 }
 ```
 
-利用側はホストへ値を設定します。
+Custom Propertiesは継承するため、ホストへ設定した値がShadow Root内部まで届きます。利用側はホストのセレクターへ書くだけです。
 
 ```css
 task-item {
@@ -38,11 +42,11 @@ task-item {
 }
 ```
 
-`purple`のような見た目ではなく、`accent`のような役割で命名すると、テーマ変更後も名前の意味が残ります。
+`purple`のような見た目の名前ではなく、`accent`のような役割の名前にすると、テーマを変更しても名前の意味が残ります。
 
 ## 既定値をコンポーネント側に持たせる
 
-利用者がテーマ変数を設定しなくても、部品は読める状態で表示されるべきです。`var()`の第2引数にもフォールバックを書けます。
+利用者がテーマ変数を設定しなくても、部品は読める状態で表示されるべきです。`var()`の第2引数にフォールバック値を書いておきます。
 
 ```css
 .container {
@@ -55,7 +59,7 @@ task-item {
 
 ## 共通トークンと部品固有トークンを接続する
 
-デザインシステム全体のトークンを直接内部で参照すると、部品が特定のページ設定へ強く依存します。部品固有の変数に接続すると、単体でも動きます。
+デザインシステム全体のトークンを内部から直接参照すると、部品が特定のページ設定へ強く依存します。部品固有の変数を経由させると、単体でも動きます。
 
 ```css
 task-item {
@@ -65,11 +69,11 @@ task-item {
 }
 ```
 
-共通トークンが存在する環境ではその値を使い、単独利用では部品の既定値へ戻ります。
+共通トークンがある環境ではその値を使い、単独利用では部品の既定値へ戻ります。
 
-## Constructable Stylesheetを複数の要素で共有する
+## Constructable Stylesheetで共有する
 
-各インスタンスへ同じ`<style>`を複製する代わりに、`CSSStyleSheet`を作って複数のShadow Rootへ採用できます。この方法で作るStylesheetをConstructable Stylesheetと呼びます。
+ここからが2つ目の主題です。各インスタンスへ同じ`<style>`を複製する代わりに、`CSSStyleSheet`をJavaScriptで作り、複数のShadow Rootへ採用できます。この方法で作るStylesheetをConstructable Stylesheetと呼びます。
 
 ```ts:src/task-item.styles.ts
 export const taskItemStyles = new CSSStyleSheet();
@@ -95,7 +99,7 @@ taskItemStyles.replaceSync(`
 `);
 ```
 
-コンポーネントでは`adoptedStyleSheets`へ追加します。
+`replaceSync()`にCSSテキストを渡すと、その内容でルールが差し替わります。コンポーネント側では、Shadow Rootの`adoptedStyleSheets`へ追加します。
 
 ```ts
 import { taskItemStyles } from './task-item.styles';
@@ -110,7 +114,7 @@ class TaskItem extends HTMLElement {
 }
 ```
 
-同じ`CSSStyleSheet`インスタンスを共有するため、ルールを更新すると採用しているすべてのShadow Rootへ反映されます。
+要素を100個作っても、パースされるCSSは1つです。同じインスタンスを共有するため、ルールを更新すると、採用しているすべてのShadow Rootへ即座に反映されます。
 
 ## style要素との使い分け
 
@@ -121,11 +125,11 @@ class TaskItem extends HTMLElement {
 | `<style>` | 小さな部品、宣言的なtemplate、SSRでCSSをHTMLへ含めたい場合 |
 | `adoptedStyleSheets` | 多数のインスタンス、共通Stylesheet、実行中の一括更新 |
 
-Constructable Stylesheetは同じDocumentで作成されたShadow Rootへ採用します。iframeなど別Documentへまたがる配布では、Documentごとに作る必要があります。
+Constructable Stylesheetは、同じDocumentで作成されたShadow Rootへ採用します。iframeなど別Documentへまたがる配布では、Documentごとに作る必要があります。
 
-## 利用者の環境設定を上書きしない
+## 利用者の環境設定を尊重する
 
-テーマはブランドカラーだけではありません。利用者のOS設定も尊重します。
+テーマはブランドカラーだけではありません。利用者のOS設定も反映の対象です。
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -141,7 +145,18 @@ Constructable Stylesheetは同じDocumentで作成されたShadow Rootへ採用�
 }
 ```
 
-`color-scheme: light dark`をホストへ設定すれば、内部のフォーム部品やシステムカラーも配色へ追従できます。
+`color-scheme: light dark`をホストへ設定すれば、内部のフォーム部品やシステムカラーも配色へ追従します。
+
+## まとめ
+
+この章では、テーマの公開とスタイルシートの共有を学びました。
+
+- テーマは、役割で命名したCSS Custom Propertiesとして公開します。値は継承によってホストから内部へ届きます。
+- `var()`の第2引数へフォールバックを書き、利用者が何も設定しなくても読める既定値を用意します。
+- 共通トークンは部品固有の変数を経由して参照すると、単体でも動きます。
+- Constructable Stylesheetは、1つの`CSSStyleSheet`を`adoptedStyleSheets`で複数のShadow Rootへ共有する仕組みです。
+- 小さな部品は`<style>`、多数のインスタンスや共通スタイルは`adoptedStyleSheets`を選びます。
+- `prefers-reduced-motion`や`forced-colors`など、利用者のOS設定にも合わせます。
 
 テーマAPIは見た目の公開契約です。次章では、スタイルを含む公開面全体を棚卸しし、コンポーネントの責務と変更規則を決めます。
 
